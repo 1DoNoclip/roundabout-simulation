@@ -1,0 +1,17 @@
+[package]
+name = "roundabout-simulation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Remove dynamic linking when publishing final build
+bevy = { version = "0.19.0", features = ["dynamic_linking"] }
+enterpolation = "0.3.0"
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Fully optimize dependencies so they run at full speed
+[profile.dev.package."*"]
+opt-level = 3
