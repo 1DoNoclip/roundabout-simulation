@@ -1,15 +1,22 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use enterpolation::{Signal, bspline::BSpline};
 
 pub mod route;
+pub mod statistics;
 pub mod vehicle;
 
 use route::*;
+use statistics::*;
 use vehicle::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((
+            DefaultPlugins,
+            EguiPlugin::default(),
+            WorldInspectorPlugin::default(),
+        ))
         .add_systems(Startup, (setup_simulation, setup_map))
         .add_systems(Update, (spawn_vehicles, vehicle_movement, draw_routes, draw_vehicles))
         .run();
@@ -17,6 +24,7 @@ fn main() {
 
 fn setup_simulation(mut commands: Commands) {
     commands.spawn(Camera2d::default());
+    commands.insert_resource(Statistics::default());
 }
 
 fn setup_map(mut commands: Commands) {
@@ -80,6 +88,7 @@ fn spawn_vehicles(
 fn vehicle_movement(
     mut commands: Commands,
     time: Res<Time>,
+    mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
     vehicles: Query<(Entity, &Kinematics, &mut Navigator, &mut Transform)>,
 ) {
@@ -102,10 +111,10 @@ fn vehicle_movement(
                     navigator.progress = 0.0;
                 } else {
                     // Reached the end point (add stats in future)
+                    statistics.total_vehicles_passed += 1;
                     commands.entity(entity).despawn();
                 }
             } else {
-                // += instead?
                 transform.translation = (segment.evaluator)(navigator.progress);
             }
         }
