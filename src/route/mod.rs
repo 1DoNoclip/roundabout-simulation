@@ -3,7 +3,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 #[derive(Component)]
 /// A road segment
 pub struct Segment {
-    /// The shape of the curve, where the f32 is the progress along the curve and Vec3 is the result position
+    /// The shape of the curve, where the f32 is the progress along the curve (between 0.0 and 1.0) and Vec3 is the result position
     pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
     pub length: f32,
     pub speed_limit: f32,

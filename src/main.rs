@@ -24,8 +24,9 @@ fn setup_map(mut commands: Commands) {
 
     let segment_id = commands
         .spawn(Segment {
-            evaluator: Box::new(|time| Vec3::new(-200.0 + (time * 400.0), 0.0, 0.0)),
-            length: 400.0,
+            // evaluator: Box::new(|time| Vec3::new(-20.0 + (time * 40.0), 0.0, 0.0)),
+            evaluator: Box::new(|time| Vec3::new(0.0, -20.0 + (time * 40.0), 0.0)),
+            length: 40.0,
             speed_limit: 13.9, // ~50kmh-1
         })
         .id();
@@ -59,7 +60,7 @@ fn spawn_vehicles(
 
             commands.spawn((
                 Kinematics {
-                    speed: 1.0,
+                    speed: 10.0,
                     target_speed: 13.9,
                     acceleration: 0.0,
                 },
@@ -77,13 +78,14 @@ fn spawn_vehicles(
 }
 
 fn vehicle_movement(
+    mut commands: Commands,
     time: Res<Time>,
     segments: Query<&Segment>,
-    vehicles: Query<(&Kinematics, &mut Navigator, &mut Transform)>,
+    vehicles: Query<(Entity, &Kinematics, &mut Navigator, &mut Transform)>,
 ) {
     let delta_time = time.delta_secs();
 
-    for (kinematics, mut navigator, mut transform) in vehicles {
+    for (entity, kinematics, mut navigator, mut transform) in vehicles {
         if navigator.current_segment >= navigator.route.len() {
             continue;
         }
@@ -99,10 +101,12 @@ fn vehicle_movement(
                     navigator.current_segment += 1;
                     navigator.progress = 0.0;
                 } else {
-                    // Reached the end point (remove the vehicle and add stats in future)
+                    // Reached the end point (add stats in future)
+                    commands.entity(entity).despawn();
                 }
             } else {
-                transform.translation += (segment.evaluator)(navigator.progress);
+                // += instead?
+                transform.translation = (segment.evaluator)(navigator.progress);
             }
         }
     }
