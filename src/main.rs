@@ -143,7 +143,7 @@ fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
                 (segment.evaluator)(time)
             })
             .collect::<Vec<_>>();
-        gizmos.linestrip(points, Color::hsl(120.0, 1.0, 0.5));
+        gizmos.linestrip(points, Color::hsl(0.0, 0.0, 1.0));
     }
 }
 
@@ -153,8 +153,8 @@ fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>
         // at the vehicle's current coordinates
         gizmos.circle_2d(
             transform.translation.truncate(),
-            10.0,
-            Color::linear_rgb(0.0, 150.0, 250.0),
+            1.0,
+            Color::linear_rgb(255.0, 0.0, 0.0),
         );
     }
 }
