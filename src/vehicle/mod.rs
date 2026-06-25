@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 /// The motion characteristics for the vehicle
 pub struct Kinematics {
     pub speed: f32,
@@ -9,7 +9,7 @@ pub struct Kinematics {
     pub acceleration: f32,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 /// Decides how the vehicle navigates the map
 pub struct Navigator {
     /// The route for the vehicle to follow

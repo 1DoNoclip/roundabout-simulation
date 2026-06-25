@@ -1,6 +1,5 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
-use enterpolation::{Signal, bspline::BSpline};
 
 pub mod route;
 pub mod statistics;
@@ -17,8 +16,17 @@ fn main() {
             EguiPlugin::default(),
             WorldInspectorPlugin::default(),
         ))
+        .register_type::<Connection>()
+        .register_type::<SpawnPoint>()
+        .register_type::<EndPoint>()
+        .register_type::<Statistics>()
+        .register_type::<Kinematics>()
+        .register_type::<Navigator>()
         .add_systems(Startup, (setup_simulation, setup_map))
-        .add_systems(Update, (spawn_vehicles, vehicle_movement, draw_routes, draw_vehicles))
+        .add_systems(
+            Update,
+            (spawn_vehicles, vehicle_movement, draw_routes, draw_vehicles),
+        )
         .run();
 }
 
@@ -28,29 +36,33 @@ fn setup_simulation(mut commands: Commands) {
 }
 
 fn setup_map(mut commands: Commands) {
-    let endpoint_id = commands.spawn((EndPoint, Name::new("North Exit"))).id();
+    let endpoint_id = commands.spawn((Name::new("North Exit"), EndPoint)).id();
 
-    let segment_id = commands
-        .spawn(Segment {
-            // evaluator: Box::new(|time| Vec3::new(-20.0 + (time * 40.0), 0.0, 0.0)),
-            evaluator: Box::new(|time| Vec3::new(0.0, -20.0 + (time * 40.0), 0.0)),
-            length: 40.0,
-            speed_limit: 13.9, // ~50kmh-1
-        })
-        .id();
-
-    commands.spawn(Connection {
-        next_segments: vec![endpoint_id],
-        requires_yield: false,
+    commands.spawn(Segment {
+        // evaluator: Box::new(|time| Vec3::new(-20.0 + (time * 40.0), 0.0, 0.0)),
+        evaluator: Box::new(|time| Vec3::new(0.0, -20.0 + (time * 40.0), 0.0)),
+        length: 40.0,
+        speed_limit: 13.9, // ~50kmh-1
     });
+
+    commands.spawn((
+        Name::new("Connection"),
+        Connection {
+            next_segments: vec![endpoint_id],
+            requires_yield: false,
+        },
+    ));
 
     let mut weights = EntityHashMap::default();
     weights.insert(endpoint_id, 100);
 
-    commands.spawn(SpawnPoint {
-        vehicles_per_second: 0.5,
-        destination_weights: weights,
-    });
+    commands.spawn((
+        Name::new("SpawnPoint"),
+        SpawnPoint {
+            vehicles_per_second: 0.5,
+            destination_weights: weights,
+        },
+    ));
 }
 
 fn spawn_vehicles(
@@ -67,6 +79,7 @@ fn spawn_vehicles(
             let initial_route = vec![segments.single().unwrap()];
 
             commands.spawn((
+                Name::new("Vehicle"),
                 Kinematics {
                     speed: 10.0,
                     target_speed: 13.9,
@@ -134,13 +147,14 @@ fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
     }
 }
 
-fn draw_vehicles(
-    mut gizmos: Gizmos,
-    vehicles: Query<&Transform, With<Navigator>>,
-) {
+fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
     for transform in vehicles.iter() {
         // Draws a bright cyan circle with a 10.0 pixel/unit radius
         // at the vehicle's current coordinates
-        gizmos.circle_2d(transform.translation.truncate(), 10.0, Color::linear_rgb(0.0, 150.0, 250.0));
+        gizmos.circle_2d(
+            transform.translation.truncate(),
+            10.0,
+            Color::linear_rgb(0.0, 150.0, 250.0),
+        );
     }
 }
