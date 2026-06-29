@@ -1,5 +1,6 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
+use enterpolation::{Signal, linear::Linear};
 
 pub mod route;
 pub mod statistics;
@@ -38,11 +39,17 @@ fn setup_simulation(mut commands: Commands) {
 fn setup_map(mut commands: Commands) {
     let endpoint_id = commands.spawn((Name::new("North Exit"), EndPoint)).id();
 
+    let line = Linear::builder()
+        .elements([Vec3::new(0.0, -20.0, 0.0), Vec3::new(0.0, 20.0, 0.0)])
+        .equidistant::<f32>()
+        .normalized()
+        .build()
+        .unwrap();
+
     commands.spawn(Segment {
-        // evaluator: Box::new(|time| Vec3::new(-20.0 + (time * 40.0), 0.0, 0.0)),
-        evaluator: Box::new(|time| Vec3::new(0.0, -20.0 + (time * 40.0), 0.0)),
+        evaluator: Box::new(move |time| line.eval(time)),
         length: 40.0,
-        speed_limit: 13.9, // ~50kmh-1
+        speed_limit: 13.9,  // ~50kmh-1
     });
 
     commands.spawn((
