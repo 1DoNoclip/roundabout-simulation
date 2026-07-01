@@ -1,19 +1,22 @@
 use bevy::prelude::*;
-use enterpolation::{Curve, Equidistant, Identity, Signal, linear::Linear};
+use enterpolation::{Curve, linear::Linear};
 
-pub fn linear_length(linear: Linear<Equidistant<f32>, Vec<Vec3>, Identity>) -> f32 {
+pub fn length<C>(curve: &C) -> f32
+where
+    C: Curve<f32, Output = Vec3>,
+{
     let total_samples = 1000;
     let mut total_length = 0.0;
 
-    let domain = linear.domain();
+    let domain = curve.domain();
     let (start_time, end_time) = (domain[0], domain[1]);
     let step = (end_time - start_time) / (total_samples as f32);
 
-    let mut previous_point = linear.eval(start_time);
+    let mut previous_point = curve.eval(start_time);
 
     for i in 1..=total_samples {
         let time = start_time + (i as f32) * step;
-        let current_point = linear.eval(time);
+        let current_point = curve.eval(time);
 
         let distance = current_point.distance(previous_point);
         total_length += distance;
@@ -43,7 +46,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let calculated_length = linear_length(curve);
+        let calculated_length = length(&curve);
         let expected_length = 7.0;
 
         let epsilon = 0.001;
