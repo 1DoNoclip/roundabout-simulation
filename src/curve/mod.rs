@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use enterpolation::Curve;
 
+pub mod circle;
+
 pub trait CurveLength {
     fn length(&self) -> f32;
 }
@@ -85,16 +87,14 @@ mod tests {
             .build()
             .unwrap();
 
-        let calculated_length = curve.length(); // Uses your new extension trait!
+        let calculated_length = curve.length();
         let expected_length = 10.0;
 
         // Splines require high-resolution sampling to approximate accurately,
-        // so an epsilon of 0.001 is perfect here.
         let epsilon = 0.001;
         assert!(
             (calculated_length - expected_length).abs() < epsilon,
             "Expected B-Spline length to be roughly {expected_length}, got {calculated_length}"
         );
     }
-
 }
