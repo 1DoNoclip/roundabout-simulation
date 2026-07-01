@@ -23,3 +23,26 @@ pub fn linear_length(linear: Linear<Equidistant<f32>, [Vec3; 2], Identity>) -> f
 
     total_length
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_linear_length() {
+        let points = [
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(3.0, 0.0, 0.0),
+            Vec3::new(3.0, 4.0, 0.0),
+        ];
+
+        let curve = Linear::builder()
+            .elements(points)
+            .equidistant::<f32>()
+            .normalized()
+            .build()
+            .unwrap();
+
+        let calculated_length = linear_length(curve);
+    }
+}
