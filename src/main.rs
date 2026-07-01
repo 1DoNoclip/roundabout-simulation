@@ -2,10 +2,12 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use enterpolation::{Signal, linear::Linear};
 
+pub mod curve;
 pub mod route;
 pub mod statistics;
 pub mod vehicle;
 
+use curve::*;
 use route::*;
 use statistics::*;
 use vehicle::*;
@@ -49,7 +51,7 @@ fn setup_map(mut commands: Commands) {
     commands.spawn(Segment {
         evaluator: Box::new(move |time| line.eval(time)),
         length: 40.0,
-        speed_limit: 13.9,  // ~50kmh-1
+        speed_limit: 13.9, // ~50kmh-1
     });
 
     commands.spawn((
