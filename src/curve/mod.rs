@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use enterpolation::{Curve, Equidistant, Identity, Signal, linear::Linear};
 
-pub fn linear_length(linear: Linear<Equidistant<f32>, [Vec3; 2], Identity>) -> f32 {
+pub fn linear_length(linear: Linear<Equidistant<f32>, Vec<Vec3>, Identity>) -> f32 {
     let total_samples = 1000;
     let mut total_length = 0.0;
 
@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn test_linear_length() {
-        let points = [
+        let points = vec![
             Vec3::new(0.0, 0.0, 0.0),
             Vec3::new(3.0, 0.0, 0.0),
             Vec3::new(3.0, 4.0, 0.0),
@@ -44,5 +44,12 @@ mod tests {
             .unwrap();
 
         let calculated_length = linear_length(curve);
+        let expected_length = 7.0;
+
+        let epsilon = 0.001;
+        assert!(
+            (calculated_length - expected_length).abs() < epsilon,
+            "Expected length to be roughly {expected_length}, got {calculated_length}"
+        );
     }
 }
