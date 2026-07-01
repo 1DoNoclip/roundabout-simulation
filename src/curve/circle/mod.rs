@@ -1,5 +1,4 @@
-use bevy::prelude::*;
-use enterpolation::{Curve, Signal};
+use crate::*;
 use std::f32::consts::TAU;
 
 pub struct Circle {
@@ -31,7 +30,7 @@ impl Signal<f32> for Circle {
     }
 }
 
-impl Curve<f32> for Circle {
+impl enterpolation::Curve<f32> for Circle {
     fn domain(&self) -> [f32; 2] {
         [0.0, 1.0]
     }

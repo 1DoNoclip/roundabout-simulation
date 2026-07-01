@@ -1,4 +1,12 @@
-use bevy::prelude::*;
+use crate::*;
+
+pub struct StatisticsPlugin;
+
+impl Plugin for StatisticsPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<Statistics>();
+    }
+}
 
 #[derive(Default, Reflect, Resource)]
 /// A collection of statistics to be used later when analysing the results.

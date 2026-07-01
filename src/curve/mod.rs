@@ -1,5 +1,4 @@
-use bevy::prelude::*;
-use enterpolation::Curve;
+use crate::*;
 
 pub mod circle;
 
@@ -9,7 +8,7 @@ pub trait CurveLength {
 
 impl<C> CurveLength for C
 where
-    C: Curve<f32, Output = Vec3>,
+    C: enterpolation::Curve<f32, Output = Vec3>,
 {
     fn length(&self) -> f32 {
         let total_samples = 1000;

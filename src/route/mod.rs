@@ -1,4 +1,14 @@
-use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use crate::*;
+
+pub struct RoutePlugin;
+
+impl Plugin for RoutePlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<Connection>()
+            .register_type::<SpawnPoint>()
+            .register_type::<EndPoint>();
+    }
+}
 
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
@@ -41,3 +51,16 @@ pub struct SpawnPoint {
 #[derive(Component, Reflect)]
 /// Where a vehicle may choose to head to.
 pub struct EndPoint;
+
+pub(super) fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
+    let resolution = 100;
+    for segment in &query {
+        let points = (0..=resolution)
+            .map(|i| {
+                let time = i as f32 / resolution as f32;
+                (segment.evaluator)(time)
+            })
+            .collect::<Vec<_>>();
+        gizmos.linestrip(points, Color::hsl(0.0, 0.0, 1.0));
+    }
+}
