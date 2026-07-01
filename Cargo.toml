@@ -7,7 +7,7 @@ edition = "2024"
 # Remove dynamic linking when publishing final build
 bevy = { version = "0.19.0", features = ["dynamic_linking"] }
 bevy-inspector-egui = "0.37.0"
-enterpolation = "0.3.0"
+enterpolation = { git = "https://github.com/NicolasKlenert/enterpolation" }
 rand = "0.10.1"
 
 # Enable a small amount of optimization in debug mode
