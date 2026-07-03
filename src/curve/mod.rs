@@ -10,17 +10,19 @@ impl<C> CurveLength for C
 where
     C: enterpolation::Curve<f32, Output = Vec3>,
 {
+    /// Gets the length of the curve using numerical integration via chord length approximation.
     fn length(&self) -> f32 {
-        let total_samples = 1000;
+        const TOTAL_SAMPLES: usize = 1_000;
         let mut total_length = 0.0;
 
         let domain = self.domain();
         let (start_time, end_time) = (domain[0], domain[1]);
-        let step = (end_time - start_time) / (total_samples as f32);
+        let step = (end_time - start_time) / (TOTAL_SAMPLES as f32);
 
         let mut previous_point = self.eval(start_time);
 
-        for i in 1..=total_samples {
+        // Calculate the straight line distance between the points.
+        for i in 1..=TOTAL_SAMPLES {
             let time = start_time + (i as f32) * step;
             let current_point = self.eval(time);
 
