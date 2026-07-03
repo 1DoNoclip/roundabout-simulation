@@ -38,7 +38,7 @@ pub(super) fn spawn_vehicles(
     let delta_time = time.delta_secs();
 
     for spawn_point in spawn_points {
-        let frame_probability = spawn_point.vehicles_per_second * delta_time;
+        let frame_probability = spawn_point.max_vehicles_per_second * delta_time;
         if rand::random::<f32>() < frame_probability {
             let initial_route = vec![segments.single().unwrap()];
 

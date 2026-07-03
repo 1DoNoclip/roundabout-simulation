@@ -67,7 +67,7 @@ fn setup_map(mut commands: Commands) {
     commands.spawn((
         Name::new("SpawnPoint"),
         SpawnPoint {
-            vehicles_per_second: 0.5,
+            max_vehicles_per_second: 0.5,
             destination_weights: weights,
         },
     ));

@@ -17,7 +17,7 @@ impl Plugin for RoutePlugin {
 
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
-/// A road segment
+/// A road segment between connections.
 pub struct Segment {
     #[reflect(ignore)]
     /// The shape of the curve, where the f32 is the progress along the
@@ -73,7 +73,9 @@ pub struct Connection {
 #[derive(Component, Reflect)]
 /// Where vehicles spawn from.
 pub struct SpawnPoint {
-    pub vehicles_per_second: f32,
+    /// The maximum vehicles spawned per second. The actual spawn rate may
+    /// be less due to lack of space in the network to spawn another vehicle.
+    pub max_vehicles_per_second: f32,
     /// The desirability of each destination from this spawn point.
     pub destination_weights: EntityHashMap<u32>,
 }
