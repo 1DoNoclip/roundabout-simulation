@@ -1,12 +1,17 @@
 use crate::*;
 
+pub mod speed_limit;
+
+use speed_limit::*;
+
 pub struct RoutePlugin;
 
 impl Plugin for RoutePlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Connection>()
             .register_type::<SpawnPoint>()
-            .register_type::<EndPoint>();
+            .register_type::<EndPoint>()
+            .register_type::<SpeedLimit>();
     }
 }
 
@@ -23,9 +28,9 @@ pub struct Segment {
     ///
     /// Performing curve.length() each frame for each segment is a
     /// huge waste of resources when the length does not change.
-    length: f32,
+    pub length: f32,
     /// The maximum speed allowed in ms-1.
-    speed_limit: f32,
+    pub speed_limit: f32,
 }
 
 impl Segment {
@@ -43,14 +48,6 @@ impl Segment {
 
     pub fn eval(&self, time: f32) -> Vec3 {
         (self.evaluator)(time)
-    }
-
-    pub fn length(&self) -> f32 {
-        self.length
-    }
-
-    pub fn speed_limit(&self) -> f32 {
-        self.speed_limit
     }
 }
 
