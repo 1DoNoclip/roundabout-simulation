@@ -79,7 +79,7 @@ pub(super) fn vehicle_movement(
         let segment_id = navigator.route[navigator.current_segment];
 
         if let Ok(segment) = segments.get(segment_id) {
-            let delta_progress = (kinematics.speed * delta_time) / segment.length;
+            let delta_progress = (kinematics.speed * delta_time) / segment.length();
             navigator.progress += delta_progress;
 
             if navigator.progress >= 1.0 {
@@ -92,7 +92,7 @@ pub(super) fn vehicle_movement(
                     commands.entity(entity).despawn();
                 }
             } else {
-                transform.translation = (segment.evaluator)(navigator.progress);
+                transform.translation = segment.eval(navigator.progress);
             }
         }
     }

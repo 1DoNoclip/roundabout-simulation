@@ -27,7 +27,11 @@ fn main() {
         .add_systems(Startup, (setup_simulation, setup_map))
         .add_systems(
             Update,
-            (spawn_vehicles, vehicle_movement, (draw_routes, draw_vehicles).chain()),
+            (
+                spawn_vehicles,
+                vehicle_movement,
+                (draw_routes, draw_vehicles).chain(),
+            ),
         )
         .run();
 }
@@ -47,11 +51,9 @@ fn setup_map(mut commands: Commands) {
         .build()
         .unwrap();
 
-    commands.spawn(Segment {
-        evaluator: Box::new(move |time| line.eval(time)),
-        length: 40.0,
-        speed_limit: 13.9, // ~50kmh-1
-    });
+    commands.spawn(Segment::new(
+        line, 13.9, // ~50kmh-1
+    ));
 
     commands.spawn((
         Name::new("Connection"),

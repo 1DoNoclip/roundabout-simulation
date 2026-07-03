@@ -17,11 +17,44 @@ pub struct Segment {
     #[reflect(ignore)]
     /// The shape of the curve, where the f32 is the progress along the
     /// curve (between 0.0 and 1.0) and Vec3 is the result position.
-    pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
-    pub length: f32,
-    pub speed_limit: f32,
+    evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
+    /// While length can be calculated automatically with curve.length()
+    /// this is computationally expensive so it is only run once and cached.
+    ///
+    /// Performing curve.length() each frame for each segment is a
+    /// huge waste of resources when the length does not change.
+    length: f32,
+    /// The maximum speed allowed in ms-1.
+    speed_limit: f32,
 }
 
+impl Segment {
+    pub fn new<C>(curve: C, speed_limit: f32) -> Self
+    where
+        C: enterpolation::Curve<f32, Output = Vec3> + Send + Sync + 'static,
+    {
+        let length = curve.length();
+        Segment {
+            evaluator: Box::new(move |time| curve.eval(time)),
+            length,
+            speed_limit,
+        }
+    }
+
+    pub fn eval(&self, time: f32) -> Vec3 {
+        (self.evaluator)(time)
+    }
+
+    pub fn length(&self) -> f32 {
+        self.length
+    }
+
+    pub fn speed_limit(&self) -> f32 {
+        self.speed_limit
+    }
+}
+
+// Default is required by reflect, should not be used manually.
 impl Default for Segment {
     fn default() -> Self {
         Self {
