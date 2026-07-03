@@ -2,7 +2,7 @@ use crate::*;
 
 pub mod speed_limit;
 
-use speed_limit::*;
+pub use speed_limit::*;
 
 pub struct RoutePlugin;
 
@@ -30,11 +30,11 @@ pub struct Segment {
     /// huge waste of resources when the length does not change.
     pub length: f32,
     /// The maximum speed allowed in ms-1.
-    pub speed_limit: f32,
+    pub speed_limit: SpeedLimit,
 }
 
 impl Segment {
-    pub fn new<C>(curve: C, speed_limit: f32) -> Self
+    pub fn new<C>(curve: C, speed_limit: SpeedLimit) -> Self
     where
         C: enterpolation::Curve<f32, Output = Vec3> + Send + Sync + 'static,
     {

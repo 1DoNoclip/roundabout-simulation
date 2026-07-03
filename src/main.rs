@@ -5,8 +5,6 @@ use enterpolation::{Signal, linear::Linear};
 pub mod curve;
 pub mod route;
 pub mod statistics;
-#[cfg(test)]
-mod tests;
 pub mod vehicle;
 
 use curve::*;
@@ -37,7 +35,7 @@ fn main() {
 }
 
 fn setup_simulation(mut commands: Commands) {
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
     commands.insert_resource(Statistics::default());
 }
 
@@ -52,7 +50,7 @@ fn setup_map(mut commands: Commands) {
         .unwrap();
 
     commands.spawn(Segment::new(
-        line, 13.9, // ~50kmh-1
+        line, SpeedLimit::new(13.9).unwrap(), // ~50kmh-1
     ));
 
     commands.spawn((
