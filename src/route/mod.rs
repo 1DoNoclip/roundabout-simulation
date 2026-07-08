@@ -15,6 +15,9 @@ impl Plugin for RoutePlugin {
     }
 }
 
+/// The width of a singular lane of roads and roundabout in metres.
+pub const LANE_WIDTH: f32 = 3.25;
+
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
 /// A road segment between connections.
