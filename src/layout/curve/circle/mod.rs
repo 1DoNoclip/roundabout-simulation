@@ -4,9 +4,7 @@ use std::f32::consts::TAU;
 pub struct CirclePlugin;
 
 impl Plugin for CirclePlugin {
-    fn build(&self, app: &mut App) {
-
-    }
+    fn build(&self, app: &mut App) {}
 }
 
 pub struct Circle {

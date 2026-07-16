@@ -14,16 +14,42 @@ impl Plugin for BlueprintPlugin {
 /// Represents global intersection data.
 pub struct IntersectionBlueprint {
     /// Length between 3 -> 6.
-    /// Max 2 entry lanes allowed when there are 3 arms.
+    /// Max 2 lanes allowed when there are 3 arms.
     pub arms: Vec<ArmBlueprint>,
     /// A number 1 -> 3.
     /// The number of lanes for each carriageway (entry and exit roads, including roundabout circle).
     pub number_of_lanes: usize,
     /// Speed limit in ms-1
-    pub speed_limit: f32,
+    pub speed_limit: SpeedLimit,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
     /// Increases capacity and reduces safety by increasing entry speeds.
     pub deflection_radius: f32,
+}
+
+impl IntersectionBlueprint {
+    pub fn try_new(
+        arms: Vec<ArmBlueprint>,
+        number_of_lanes: usize,
+        speed_limit: SpeedLimit,
+        deflection_radius: f32,
+    ) -> Result<Self, String> {
+        let arms_length = arms.len();
+        if !(3..=6).contains(&arms_length) {
+            return Err(format!("length of arms must be between 3 and 6 inclusive, found {arms_length}"));
+        }
+        if !(1..=3).contains(&number_of_lanes) {
+            return Err(format!("number_of_lanes must be between 1 and 3 inclusive, found {number_of_lanes}"));
+        }
+        if deflection_radius <= 0.0 || deflection_radius.is_nan() {
+            return Err(format!("deflection_radius must be positive, found {deflection_radius}"));
+        }
+        Ok(IntersectionBlueprint {
+            arms,
+            number_of_lanes,
+            speed_limit,
+            deflection_radius,
+        })
+    }
 }
 
 #[derive(Resource, Reflect)]

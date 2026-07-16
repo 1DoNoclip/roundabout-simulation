@@ -4,9 +4,7 @@ use std::f32::consts::PI;
 pub struct GeometryPlugin;
 
 impl Plugin for GeometryPlugin {
-    fn build(&self, app: &mut App) {
-
-    }
+    fn build(&self, app: &mut App) {}
 }
 
 /// Defines the geometry of a singular approach lane.
