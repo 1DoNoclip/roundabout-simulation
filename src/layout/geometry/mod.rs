@@ -3,7 +3,7 @@ use crate::*;
 pub struct GeometryPlugin;
 
 impl Plugin for GeometryPlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, _app: &mut App) {}
 }
 
 /// Defines the geometry of a singular approach lane.
@@ -24,8 +24,7 @@ impl LaneGeometry {
         // Orientation.
         // Points along the road's axis from the centre of the roundabout.
         let arm_vector = Vec3::new(arm_angle.cos, 0.0, arm_angle.sin);
-        let perpendicular_vector =
-            Vec3::new(-arm_angle.sin, 0.0, arm_angle.cos);
+        let perpendicular_vector = Vec3::new(-arm_angle.sin, 0.0, arm_angle.cos);
         let lane_offset = (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
         let target_ring_radius =
             roundabout_radius + (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);

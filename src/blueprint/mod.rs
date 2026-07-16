@@ -35,13 +35,19 @@ impl IntersectionBlueprint {
     ) -> Result<Self, String> {
         let arms_length = arms.len();
         if !(3..=6).contains(&arms_length) {
-            return Err(format!("length of arms must be between 3 and 6 inclusive, found {arms_length}"));
+            return Err(format!(
+                "length of arms must be between 3 and 6 inclusive, found {arms_length}"
+            ));
         }
         if !(1..=3).contains(&number_of_lanes) {
-            return Err(format!("number_of_lanes must be between 1 and 3 inclusive, found {number_of_lanes}"));
+            return Err(format!(
+                "number_of_lanes must be between 1 and 3 inclusive, found {number_of_lanes}"
+            ));
         }
         if deflection_radius <= 0.0 || deflection_radius.is_nan() {
-            return Err(format!("deflection_radius must be positive, found {deflection_radius}"));
+            return Err(format!(
+                "deflection_radius must be positive, found {deflection_radius}"
+            ));
         }
         Ok(IntersectionBlueprint {
             arms,
@@ -77,7 +83,9 @@ pub struct ArmBlueprint {
 
 impl ArmBlueprint {
     pub fn from_degrees(degrees: f32) -> Self {
-        ArmBlueprint { angle: Rot2::degrees(degrees) }
+        ArmBlueprint {
+            angle: Rot2::degrees(degrees),
+        }
     }
 }
 
@@ -87,7 +95,9 @@ mod tests {
 
     #[test]
     fn new_arm_blueprint() {
-        ArmBlueprint { angle: Rot2::degrees(90.0) };
+        ArmBlueprint {
+            angle: Rot2::degrees(90.0),
+        };
     }
 
     #[test]
@@ -106,6 +116,7 @@ mod tests {
         let speed_limit = SpeedLimit::from_miles_per_hour(30.0).unwrap();
         let deflection_radius = 15.0;
 
-        IntersectionBlueprint::try_new(arms, number_of_lanes, speed_limit, deflection_radius).unwrap();
+        IntersectionBlueprint::try_new(arms, number_of_lanes, speed_limit, deflection_radius)
+            .unwrap();
     }
 }

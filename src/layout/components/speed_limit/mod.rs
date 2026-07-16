@@ -17,7 +17,9 @@ pub struct SpeedLimit {
 impl SpeedLimit {
     pub fn new(metres_per_second: f32) -> Result<Self, String> {
         if metres_per_second < 0.0 || metres_per_second.is_nan() {
-            Err(format!("metres_per_second cannot be negative, found {metres_per_second}"))
+            Err(format!(
+                "metres_per_second cannot be negative, found {metres_per_second}"
+            ))
         } else {
             Ok(SpeedLimit { metres_per_second })
         }

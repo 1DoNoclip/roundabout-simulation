@@ -1,9 +1,11 @@
 use crate::*;
 
+pub mod assembly;
 pub mod components;
 pub mod curve;
 pub mod geometry;
 
+pub use assembly::*;
 pub use components::*;
 pub use curve::*;
 pub use geometry::*;
