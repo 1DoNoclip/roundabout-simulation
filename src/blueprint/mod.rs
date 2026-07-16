@@ -1,5 +1,15 @@
 use crate::*;
 
+pub struct BlueprintPlugin;
+
+impl Plugin for BlueprintPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<IntersectionBlueprint>()
+            .register_type::<RoundaboutCircleBlueprint>()
+            .register_type::<ArmBlueprint>();
+    }
+}
+
 #[derive(Resource, Reflect)]
 /// Represents global intersection data.
 pub struct IntersectionBlueprint {

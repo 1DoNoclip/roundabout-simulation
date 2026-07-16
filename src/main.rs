@@ -3,10 +3,12 @@ use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use enterpolation::{Signal, linear::Linear};
 
 pub mod blueprint;
+pub mod graphics;
 pub mod layout;
 pub mod simulation;
 
 use blueprint::*;
+use graphics::*;
 use layout::*;
 use simulation::*;
 
@@ -16,28 +18,21 @@ fn main() {
             DefaultPlugins,
             EguiPlugin::default(),
             WorldInspectorPlugin::default(),
-            ComponentsPlugin,
-            StatisticsPlugin,
-            VehiclePlugin,
+            BlueprintPlugin,
+            GraphicsPlugin,
+            LayoutPlugin,
+            SimulationPlugin,
         ))
-        .add_systems(Startup, (setup_simulation, setup_map))
-        .add_systems(
-            Update,
-            (
-                spawn_vehicles,
-                vehicle_movement,
-                (draw_routes, draw_vehicles).chain(),
-            ),
-        )
+        .add_systems(Startup, (setup_world, setup_layout))
         .run();
 }
 
-fn setup_simulation(mut commands: Commands) {
+fn setup_world(mut commands: Commands) {
     commands.spawn(Camera2d);
     commands.insert_resource(Statistics::default());
 }
 
-fn setup_map(mut commands: Commands) {
+fn setup_layout(mut commands: Commands) {
     let endpoint_id = commands.spawn((Name::new("North Exit"), EndPoint)).id();
 
     let line = Linear::builder()

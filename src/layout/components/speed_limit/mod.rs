@@ -1,5 +1,13 @@
 use crate::*;
 
+pub struct SpeedLimitPlugin;
+
+impl Plugin for SpeedLimitPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<SpeedLimit>();
+    }
+}
+
 #[derive(Component, Debug, Reflect)]
 pub struct SpeedLimit {
     limit: f32,

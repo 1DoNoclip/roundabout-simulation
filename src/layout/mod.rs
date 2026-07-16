@@ -8,6 +8,14 @@ pub use components::*;
 pub use curve::*;
 pub use geometry::*;
 
+pub struct LayoutPlugin;
+
+impl Plugin for LayoutPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins((CurvePlugin, GeometryPlugin));
+    }
+}
+
 pub struct RoundaboutLayout {
     pub arms: Vec<ArmLayout>,
     pub central_island: CentralIslandLayout,

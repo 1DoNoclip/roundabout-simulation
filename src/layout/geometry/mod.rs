@@ -1,6 +1,14 @@
 use crate::*;
 use std::f32::consts::PI;
 
+pub struct GeometryPlugin;
+
+impl Plugin for GeometryPlugin {
+    fn build(&self, app: &mut App) {
+
+    }
+}
+
 /// Defines the geometry of a singular approach lane.
 pub struct LaneGeometry {
     /// Straight 100m approach road as [start, end].
@@ -21,15 +29,18 @@ impl LaneGeometry {
         // Orientation.
         // Points along the road's axis from the centre of the roundabout.
         let arm_vector = Vec3::new(arm_angle_radians.cos(), 0.0, arm_angle_radians.sin());
-        let perpendicular_vector = Vec3::new(-arm_angle_radians.sin(), 0.0, arm_angle_radians.cos());
+        let perpendicular_vector =
+            Vec3::new(-arm_angle_radians.sin(), 0.0, arm_angle_radians.cos());
         let lane_offset = (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
-        let target_ring_radius = roundabout_radius + (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
+        let target_ring_radius =
+            roundabout_radius + (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
 
         // Deflection start point.
         let deflection_start_distance = roundabout_radius + deflection_radius;
         // p0, where the approach road finishes and the deflection curve begins.
         // Represents point between end of approach and start of deflection.
-        let deflection_start = (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
+        let deflection_start =
+            (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
 
         // Approach road.
         // Approach starts 100m from beginning of deflection curve.
@@ -54,6 +65,9 @@ impl LaneGeometry {
         let p1 = deflection_start - (arm_vector * handle_strength);
         let p2 = deflection_end + (roundabout_tangent * handle_strength);
 
-        LaneGeometry { lane_approach: straight_approach, deflection_curve: [deflection_start, p1, p2, deflection_end] }
+        LaneGeometry {
+            lane_approach: straight_approach,
+            deflection_curve: [deflection_start, p1, p2, deflection_end],
+        }
     }
 }

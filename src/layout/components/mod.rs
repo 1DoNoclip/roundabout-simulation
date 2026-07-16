@@ -8,10 +8,10 @@ pub struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Connection>()
+        app.add_plugins(SpeedLimitPlugin)
+            .register_type::<Connection>()
             .register_type::<SpawnPoint>()
-            .register_type::<EndPoint>()
-            .register_type::<SpeedLimit>();
+            .register_type::<EndPoint>();
     }
 }
 
@@ -25,7 +25,7 @@ pub struct Segment {
     #[reflect(ignore)]
     /// The shape of the curve, where the f32 is the progress along the
     /// curve (between 0.0 and 1.0) and Vec3 is the result position.
-    evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
+    pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
     /// While length can be calculated automatically with curve.length()
     /// this is computationally expensive so it is only run once and cached.
     ///
@@ -87,16 +87,3 @@ pub struct SpawnPoint {
 #[derive(Component, Reflect)]
 /// Where a vehicle may choose to head to.
 pub struct EndPoint;
-
-pub fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
-    let resolution = 100;
-    for segment in &query {
-        let points = (0..=resolution)
-            .map(|i| {
-                let time = i as f32 / resolution as f32;
-                (segment.evaluator)(time)
-            })
-            .collect::<Vec<_>>();
-        gizmos.linestrip(points, Color::hsl(0.0, 0.0, 1.0));
-    }
-}

@@ -2,6 +2,16 @@ use crate::*;
 
 pub mod circle;
 
+pub use circle::*;
+
+pub struct CurvePlugin;
+
+impl Plugin for CurvePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(CirclePlugin);
+    }
+}
+
 pub trait CurveLength {
     fn length(&self) -> f32;
 }

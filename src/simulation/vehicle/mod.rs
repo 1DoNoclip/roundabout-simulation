@@ -104,15 +104,3 @@ pub fn vehicle_movement(
         }
     }
 }
-
-pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
-    for transform in vehicles.iter() {
-        // Draws a bright cyan circle with a 10.0 pixel/unit radius
-        // at the vehicle's current coordinates.
-        gizmos.circle_2d(
-            transform.translation.truncate(),
-            1.0,
-            Color::linear_rgb(255.0, 0.0, 0.0),
-        );
-    }
-}
