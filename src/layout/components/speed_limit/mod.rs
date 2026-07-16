@@ -34,3 +34,32 @@ impl Into<f32> for SpeedLimit {
         self.metres_per_second
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_valid_speed() {
+        let speed_limit = SpeedLimit::new(13.4);
+        assert!(speed_limit.is_ok())
+    }
+
+    #[test]
+    fn new_invalid_speed() {
+        let speed_limit = SpeedLimit::new(-13.4);
+        assert!(speed_limit.is_err())
+    }
+
+    #[test]
+    fn from_miles_per_hour_valid_speed() {
+        let speed_limit = SpeedLimit::from_miles_per_hour(30.0);
+        assert!(speed_limit.is_ok())
+    }
+
+    #[test]
+    fn from_miles_per_hour_invalid_speed() {
+        let speed_limit = SpeedLimit::from_miles_per_hour(-30.0);
+        assert!(speed_limit.is_err())
+    }
+}
