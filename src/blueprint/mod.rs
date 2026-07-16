@@ -74,7 +74,7 @@ impl RoundaboutCircleBlueprint {
     }
 }
 
-#[derive(Component, Reflect)]
+#[derive(Clone, Component, Copy, Reflect)]
 /// Represent a singular arm to the roundabout.
 pub struct ArmBlueprint {
     /// In degrees / °.

@@ -6,6 +6,11 @@ impl Plugin for GeometryPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
+pub enum LaneGeometryType {
+    Entry,
+    Exit,
+}
+
 /// Defines the geometry of a singular approach lane.
 pub struct LaneGeometry {
     /// Straight 100m approach road as [start, end].
@@ -16,6 +21,7 @@ pub struct LaneGeometry {
 
 impl LaneGeometry {
     pub fn build(
+        geometry_type: LaneGeometryType,
         arm_angle: Rot2,
         lane_index: usize,
         roundabout_radius: f32,

@@ -8,7 +8,7 @@ impl Plugin for SpeedLimitPlugin {
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Clone, Component, Copy, Debug, Reflect)]
 /// A road speed limit.
 pub struct SpeedLimit {
     metres_per_second: f32,
