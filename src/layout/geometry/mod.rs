@@ -23,7 +23,7 @@ impl LaneGeometry {
         let arm_vector = Vec3::new(arm_angle_radians.cos(), 0.0, arm_angle_radians.sin());
         let perpendicular_vector = Vec3::new(-arm_angle_radians.sin(), 0.0, arm_angle_radians.cos());
         let lane_offset = (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
-        let target_ring_radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
+        let target_ring_radius = roundabout_radius + (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
 
         // Deflection start point.
         let deflection_start_distance = roundabout_radius + deflection_radius;

@@ -58,6 +58,7 @@ impl Segment {
 impl Default for Segment {
     fn default() -> Self {
         Self {
+            // The evaluator's type does not implement Default, so cannot derive Default.
             evaluator: Box::new(|_| Vec3::ZERO),
             ..default()
         }
