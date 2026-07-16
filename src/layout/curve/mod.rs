@@ -52,7 +52,7 @@ mod tests {
     use enterpolation::{bspline::BSpline, linear::Linear};
 
     #[test]
-    fn test_linear_length() {
+    fn linear_length() {
         let points = vec![
             Vec3::new(0.0, 0.0, 0.0),
             Vec3::new(3.0, 0.0, 0.0),
@@ -77,7 +77,7 @@ mod tests {
     }
 
     #[test]
-    fn test_straight_bspline_length() {
+    fn straight_bspline_length() {
         // Arrange points in a perfectly straight line along the X-axis.
         // Total length = 10.0
         let points = vec![
@@ -110,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn test_curved_bspline_length() {
+    fn curved_bspline_length() {
         // Arrange points in a 90-degree bend (L-shape).
         // Because the B-Spline rounds the corner, the actual arc length contracts to ~18.021.
         let points = vec![

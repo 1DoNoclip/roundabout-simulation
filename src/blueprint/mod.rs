@@ -59,9 +59,38 @@ pub struct RoundaboutCircleBlueprint {
     pub radius: f32,
 }
 
+impl RoundaboutCircleBlueprint {
+    pub fn try_new(radius: f32) -> Result<Self, String> {
+        if radius <= 0.0 || radius.is_nan() {
+            return Err(format!("radius must be positive, found {radius}"));
+        }
+        Ok(RoundaboutCircleBlueprint { radius })
+    }
+}
+
 #[derive(Component, Reflect)]
 /// Represent a singular arm to the roundabout.
 pub struct ArmBlueprint {
     /// In degrees / °.
-    angle: f32,
+    pub angle: Rot2,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_arm_blueprint() {
+        ArmBlueprint { angle: Rot2::degrees(90.0) };
+    }
+
+    #[test]
+    fn try_new_roundabout_circle_blueprint() {
+        RoundaboutCircleBlueprint::try_new(30.0).unwrap();
+    }
+
+    #[test]
+    fn try_new_intersection_blueprint() {
+
+    }
 }
