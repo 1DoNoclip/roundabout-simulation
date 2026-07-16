@@ -4,12 +4,14 @@ use enterpolation::{Signal, linear::Linear};
 
 pub mod blueprint;
 pub mod curve;
+pub mod layout;
 pub mod route;
 pub mod statistics;
 pub mod vehicle;
 
 use blueprint::*;
 use curve::*;
+use layout::*;
 use route::*;
 use statistics::*;
 use vehicle::*;
