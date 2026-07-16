@@ -7,11 +7,8 @@ pub struct IntersectionBlueprint {
     /// Max 2 entry lanes allowed when there are 3 arms.
     pub arms: Vec<ArmBlueprint>,
     /// A number 1 -> 3.
-    /// If number_of_entry_lanes == 3, then there is a dedicated left turn lane and
-    /// exit lane separate to the roundabout.
-    /// This dedicated lane does not need to yield to roundabout traffic,
-    /// although will have to yield when merging back on the exit road.
-    pub number_of_entry_lanes: usize,
+    /// The number of lanes for each carriageway (entry and exit roads, including roundabout circle).
+    pub number_of_lanes: usize,
     /// Speed limit in ms-1
     pub speed_limit: f32,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
