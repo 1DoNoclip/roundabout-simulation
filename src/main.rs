@@ -3,18 +3,12 @@ use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use enterpolation::{Signal, linear::Linear};
 
 pub mod blueprint;
-pub mod curve;
 pub mod layout;
-pub mod route;
-pub mod statistics;
-pub mod vehicle;
+pub mod simulation;
 
 use blueprint::*;
-use curve::*;
 use layout::*;
-use route::*;
-use statistics::*;
-use vehicle::*;
+use simulation::*;
 
 fn main() {
     App::new()
@@ -22,7 +16,7 @@ fn main() {
             DefaultPlugins,
             EguiPlugin::default(),
             WorldInspectorPlugin::default(),
-            RoutePlugin,
+            ComponentsPlugin,
             StatisticsPlugin,
             VehiclePlugin,
         ))

@@ -4,9 +4,9 @@ pub mod speed_limit;
 
 pub use speed_limit::*;
 
-pub struct RoutePlugin;
+pub struct ComponentsPlugin;
 
-impl Plugin for RoutePlugin {
+impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Connection>()
             .register_type::<SpawnPoint>()
@@ -88,7 +88,7 @@ pub struct SpawnPoint {
 /// Where a vehicle may choose to head to.
 pub struct EndPoint;
 
-pub(super) fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
+pub fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
     let resolution = 100;
     for segment in &query {
         let points = (0..=resolution)

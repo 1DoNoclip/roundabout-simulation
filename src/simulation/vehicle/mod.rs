@@ -29,7 +29,7 @@ pub struct Navigator {
     pub progress: f32,
 }
 
-pub(super) fn spawn_vehicles(
+pub fn spawn_vehicles(
     mut commands: Commands,
     time: Res<Time>,
     spawn_points: Query<&SpawnPoint>,
@@ -69,7 +69,7 @@ pub(super) fn spawn_vehicles(
     }
 }
 
-pub(super) fn vehicle_movement(
+pub fn vehicle_movement(
     mut commands: Commands,
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
@@ -105,7 +105,7 @@ pub(super) fn vehicle_movement(
     }
 }
 
-pub(super) fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
+pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
     for transform in vehicles.iter() {
         // Draws a bright cyan circle with a 10.0 pixel/unit radius
         // at the vehicle's current coordinates.
