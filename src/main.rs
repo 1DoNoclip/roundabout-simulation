@@ -44,7 +44,7 @@ fn setup_layout(mut commands: Commands) {
 
     commands.spawn(Segment::new(
         line,
-        SpeedLimit::new(13.9).unwrap(), // ~50kmh-1
+        SpeedLimit::from_miles_per_hour(30.0).unwrap(),
     ));
 
     commands.spawn((

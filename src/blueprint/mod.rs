@@ -75,6 +75,12 @@ pub struct ArmBlueprint {
     pub angle: Rot2,
 }
 
+impl ArmBlueprint {
+    pub fn from_degrees(degrees: f32) -> Self {
+        ArmBlueprint { angle: Rot2::degrees(degrees) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,6 +97,15 @@ mod tests {
 
     #[test]
     fn try_new_intersection_blueprint() {
+        let arms = vec![
+            ArmBlueprint::from_degrees(0.0),
+            ArmBlueprint::from_degrees(90.0),
+            ArmBlueprint::from_degrees(180.0),
+        ];
+        let number_of_lanes = 2;
+        let speed_limit = SpeedLimit::from_miles_per_hour(30.0).unwrap();
+        let deflection_radius = 15.0;
 
+        IntersectionBlueprint::try_new(arms, number_of_lanes, speed_limit, deflection_radius).unwrap();
     }
 }

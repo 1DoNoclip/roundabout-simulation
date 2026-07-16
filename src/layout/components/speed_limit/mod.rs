@@ -9,20 +9,28 @@ impl Plugin for SpeedLimitPlugin {
 }
 
 #[derive(Component, Debug, Reflect)]
+/// A road speed limit.
 pub struct SpeedLimit {
-    limit: f32,
+    metres_per_second: f32,
 }
 
 impl SpeedLimit {
-    pub fn new(limit: f32) -> Option<Self> {
-        if limit < 0.0 || limit.is_nan() {
-            None
+    pub fn new(metres_per_second: f32) -> Result<Self, String> {
+        if metres_per_second < 0.0 || metres_per_second.is_nan() {
+            Err(format!("metres_per_second cannot be negative, found {metres_per_second}"))
         } else {
-            Some(SpeedLimit { limit })
+            Ok(SpeedLimit { metres_per_second })
         }
     }
 
-    pub fn limit(&self) -> f32 {
-        self.limit
+    pub fn from_miles_per_hour(miles_per_hour: f32) -> Result<Self, String> {
+        let metres_per_second = miles_per_hour * 0.44704;
+        SpeedLimit::new(metres_per_second)
+    }
+}
+
+impl Into<f32> for SpeedLimit {
+    fn into(self) -> f32 {
+        self.metres_per_second
     }
 }
