@@ -1,6 +1,5 @@
 use crate::*;
-use bevy::math::{FloatOrd, cubic_splines::LinearSpline};
-use enterpolation::bezier::Bezier;
+use bevy::math::FloatOrd;
 
 pub struct AssemblyPlugin;
 
@@ -31,7 +30,7 @@ pub fn assemble_roundabout(
     let mut circulating_sectors =
         vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms * 2];
 
-    let mut end_points = vec![];
+    // let mut end_points = vec![];
 
     for (arm_index, arm) in sorted_arms.iter().enumerate() {
         for lane_index in 0..number_of_lanes {
@@ -43,24 +42,11 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            let entry_line = Linear::builder()
-                .elements(vec![
-                    entry_geometry.lane_approach[0],
-                    entry_geometry.lane_approach[1],
-                ])
-                .knots(vec![0.0, 1.0])
-                .build()
-                .expect("failed to build linear entry path");
-
-            let entry_line = LinearSpline::new(entry_geometry.lane_approach)
-                .to_curve()
-                .expect("failed to construct CubicCurve from LinearSpline");
+            let entry_line = LinearSpline::new(entry_geometry.lane_approach);
 
             let entry_line_entity = commands.spawn(Segment::new(entry_line, speed_limit)).id();
 
-            let entry_deflection = CubicBezier::new([entry_geometry.deflection_curve])
-                .to_curve()
-                .expect("failed to build cubic Bézier deflection spline");
+            let entry_deflection = CubicBezier::new([entry_geometry.deflection_curve]);
         }
     }
 }

@@ -99,7 +99,7 @@ pub fn vehicle_movement(
                     commands.entity(entity).despawn();
                 }
             } else {
-                transform.translation = segment.eval(navigator.progress);
+                transform.translation = segment.sample_clamped(navigator.progress);
             }
         }
     }

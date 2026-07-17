@@ -1,16 +1,14 @@
 use crate::*;
-
-pub mod circle;
-
 use bevy::math::cubic_splines::LinearSpline;
-pub use circle::*;
+
+// pub mod circle;
+
+// pub use circle::*;
 
 pub struct CurvePlugin;
 
 impl Plugin for CurvePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_plugins(CirclePlugin);
-    }
+    fn build(&self, _app: &mut App) {}
 }
 
 pub trait CurveLength {
@@ -151,7 +149,6 @@ impl IntoEvaluator for CubicBezier<Vec3> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use enterpolation::{bspline::BSpline, linear::Linear};
 
     #[test]
     fn linear_length() {
@@ -160,13 +157,7 @@ mod tests {
             Vec3::new(3.0, 0.0, 0.0),
             Vec3::new(3.0, 4.0, 0.0),
         ];
-
-        let curve = Linear::builder()
-            .elements(points)
-            .equidistant::<f32>()
-            .normalized()
-            .build()
-            .expect("failed to create Linear curve");
+        let curve = LinearSpline::new(points);
 
         let calculated_length = curve.length();
         let expected_length = 7.0;
@@ -179,75 +170,52 @@ mod tests {
     }
 
     #[test]
-    fn straight_bspline_length() {
-        // Arrange points in a perfectly straight line along the X-axis.
+    fn straight_bezier_length() {
+        // Arrange: A perfectly straight line along the X-axis using 4 control points.
         // Total length = 10.0
-        let points = vec![
+        let points = [
             Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(2.5, 0.0, 0.0),
-            Vec3::new(5.0, 0.0, 0.0),
-            Vec3::new(7.5, 0.0, 0.0),
+            Vec3::new(3.333, 0.0, 0.0),
+            Vec3::new(6.666, 0.0, 0.0),
             Vec3::new(10.0, 0.0, 0.0),
         ];
-
-        let curve = BSpline::builder()
-            .clamped()
-            .elements(points)
-            .equidistant::<f32>()
-            .degree(3)
-            .normalized()
-            .constant::<4>()
-            .build()
-            .expect("failed to create B-spline");
+        let curve = CubicBezier::new([points]);
 
         let calculated_length = curve.length();
         let expected_length = 10.0;
 
-        // Splines require high-resolution sampling to approximate accurately,
         let epsilon = 0.001;
         assert!(
             (calculated_length - expected_length).abs() < epsilon,
-            "Expected B-Spline length to be roughly {expected_length}, got {calculated_length}"
+            "Expected Bézier length to be roughly {expected_length}, got {calculated_length}"
         );
     }
 
     #[test]
-    fn curved_bspline_length() {
-        // Arrange points in a 90-degree bend (L-shape).
-        // Because the B-Spline rounds the corner, the actual arc length contracts to ~18.021.
-        let points = vec![
+    fn curved_bezier_length() {
+        // Arrange: A 90-degree corner curve mapped via a single 4-point Bézier segment.
+        // Start at (0,0,0), pull towards (10,0,0), pull towards (10,0,10), end at (10,0,10)
+        let points = [
             Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(5.0, 0.0, 0.0),
             Vec3::new(10.0, 0.0, 0.0),
-            Vec3::new(10.0, 0.0, 5.0),
+            Vec3::new(10.0, 0.0, 10.0),
             Vec3::new(10.0, 0.0, 10.0),
         ];
-
-        let curve = BSpline::builder()
-            .clamped()
-            .elements(points)
-            .equidistant::<f32>()
-            .degree(3)
-            .normalized()
-            .constant::<4>()
-            .build()
-            .expect("failed to create B-spline");
+        let curve = CubicBezier::new([points]);
 
         let calculated_length = curve.length();
-        // Calculated via 1000-point integration.
-        let expected_length = 18.021;
+        let expected_length = 15.864;
 
-        // Use a slightly wider epsilon margin due to less accuracy in curved B-spline.
         let epsilon = 0.005;
         assert!(
             (calculated_length - expected_length).abs() < epsilon,
-            "Expected curved B-Spline length to be roughly {expected_length}, got {calculated_length}"
+            "Expected curved Bézier length to be roughly {expected_length}, got {calculated_length}"
         );
 
-        // The smoothed curve must be shorter than the distance along X and Y bounding box.
+        // The smoothed curve must cut the corner and be shorter than the raw path bounding box lines (20.0).
         assert!(
             calculated_length < 20.0,
-            "A smoothed B-Spline must cut the corner and be shorter than the raw point distance."
+            "A smoothed Bézier must cut the corner and be shorter than the raw control point distance."
         );
     }
 }

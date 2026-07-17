@@ -1,6 +1,5 @@
-use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
-use enterpolation::{Signal, linear::Linear};
 
 pub mod blueprint;
 pub mod graphics;
@@ -35,13 +34,7 @@ fn setup_world(mut commands: Commands) {
 fn setup_layout(mut commands: Commands) {
     let endpoint_id = commands.spawn((Name::new("North Exit"), EndPoint)).id();
 
-    let line = Linear::builder()
-        .elements([Vec3::new(0.0, -20.0, 0.0), Vec3::new(0.0, 20.0, 0.0)])
-        .equidistant::<f32>()
-        .normalized()
-        .build()
-        .expect("failed to create Linear curve");
-
+    let line = LinearSpline::new([Vec3::new(0.0, -20.0, 0.0), Vec3::new(0.0, 20.0, 0.0)]);
     commands.spawn(Segment::new(
         line,
         SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),

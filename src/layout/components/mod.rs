@@ -39,17 +39,17 @@ pub struct Segment {
 impl Segment {
     pub fn new<C>(curve: C, speed_limit: SpeedLimit) -> Self
     where
-        C: CurveLength + Send + Sync + 'static,
+        C: CurveLength + IntoEvaluator + Send + Sync + 'static,
     {
         let length = curve.length();
         Segment {
-            evaluator: Box::new(move |time| curve.sample_clamped(time)),
+            evaluator: curve.into_evaluator(),
             length,
             speed_limit,
         }
     }
 
-    pub fn eval(&self, time: f32) -> Vec3 {
+    pub fn sample_clamped(&self, time: f32) -> Vec3 {
         (self.evaluator)(time)
     }
 }
