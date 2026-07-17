@@ -1,5 +1,5 @@
 use crate::*;
-use bevy::math::FloatOrd;
+use bevy::math::{FloatOrd, cubic_splines::LinearSpline};
 use enterpolation::bezier::Bezier;
 
 pub struct AssemblyPlugin;
@@ -52,22 +52,15 @@ pub fn assemble_roundabout(
                 .build()
                 .expect("failed to build linear entry path");
 
-            let entry_line_entity = commands
-                .spawn((Segment::new(entry_line, speed_limit),))
-                .id();
+            let entry_line = LinearSpline::new(entry_geometry.lane_approach)
+                .to_curve()
+                .expect("failed to construct CubicCurve from LinearSpline");
 
-            let entry_control_points = entry_geometry
-                .deflection_curve
-                .iter()
-                .map(|vector| vector.to_array())
-                .collect::<Vec<_>>();
+            let entry_line_entity = commands.spawn(Segment::new(entry_line, speed_limit)).id();
 
-            let entry_deflection = Bezier::builder()
-                .elements(entry_geometry.deflection_curve.to_vec())
-                .domain(0.0, 1.0)
-                .build()
-                .expect("failed to build cubic deflection spline")
-                .map(Vec3::from);
+            let entry_deflection = CubicBezier::new([entry_geometry.deflection_curve])
+                .to_curve()
+                .expect("failed to build cubic Bézier deflection spline");
         }
     }
 }

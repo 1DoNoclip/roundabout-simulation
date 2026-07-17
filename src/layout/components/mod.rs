@@ -39,11 +39,11 @@ pub struct Segment {
 impl Segment {
     pub fn new<C>(curve: C, speed_limit: SpeedLimit) -> Self
     where
-        C: enterpolation::Curve<f32, Output = Vec3> + Send + Sync + 'static,
+        C: CurveLength + Send + Sync + 'static,
     {
         let length = curve.length();
         Segment {
-            evaluator: Box::new(move |time| curve.eval(time)),
+            evaluator: Box::new(move |time| curve.sample_clamped(time)),
             length,
             speed_limit,
         }
