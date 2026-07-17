@@ -40,11 +40,11 @@ fn setup_layout(mut commands: Commands) {
         .equidistant::<f32>()
         .normalized()
         .build()
-        .unwrap();
+        .expect("failed to create Linear curve");
 
     commands.spawn(Segment::new(
         line,
-        SpeedLimit::from_miles_per_hour(30.0).unwrap(),
+        SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
     ));
 
     commands.spawn((

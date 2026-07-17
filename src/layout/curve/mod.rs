@@ -64,7 +64,7 @@ mod tests {
             .equidistant::<f32>()
             .normalized()
             .build()
-            .unwrap();
+            .expect("failed to create Linear curve");
 
         let calculated_length = curve.length();
         let expected_length = 7.0;
@@ -96,7 +96,7 @@ mod tests {
             .normalized()
             .constant::<4>()
             .build()
-            .unwrap();
+            .expect("failed to create B-spline");
 
         let calculated_length = curve.length();
         let expected_length = 10.0;
@@ -129,7 +129,7 @@ mod tests {
             .normalized()
             .constant::<4>()
             .build()
-            .unwrap();
+            .expect("failed to create B-spline");
 
         let calculated_length = curve.length();
         // Calculated via 1000-point integration.

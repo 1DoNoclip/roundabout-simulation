@@ -47,7 +47,7 @@ pub fn spawn_vehicles(
         // of spawn rates.
         let frame_probability = spawn_point.max_vehicles_per_second * delta_time;
         if rand::random::<f32>() < frame_probability {
-            let initial_route = vec![segments.single().unwrap()];
+            let initial_route = vec![segments.single().expect("failed to select single segment")];
 
             commands.spawn((
                 Name::new("Vehicle"),

@@ -102,7 +102,8 @@ mod tests {
 
     #[test]
     fn try_new_roundabout_circle_blueprint() {
-        RoundaboutCircleBlueprint::try_new(30.0).unwrap();
+        RoundaboutCircleBlueprint::try_new(30.0)
+            .expect("failed to create RoundaboutCircleBlueprint");
     }
 
     #[test]
@@ -113,10 +114,11 @@ mod tests {
             ArmBlueprint::from_degrees(180.0),
         ];
         let number_of_lanes = 2;
-        let speed_limit = SpeedLimit::from_miles_per_hour(30.0).unwrap();
+        let speed_limit =
+            SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit");
         let deflection_radius = 15.0;
 
         IntersectionBlueprint::try_new(arms, number_of_lanes, speed_limit, deflection_radius)
-            .unwrap();
+            .expect("failed to create IntersectionBlueprint");
     }
 }
