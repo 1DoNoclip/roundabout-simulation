@@ -26,27 +26,35 @@ pub struct Segment {
     /// The shape of the curve, where the f32 is the progress along the
     /// curve (between 0.0 and 1.0) and Vec3 is the result position.
     pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
+
+    /// The next segments / end point that this segment connects to.
+    connection: Connection,
+
     /// While length can be calculated automatically with curve.length()
     /// this is computationally expensive so it is only run once and cached.
     ///
     /// Performing curve.length() each frame for each segment is a
     /// huge waste of resources when the length does not change.
     pub length: f32,
-    /// The maximum speed allowed in ms-1.
+
+    /// The maximum speed allowed for vehicles to travel at.
     pub speed_limit: SpeedLimit,
 }
 
 impl Segment {
-    pub fn new<C>(curve: C, speed_limit: SpeedLimit) -> Self
-    where
-        C: CurveLength + IntoEvaluator + Send + Sync + 'static,
-    {
+    pub fn new<C: SegmentCurve>(curve: C, connection: Connection, speed_limit: SpeedLimit) -> Self {
         let length = curve.length();
         Segment {
             evaluator: curve.into_evaluator(),
+            connection,
             length,
             speed_limit,
         }
+    }
+
+    pub fn to_end<C: SegmentCurve>(curve: C, end_point: Entity, speed_limit: SpeedLimit) -> Self {
+        let connection = Connection::EndPoint { end_point };
+        Segment::new(curve, connection, speed_limit)
     }
 
     pub fn sample_clamped(&self, time: f32) -> Vec3 {
@@ -66,21 +74,17 @@ impl Default for Segment {
 }
 
 #[derive(Component, Reflect)]
-/// Where road segments connect together, allowing vehicles to choose the next segment to use.
-pub struct Connection {
-    pub next_segments: Vec<Entity>,
-    /// Determines whether the segment must yield to traffic on the new road.
-    /// e.g., the entry into the roundabout requires yielding to circulating traffic.
-    pub requires_yield: bool,
-}
-
-impl Connection {
-    pub fn end_point_connection(end_point_entity: Entity) -> Self {
-        Connection {
-            next_segments: vec![end_point_entity],
-            requires_yield: false
-        }
-    }
+/// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
+pub enum Connection {
+    /// This connection connects to other segments.
+    NextSegments {
+        next_segments: Vec<Entity>,
+        /// Determines whether the segment must yield to traffic on the new road.
+        /// e.g., the entry into the roundabout requires yielding to circulating traffic.
+        requires_yield: bool,
+    },
+    /// This connection exits the map.
+    EndPoint { end_point: Entity },
 }
 
 #[derive(Component, Reflect)]

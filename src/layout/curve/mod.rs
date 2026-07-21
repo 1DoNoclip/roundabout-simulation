@@ -1,15 +1,16 @@
 use crate::*;
 use bevy::math::cubic_splines::LinearSpline;
 
-// pub mod circle;
-
-// pub use circle::*;
-
 pub struct CurvePlugin;
 
 impl Plugin for CurvePlugin {
     fn build(&self, _app: &mut App) {}
 }
+
+/// A curve type used for segment evaluators.
+pub trait SegmentCurve: CurveLength + IntoEvaluator + Send + Sync + 'static {}
+// Blanket implementation.
+impl<T> SegmentCurve for T where T: CurveLength + IntoEvaluator + Send + Sync + 'static {}
 
 /// The ability to get a length of a curve.
 pub trait CurveLength {
