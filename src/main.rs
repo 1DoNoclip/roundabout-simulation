@@ -41,10 +41,10 @@ fn setup_layout(mut commands: Commands) {
         Vec3::new(100.0, 100.0, 0.0),
     ];
     let line = CubicBezier::new([points]);
-    commands.spawn(Segment::new(
+    let segment_id = commands.spawn(Segment::new(
         line,
         SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
-    ));
+    )).id();
 
     // Connects segment to end point.
     commands.spawn((
@@ -59,6 +59,7 @@ fn setup_layout(mut commands: Commands) {
     commands.spawn((
         Name::new("SpawnPoint"),
         SpawnPoint {
+            segment: segment_id,
             max_vehicles_per_second: 0.5,
             destination_weights: weights,
         },

@@ -74,13 +74,20 @@ pub struct Connection {
     pub requires_yield: bool,
 }
 
-// impl Connection {
-//     pub fn end
-// }
+impl Connection {
+    pub fn end_point_connection(end_point_entity: Entity) -> Self {
+        Connection {
+            next_segments: vec![end_point_entity],
+            requires_yield: false
+        }
+    }
+}
 
 #[derive(Component, Reflect)]
 /// Where vehicles spawn from.
 pub struct SpawnPoint {
+    /// The segment that this spawn point is attached to.
+    pub segment: Entity,
     /// The maximum vehicles spawned per second. The actual spawn rate may
     /// be less due to lack of space in the network to spawn another vehicle.
     pub max_vehicles_per_second: f32,
