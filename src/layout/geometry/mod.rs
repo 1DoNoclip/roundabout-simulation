@@ -6,7 +6,7 @@ impl Plugin for GeometryPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
-pub enum LaneGeometryType {
+pub enum LaneType {
     Entry,
     Exit,
 }
@@ -21,7 +21,7 @@ pub struct LaneGeometry {
 
 impl LaneGeometry {
     pub fn generate(
-        geometry_type: LaneGeometryType,
+        geometry_type: LaneType,
         arm_angle: Rot2,
         lane_index: usize,
         roundabout_radius: f32,
@@ -39,7 +39,7 @@ impl LaneGeometry {
         let handle_strength = deflection_radius * 0.35;
 
         match geometry_type {
-            LaneGeometryType::Entry => {
+            LaneType::Entry => {
                 // Entry sits on the left side of the arm centerline (+perpendicular).
                 let deflection_start =
                     (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
@@ -62,7 +62,7 @@ impl LaneGeometry {
                     deflection_curve: [deflection_start, p1, p2, deflection_end],
                 }
             }
-            LaneGeometryType::Exit => {
+            LaneType::Exit => {
                 // Exit sits on the right side of the arm centerline (-perpendicular).
                 let deflection_end_point =
                     (arm_vector * deflection_start_distance) - (perpendicular_vector * lane_offset);
@@ -88,6 +88,51 @@ impl LaneGeometry {
                     deflection_curve: [deflection_start_on_ring, p1, p2, deflection_end_point],
                 }
             }
+        }
+    }
+}
+
+pub enum SectorType {
+    InterArm,
+    JunctionWeave,
+}
+
+pub struct CirculatingSectorGeometry {
+    pub radius: f32,
+    pub start_angle: f32,
+    pub end_angle: f32,
+}
+
+impl CirculatingSectorGeometry {
+    pub fn generate(
+        sector_type: SectorType,
+        arm_angle: Rot2,
+        next_arm_angle: Option<Rot2>,
+        lane_index: usize,
+        roundabout_radius: f32,
+        deflection_radius: f32,
+    ) -> Self {
+        let radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
+
+        let angular_displacement = deflection_radius / radius;
+
+        let (start_angle, end_angle) = match sector_type {
+            SectorType::InterArm => {
+                let start = arm_angle.as_radians() - angular_displacement;
+                let end = next_arm_angle.unwrap().as_radians() + angular_displacement;
+                (start, end)
+            }
+            SectorType::JunctionWeave => {
+                let start = arm_angle.as_radians() + angular_displacement;
+                let end = arm_angle.as_radians() - angular_displacement;
+                (start, end)
+            }
+        };
+
+        Self {
+            radius,
+            start_angle,
+            end_angle
         }
     }
 }

@@ -62,6 +62,7 @@ impl IntersectionBlueprint {
 /// Represents the circular part of the roundabout.
 pub struct RoundaboutCircleBlueprint {
     /// Radius of the inner roundabout circle in metres.
+    /// The distance between the centre and the centre of the inner circulating lane.
     pub radius: f32,
 }
 

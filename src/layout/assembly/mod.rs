@@ -35,7 +35,7 @@ pub fn assemble_roundabout(
         for lane_index in 0..number_of_lanes {
             // The geometry for the entry lane.
             let entry_geometry = LaneGeometry::generate(
-                LaneGeometryType::Entry,
+                LaneType::Entry,
                 arm.angle,
                 lane_index,
                 inner_radius,
@@ -76,7 +76,7 @@ pub fn assemble_roundabout(
 
             // The geometry for the exit lane.
             let exit_geometry = LaneGeometry::generate(
-                LaneGeometryType::Exit,
+                LaneType::Exit,
                 arm.angle,
                 lane_index,
                 inner_radius,
