@@ -32,14 +32,21 @@ fn setup_world(mut commands: Commands) {
 }
 
 fn setup_layout(mut commands: Commands) {
-    let endpoint_id = commands.spawn((Name::new("North Exit"), EndPoint)).id();
+    let endpoint_id = commands.spawn((Name::new("EndPoint"), EndPoint)).id();
 
-    let line = LinearSpline::new([Vec3::new(0.0, -20.0, 0.0), Vec3::new(0.0, 20.0, 0.0)]);
+    let points = [
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(55.228, 0.0, 0.0),
+        Vec3::new(100.0, 44.772, 0.0),
+        Vec3::new(100.0, 100.0, 0.0),
+    ];
+    let line = CubicBezier::new([points]);
     commands.spawn(Segment::new(
         line,
         SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
     ));
 
+    // Connects segment to end point.
     commands.spawn((
         Name::new("Connection"),
         Connection {
@@ -48,9 +55,7 @@ fn setup_layout(mut commands: Commands) {
         },
     ));
 
-    let mut weights = EntityHashMap::default();
-    weights.insert(endpoint_id, 100);
-
+    let weights = EntityHashMap::from_iter([(endpoint_id, 100)]);
     commands.spawn((
         Name::new("SpawnPoint"),
         SpawnPoint {

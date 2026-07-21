@@ -74,6 +74,10 @@ pub struct Connection {
     pub requires_yield: bool,
 }
 
+// impl Connection {
+//     pub fn end
+// }
+
 #[derive(Component, Reflect)]
 /// Where vehicles spawn from.
 pub struct SpawnPoint {
