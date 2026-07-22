@@ -12,10 +12,11 @@ impl Plugin for VehiclePlugin {
 #[derive(Component, Reflect)]
 /// The motion characteristics for the vehicle.
 pub struct Kinematics {
-    pub speed: f32,
+    pub speed: Speed,
     /// Target speed that the driver would aim for on an empty road.
-    pub target_speed: f32,
-    pub acceleration: f32,
+    pub target_speed: Speed,
+    pub max_acceleration: f32,
+    pub max_deceleration: f32,
 }
 
 #[derive(Component, Reflect)]
@@ -64,9 +65,10 @@ pub fn spawn_vehicles(
             commands.spawn((
                 Name::new("Vehicle"),
                 Kinematics {
-                    speed: 10.0,
-                    target_speed: 13.9,
-                    acceleration: 0.0,
+                    speed: Speed::from_miles_per_hour(5.0).expect("failed to create Speed"),
+                    target_speed: Speed::from_miles_per_hour(60.0).expect("failed to create Speed"),
+                    max_acceleration: 3.0,
+                    max_deceleration: 8.0,
                 },
                 Navigator {
                     route: initial_route,
@@ -86,11 +88,11 @@ pub fn vehicle_movement(
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
-    vehicles: Query<(Entity, &Kinematics, &mut Navigator, &mut Transform)>,
+    vehicles: Query<(Entity, &mut Kinematics, &mut Navigator, &mut Transform)>,
 ) {
-    let delta_time = time.delta_secs();
+    let delta_seconds = time.delta_secs();
 
-    for (entity, kinematics, mut navigator, mut transform) in vehicles {
+    for (entity, mut kinematics, mut navigator, mut transform) in vehicles {
         if navigator.current_segment >= navigator.route.len() {
             continue;
         }
@@ -98,7 +100,7 @@ pub fn vehicle_movement(
         let segment_id = navigator.route[navigator.current_segment];
 
         if let Ok(segment) = segments.get(segment_id) {
-            let delta_progress = (kinematics.speed * delta_time) / segment.length;
+            let delta_progress = (*kinematics.speed * delta_seconds) / segment.length;
             navigator.progress += delta_progress;
 
             if navigator.progress >= 1.0 {
@@ -112,6 +114,14 @@ pub fn vehicle_movement(
                 }
             } else {
                 transform.translation = segment.sample_clamped(navigator.progress);
+            }
+        }
+
+        // Increases speed due to acceleration.
+        if *kinematics.speed < *kinematics.target_speed {
+            *kinematics.speed += kinematics.max_acceleration * delta_seconds;
+            if *kinematics.speed > *kinematics.target_speed {
+                *kinematics.speed = *kinematics.target_speed;
             }
         }
     }

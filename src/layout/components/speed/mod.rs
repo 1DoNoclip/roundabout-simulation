@@ -33,7 +33,6 @@ impl Speed {
     }
 }
 
-
 impl Deref for Speed {
     type Target = f32;
 

@@ -135,7 +135,7 @@ impl CirculatingSectorGeometry {
         Self {
             radius,
             start_angle,
-            end_angle
+            end_angle,
         }
     }
 }

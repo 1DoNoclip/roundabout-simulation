@@ -115,8 +115,7 @@ mod tests {
             ArmBlueprint::from_degrees(180.0),
         ];
         let number_of_lanes = 2;
-        let speed_limit =
-            Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit");
+        let speed_limit = Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit");
         let deflection_radius = 15.0;
 
         IntersectionBlueprint::try_new(arms, number_of_lanes, speed_limit, deflection_radius)

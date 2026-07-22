@@ -34,14 +34,13 @@ fn setup_world(mut commands: Commands) {
 fn setup_layout(mut commands: Commands) {
     let end_point_id = commands.spawn((Name::new("EndPoint"), EndPoint)).id();
 
-    let segment2_id = commands.spawn(Segment::to_end(
-        LinearSpline::new([
-            Vec3::new(100.0, 100.0, 0.0),
-            Vec3::new(100.0, 200.0, 0.0),
-        ]),
-        end_point_id,
-        Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
-    )).id();
+    let segment2_id = commands
+        .spawn(Segment::to_end(
+            LinearSpline::new([Vec3::new(100.0, 100.0, 0.0), Vec3::new(100.0, 200.0, 0.0)]),
+            end_point_id,
+            Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
+        ))
+        .id();
 
     let segment1_curve_points = [
         Vec3::new(0.0, 0.0, 0.0),
@@ -53,7 +52,10 @@ fn setup_layout(mut commands: Commands) {
     let segment1_id = commands
         .spawn(Segment::new(
             line,
-            Connection::NextSegments { next_segments: vec![segment2_id], requires_yield: false },
+            Connection::NextSegments {
+                next_segments: vec![segment2_id],
+                requires_yield: false,
+            },
             Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
         ))
         .id();
