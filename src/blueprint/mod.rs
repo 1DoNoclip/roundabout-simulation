@@ -11,6 +11,7 @@ impl Plugin for BlueprintPlugin {
 }
 
 #[derive(Resource, Reflect)]
+#[reflect(Resource)]
 /// Represents global intersection data.
 pub struct IntersectionBlueprint {
     /// Length between 3 -> 6.
@@ -59,6 +60,7 @@ impl IntersectionBlueprint {
 }
 
 #[derive(Resource, Reflect)]
+#[reflect(Resource)]
 /// Represents the circular part of the roundabout.
 pub struct RoundaboutCircleBlueprint {
     /// Radius of the inner roundabout circle in metres.

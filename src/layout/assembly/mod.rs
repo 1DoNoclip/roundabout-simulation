@@ -4,14 +4,46 @@ use bevy::math::FloatOrd;
 pub struct AssemblyPlugin;
 
 impl Plugin for AssemblyPlugin {
-    fn build(&self, _app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        app
+            // Initial build right after Startup finishes flushing commands.
+            .add_systems(
+                PostStartup,
+                assemble_roundabout
+                    .run_if(resource_exists::<IntersectionBlueprint>)
+                    .run_if(resource_exists::<RoundaboutCircleBlueprint>),
+            )
+            // Dynamic rebuild whenever a resource is edited at runtime.
+            .add_systems(
+                Update,
+                assemble_roundabout
+                    .run_if(resource_exists::<IntersectionBlueprint>)
+                    .run_if(resource_exists::<RoundaboutCircleBlueprint>)
+                    .run_if(
+                        resource_changed::<IntersectionBlueprint>
+                            .or_else(resource_changed::<RoundaboutCircleBlueprint>),
+                    ),
+            );
+    }
 }
 
 pub fn assemble_roundabout(
     mut commands: Commands,
+    existing_segments: Query<Entity, With<Segment>>,
+    existing_spawns: Query<Entity, With<SpawnPoint>>,
+    existing_ends: Query<Entity, With<EndPoint>>,
     intersection_blueprint: Res<IntersectionBlueprint>,
     roundabout_circle_blueprint: Res<RoundaboutCircleBlueprint>,
 ) {
+    // Despawn old segments before assembling new layout.
+    for entity in existing_segments
+        .iter()
+        .chain(existing_spawns.iter())
+        .chain(existing_ends.iter())
+    {
+        commands.entity(entity).despawn();
+    }
+
     const INTRA_ARM_SECTOR_INDEX: usize = 0;
     const INTER_ARM_SECTOR_INDEX: usize = 1;
 

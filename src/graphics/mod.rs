@@ -38,8 +38,14 @@ pub fn draw_segments(mut gizmos: Gizmos, segments: Query<&Segment>) {
 
     for segment in segments {
         let color = match segment.connection {
-            Connection::NextSegments { requires_yield: true, .. } => Color::srgb(1.0, 0.2, 0.2),
-            Connection::NextSegments { requires_yield: false, .. } => Color::srgb(0.2, 0.8, 1.0),
+            Connection::NextSegments {
+                requires_yield: true,
+                ..
+            } => Color::srgb(1.0, 0.2, 0.2),
+            Connection::NextSegments {
+                requires_yield: false,
+                ..
+            } => Color::srgb(0.2, 0.8, 1.0),
             Connection::EndPoint { .. } => Color::srgb(0.2, 1.0, 0.2),
         };
 

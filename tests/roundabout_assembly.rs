@@ -9,9 +9,15 @@ fn test_assemble_roundabout_spawns_correct_topology() {
         deflection_radius: 15.0,
         speed_limit: Speed::from_miles_per_hour(30.0).expect("failed to create Speed"),
         arms: vec![
-            ArmBlueprint { angle: Rot2::degrees(0.0) },
-            ArmBlueprint { angle: Rot2::degrees(120.0) },
-            ArmBlueprint { angle: Rot2::degrees(240.0) },
+            ArmBlueprint {
+                angle: Rot2::degrees(0.0),
+            },
+            ArmBlueprint {
+                angle: Rot2::degrees(120.0),
+            },
+            ArmBlueprint {
+                angle: Rot2::degrees(240.0),
+            },
         ],
     });
     app.insert_resource(RoundaboutCircleBlueprint { radius: 20.0 });

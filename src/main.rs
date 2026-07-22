@@ -11,7 +11,7 @@ fn main() {
             LayoutPlugin,
             SimulationPlugin,
         ))
-        .add_systems(Startup, (setup_world, setup_layout))
+        .add_systems(Startup, (setup_world, setup_roundabout_layout))
         .run();
 }
 
@@ -20,42 +20,30 @@ fn setup_world(mut commands: Commands) {
     commands.insert_resource(Statistics::default());
 }
 
-fn setup_layout(mut commands: Commands) {
-    let end_point_id = commands.spawn((Name::new("EndPoint"), EndPoint)).id();
-
-    let segment2_id = commands
-        .spawn(Segment::to_end(
-            LinearSpline::new([Vec3::new(100.0, 100.0, 0.0), Vec3::new(100.0, 200.0, 0.0)]),
-            end_point_id,
-            Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
-        ))
-        .id();
-
-    let segment1_curve_points = [
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(55.228, 0.0, 0.0),
-        Vec3::new(100.0, 44.772, 0.0),
-        Vec3::new(100.0, 100.0, 0.0),
-    ];
-    let line = CubicBezier::new([segment1_curve_points]);
-    let segment1_id = commands
-        .spawn(Segment::new(
-            line,
-            Connection::NextSegments {
-                next_segments: vec![segment2_id],
-                requires_yield: false,
+fn setup_roundabout_layout(mut commands: Commands) {
+    info!("---> Executing setup_roundabout_layout!");
+    // Define the overall intersection blueprint parameters.
+    commands.insert_resource(IntersectionBlueprint {
+        number_of_lanes: 2,
+        deflection_radius: 15.0,
+        speed_limit: Speed::from_miles_per_hour(30.0).expect("failed to create Speed"),
+        arms: vec![
+            // 4-arm roundabout layout.
+            ArmBlueprint {
+                angle: Rot2::degrees(0.0),
             },
-            Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
-        ))
-        .id();
+            ArmBlueprint {
+                angle: Rot2::degrees(90.0),
+            },
+            ArmBlueprint {
+                angle: Rot2::degrees(180.0),
+            },
+            ArmBlueprint {
+                angle: Rot2::degrees(270.0),
+            },
+        ],
+    });
 
-    let weights = EntityHashMap::from_iter([(end_point_id, 100)]);
-    commands.spawn((
-        Name::new("SpawnPoint"),
-        SpawnPoint {
-            segment: segment1_id,
-            max_vehicles_per_second: 0.5,
-            destination_weights: weights,
-        },
-    ));
+    // Define the central roundabout dimensions.
+    commands.insert_resource(RoundaboutCircleBlueprint { radius: 25.0 });
 }
