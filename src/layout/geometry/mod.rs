@@ -102,7 +102,9 @@ impl LaneGeometry {
 }
 
 pub enum SectorType {
+    /// Between Arm N's exit and Arm N's entry.
     InterArm,
+    /// Between Arm N's entry and Arm (N + 1)'s exit.
     IntraArm,
 }
 

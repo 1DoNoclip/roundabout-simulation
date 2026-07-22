@@ -16,7 +16,14 @@ fn main() {
 }
 
 fn setup_world(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((
+            Camera2d,
+            Projection::Orthographic(OrthographicProjection {
+                // Lower scale = zoom in.
+                scale: 0.5,
+                ..OrthographicProjection::default_2d()
+            }),
+        ));
     commands.insert_resource(Statistics::default());
 }
 
