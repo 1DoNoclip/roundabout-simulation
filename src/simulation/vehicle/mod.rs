@@ -55,9 +55,9 @@ pub fn spawn_vehicles(
             };
 
             let segment2_id = match &segment1.connection {
-                Connection::NextSegments { next_segments, .. } => {
-                    next_segments.first().expect("expected Segment 2 at index 0")
-                }
+                Connection::NextSegments { next_segments, .. } => next_segments
+                    .first()
+                    .expect("expected Segment 2 at index 0"),
                 Connection::EndPoint { .. } => continue,
             };
 

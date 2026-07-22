@@ -30,9 +30,10 @@ impl LaneGeometry {
         roundabout_radius: f32,
         deflection_radius: f32,
     ) -> Self {
+        // The radius to the centre of the target circulating lane.
+        let target_ring_radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
+        // The offset of the lane from the inner lane.
         let lane_offset = (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
-        let target_ring_radius =
-            roundabout_radius + (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
         let deflection_start_distance = roundabout_radius + deflection_radius;
 
         let arm_vector = Vec3::new(arm_angle.cos, arm_angle.sin, 0.0);
@@ -118,27 +119,32 @@ impl CirculatingSectorGeometry {
     pub fn generate(
         sector_type: SectorType,
         arm_angle: Rot2,
+        // Todo: Add next_arm_angle into SectorType::InterArm for cleaner code.
         next_arm_angle: Option<Rot2>,
         lane_index: usize,
         roundabout_radius: f32,
         deflection_radius: f32,
     ) -> Self {
         let radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
-
         let angular_displacement = deflection_radius / radius;
 
-        let (start_angle, end_angle) = match sector_type {
+        let (start_angle, mut end_angle) = match sector_type {
             SectorType::InterArm => {
-                let start = arm_angle.as_radians() - angular_displacement;
-                let end = next_arm_angle.unwrap().as_radians() + angular_displacement;
+                let start = arm_angle.as_radians() + angular_displacement;
+                let end = next_arm_angle.unwrap().as_radians() - angular_displacement;
                 (start, end)
             }
             SectorType::IntraArm => {
-                let start = arm_angle.as_radians() + angular_displacement;
-                let end = arm_angle.as_radians() - angular_displacement;
+                let start = arm_angle.as_radians() - angular_displacement;
+                let end = arm_angle.as_radians() + angular_displacement;
                 (start, end)
             }
         };
+        // Todo: Replace this with a better system.
+        while end_angle >= start_angle {
+            end_angle -= std::f32::consts::TAU;
+
+        }
 
         Self {
             radius,
@@ -150,8 +156,13 @@ impl CirculatingSectorGeometry {
 
 impl CurveLength for CirculatingSectorGeometry {
     fn length(&self) -> f32 {
-        let delta_angle = (self.end_angle - self.start_angle).abs();
-        self.radius * delta_angle
+        // Todo: Improve this code, should not panic.
+        // Enforce constraints in construction of CirculatingSectorGeometry
+        // to prevent end_angle bigger than start_angle.
+        if self.end_angle > self.start_angle {
+            panic!("end_angle ({}) should not be greater than start angle ({})", self.end_angle, self.start_angle);
+        }
+        self.radius * (self.start_angle - self.end_angle).abs()
     }
 }
 
