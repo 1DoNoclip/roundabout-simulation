@@ -97,7 +97,7 @@ impl LaneGeometry {
 
 pub enum SectorType {
     InterArm,
-    JunctionWeave,
+    IntraArm,
 }
 
 pub struct CirculatingSectorGeometry {
@@ -125,7 +125,7 @@ impl CirculatingSectorGeometry {
                 let end = next_arm_angle.unwrap().as_radians() + angular_displacement;
                 (start, end)
             }
-            SectorType::JunctionWeave => {
+            SectorType::IntraArm => {
                 let start = arm_angle.as_radians() + angular_displacement;
                 let end = arm_angle.as_radians() - angular_displacement;
                 (start, end)
@@ -151,11 +151,7 @@ impl IntoEvaluator for CirculatingSectorGeometry {
     fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
         Box::new(move |time| {
             let angle = self.start_angle + time * (self.end_angle - self.start_angle);
-            Vec3::new(
-                self.radius * angle.cos(),
-                0.0,
-                self.radius * angle.sin(),
-            )
+            Vec3::new(self.radius * angle.cos(), 0.0, self.radius * angle.sin())
         })
     }
 }

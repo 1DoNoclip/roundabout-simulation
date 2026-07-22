@@ -12,6 +12,9 @@ pub fn assemble_roundabout(
     intersection_blueprint: Res<IntersectionBlueprint>,
     roundabout_circle_blueprint: Res<RoundaboutCircleBlueprint>,
 ) {
+    const INTRA_ARM_SECTOR_INDEX: usize = 0;
+    const INTER_ARM_SECTOR_INDEX: usize = 1;
+
     let number_of_lanes = intersection_blueprint.number_of_lanes;
     let inner_radius = roundabout_circle_blueprint.radius;
     let deflection_radius = intersection_blueprint.deflection_radius;
@@ -28,7 +31,7 @@ pub fn assemble_roundabout(
     let mut arm_exits = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
     let mut arm_exit_deflections = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
     let mut circulating_sectors =
-        vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms * 2];
+        vec![vec![vec![Entity::PLACEHOLDER; number_of_lanes]; 2]; number_of_arms];
 
     // Spawn segments, spawn points and end points.
     for (arm_index, arm) in sorted_arms.iter().enumerate() {
@@ -42,25 +45,6 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            // The straight entry road.
-            let entry_line_id = commands
-                .spawn(Segment::new(
-                    LinearSpline::new(entry_geometry.straight_line),
-                    Connection::NextSegments {
-                        next_segments: vec![],
-                        requires_yield: false,
-                    },
-                    speed_limit,
-                ))
-                .id();
-            arm_entries[arm_index][lane_index] = entry_line_id;
-
-            commands.spawn(SpawnPoint {
-                segment: entry_line_id,
-                max_vehicles_per_second: 0.5,
-                destination_weights: EntityHashMap::default(),
-            });
-
             // Entry deflection curve.
             let entry_deflection_id = commands
                 .spawn(Segment::new(
@@ -73,6 +57,25 @@ pub fn assemble_roundabout(
                 ))
                 .id();
             arm_entry_deflections[arm_index][lane_index] = entry_deflection_id;
+
+            // The straight entry road.
+            let entry_line_id = commands
+                .spawn(Segment::new(
+                    LinearSpline::new(entry_geometry.straight_line),
+                    Connection::NextSegments {
+                        next_segments: vec![entry_deflection_id],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ))
+                .id();
+            arm_entries[arm_index][lane_index] = entry_line_id;
+
+            commands.spawn(SpawnPoint {
+                segment: entry_line_id,
+                max_vehicles_per_second: 0.5,
+                destination_weights: EntityHashMap::default(),
+            });
 
             // The geometry for the exit lane.
             let exit_geometry = LaneGeometry::generate(
@@ -101,7 +104,7 @@ pub fn assemble_roundabout(
                 .spawn(Segment::new(
                     CubicBezier::new([exit_geometry.deflection_curve]),
                     Connection::NextSegments {
-                        next_segments: vec![],
+                        next_segments: vec![exit_line_id],
                         requires_yield: false,
                     },
                     speed_limit,
@@ -110,12 +113,88 @@ pub fn assemble_roundabout(
             arm_exit_deflections[arm_index][lane_index] = exit_deflection_id;
 
             // Circulating sectors.
-            // Inter-arm (Entry N -> Exit N + 1).
-            let sector_a_index = arm_index * 2;
-            // Weave (Exit N -> Entry N).
-            let sector_b_index = arm_index * 2 + 1;
+            let next_arm_index = (arm_index + 1) % sorted_arms.len();
+            let next_arm_angle = sorted_arms[next_arm_index].angle;
 
-            let sector_a_geometry
+            let inter_arm_sector_geometry = CirculatingSectorGeometry::generate(
+                SectorType::InterArm,
+                arm.angle,
+                Some(next_arm_angle),
+                lane_index,
+                inner_radius,
+                deflection_radius,
+            );
+
+            let inter_arm_sector_id = commands
+                .spawn(Segment::new(
+                    inter_arm_sector_geometry,
+                    Connection::NextSegments {
+                        next_segments: vec![],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ))
+                .id();
+            circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index] =
+                inter_arm_sector_id;
+
+            let intra_arm_sector_geometry = CirculatingSectorGeometry::generate(
+                SectorType::IntraArm,
+                arm.angle,
+                None,
+                lane_index,
+                inner_radius,
+                deflection_radius,
+            );
+
+            let intra_arm_sector_id = commands
+                .spawn(Segment::new(
+                    intra_arm_sector_geometry,
+                    Connection::NextSegments {
+                        next_segments: vec![],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ))
+                .id();
+            circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index] =
+                intra_arm_sector_id;
+        }
+    }
+
+    for arm_index in 0..number_of_arms {
+        let next_arm_index = (arm_index + 1) % number_of_arms;
+
+        for lane_index in 0..number_of_lanes {
+            let entry_deflection_id = arm_entry_deflections[arm_index][lane_index];
+            let exit_deflection_id = arm_exit_deflections[next_arm_index][lane_index];
+
+            let intra_arm_id = circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index];
+            let inter_arm_id = circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index];
+            let next_intra_arm_id =
+                circulating_sectors[next_arm_index][INTRA_ARM_SECTOR_INDEX][lane_index];
+
+            // Overwrite the placeholder Connection component.
+            commands
+                .entity(intra_arm_id)
+                .insert(Connection::NextSegments {
+                    next_segments: vec![inter_arm_id],
+                    requires_yield: false,
+                });
+
+            commands
+                .entity(entry_deflection_id)
+                .insert(Connection::NextSegments {
+                    next_segments: vec![inter_arm_id],
+                    requires_yield: true,
+                });
+
+            commands
+                .entity(inter_arm_id)
+                .insert(Connection::NextSegments {
+                    next_segments: vec![exit_deflection_id, next_intra_arm_id],
+                    requires_yield: false,
+                });
         }
     }
 }
