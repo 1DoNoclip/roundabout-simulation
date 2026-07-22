@@ -114,9 +114,9 @@ pub enum SectorType {
 }
 
 pub struct CirculatingSectorGeometry {
-    pub radius: f32,
-    pub start_angle: f32,
-    pub end_angle: f32,
+    radius: f32,
+    start_angle: f32,
+    end_angle: f32,
 }
 
 impl CirculatingSectorGeometry {
@@ -144,6 +144,7 @@ impl CirculatingSectorGeometry {
         };
 
         let clockwise_sweep = (start_angle - raw_end_angle).rem_euclid(std::f32::consts::TAU);
+        // Ensures that end_angle is less than start_angle.
         let end_angle = start_angle - clockwise_sweep;
 
         Self {
@@ -155,17 +156,9 @@ impl CirculatingSectorGeometry {
 }
 
 impl CurveLength for CirculatingSectorGeometry {
+    #[inline]
     fn length(&self) -> f32 {
-        // Todo: Improve this code, should not panic.
-        // Enforce constraints in construction of CirculatingSectorGeometry
-        // to prevent end_angle bigger than start_angle.
-        if self.end_angle > self.start_angle {
-            panic!(
-                "end_angle ({}) should not be greater than start angle ({})",
-                self.end_angle, self.start_angle
-            );
-        }
-        self.radius * (self.start_angle - self.end_angle).abs()
+        self.radius * (self.start_angle - self.end_angle)
     }
 }
 

@@ -60,8 +60,36 @@ pub fn spawn_vehicles(
                     .expect("expected Segment 2 at index 0"),
                 Connection::EndPoint { .. } => continue,
             };
+            let Ok(segment2) = segments.get(*segment2_id) else {
+                continue;
+            };
 
-            let initial_route = vec![segment1_id, *segment2_id];
+            let segment3_id = match &segment2.connection {
+                Connection::NextSegments { next_segments, .. } => next_segments
+                    .first()
+                    .expect("expected Segment 3 at index 0"),
+                Connection::EndPoint { .. } => continue,
+            };
+            let Ok(segment3) = segments.get(*segment3_id) else {
+                continue;
+            };
+            let segment4_id = match &segment3.connection {
+                Connection::NextSegments { next_segments, .. } => next_segments
+                    .first()
+                    .expect("expected Segment 4 at index 0"),
+                Connection::EndPoint { .. } => continue,
+            };
+            let Ok(segment4) = segments.get(*segment4_id) else {
+                continue;
+            };
+            let segment5_id = match &segment4.connection {
+                Connection::NextSegments { next_segments, .. } => next_segments
+                    .first()
+                    .expect("expected Segment 5 at index 0"),
+                Connection::EndPoint { .. } => continue,
+            };
+
+            let initial_route = vec![segment1_id, *segment2_id, *segment3_id, *segment4_id, *segment5_id];
             let start_position = (segment1.evaluator)(0.0);
 
             // Spawning.
