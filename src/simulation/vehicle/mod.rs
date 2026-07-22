@@ -89,7 +89,13 @@ pub fn spawn_vehicles(
                 Connection::EndPoint { .. } => continue,
             };
 
-            let initial_route = vec![segment1_id, *segment2_id, *segment3_id, *segment4_id, *segment5_id];
+            let initial_route = vec![
+                segment1_id,
+                *segment2_id,
+                *segment3_id,
+                *segment4_id,
+                *segment5_id,
+            ];
             let start_position = (segment1.evaluator)(0.0);
 
             // Spawning.

@@ -56,9 +56,7 @@ pub fn assemble_roundabout(
 
     let mut sorted_arms = intersection_blueprint.arms.clone();
     // sorted_arms.sort_by_key(|arm| FloatOrd(arm.angle.as_radians()));
-    sorted_arms.sort_by(|a, b| {
-        FloatOrd(b.angle.as_radians()).cmp(&FloatOrd(a.angle.as_radians()))
-    });
+    sorted_arms.sort_by(|a, b| FloatOrd(b.angle.as_radians()).cmp(&FloatOrd(a.angle.as_radians())));
     let sorted_arms = sorted_arms;
     let number_of_arms = sorted_arms.len();
 

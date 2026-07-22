@@ -32,18 +32,21 @@ fn setup_world(mut commands: Commands) {
 
 fn setup_roundabout_layout(mut commands: Commands) {
     commands.insert_resource(IntersectionBlueprint {
-        number_of_lanes: 1,
-        deflection_radius: 15.0,
+        number_of_lanes: 2,
+        deflection_radius: 12.5,
         speed_limit: Speed::from_miles_per_hour(30.0).expect("failed to create Speed"),
         arms: vec![
             ArmBlueprint {
                 angle: Rot2::degrees(0.0),
             },
             ArmBlueprint {
-                angle: Rot2::degrees(120.0),
+                angle: Rot2::degrees(-90.0),
             },
             ArmBlueprint {
-                angle: Rot2::degrees(225.0),
+                angle: Rot2::degrees(-180.0),
+            },
+            ArmBlueprint {
+                angle: Rot2::degrees(-270.0),
             },
         ],
     });

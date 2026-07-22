@@ -4,22 +4,9 @@ pub struct GraphicsPlugin;
 
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (draw_segments, draw_vehicles).chain());
+        app.add_systems(Update, (draw_layout, draw_vehicles).chain());
     }
 }
-
-// pub fn draw_routes(mut gizmos: Gizmos, query: Query<&Segment>) {
-//     let resolution = 100;
-//     for segment in &query {
-//         let points = (0..=resolution)
-//             .map(|i| {
-//                 let time = i as f32 / resolution as f32;
-//                 (segment.evaluator)(time)
-//             })
-//             .collect::<Vec<_>>();
-//         gizmos.linestrip(points, Color::hsl(0.0, 0.0, 1.0));
-//     }
-// }
 
 pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
     for transform in vehicles.iter() {
@@ -33,7 +20,7 @@ pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Naviga
     }
 }
 
-pub fn draw_segments(mut gizmos: Gizmos, segments: Query<&Segment>) {
+pub fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
     const SAMPLE_STEPS: usize = 50;
 
     for segment in &segments {
