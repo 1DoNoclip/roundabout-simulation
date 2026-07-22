@@ -1,15 +1,4 @@
-use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
-use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
-
-pub mod blueprint;
-pub mod graphics;
-pub mod layout;
-pub mod simulation;
-
-use blueprint::*;
-use graphics::*;
-use layout::*;
-use simulation::*;
+use roundabout_simulation::*;
 
 fn main() {
     App::new()
