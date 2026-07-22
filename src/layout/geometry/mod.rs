@@ -51,9 +51,8 @@ impl LaneGeometry {
                 // Entry starts 100m out and travels in towards deflection_start.
                 let spawn_point_start = deflection_start + (arm_vector * 100.0);
 
-                // For clockwise flow, entry connects slightly ahead anti-clockwise (+angular_displacement)
-                // so traffic merges smoothly clockwise into the ring.
-                let entry_angle = arm_angle * Rot2::radians(angular_displacement);
+                // Entry joins the ring slightly before the arm angle (angular_displacement).
+                let entry_angle = arm_angle * Rot2::radians(-angular_displacement);
                 let deflection_end = Vec3::new(
                     target_ring_radius * entry_angle.cos,
                     target_ring_radius * entry_angle.sin,
@@ -79,8 +78,8 @@ impl LaneGeometry {
                 // Exit straight travels from deflection end outwards (+arm_vector).
                 let end_point_end = deflection_end + (arm_vector * 100.0);
 
-                // Exit leaves the ring slightly before reaching the arm angle (-angular_displacement).
-                let exit_angle = arm_angle * Rot2::radians(-angular_displacement);
+                // Exit leaves the ring slightly after the arm angle (angular_displacement).
+                let exit_angle = arm_angle * Rot2::radians(angular_displacement);
                 let deflection_start = Vec3::new(
                     target_ring_radius * exit_angle.cos,
                     target_ring_radius * exit_angle.sin,
