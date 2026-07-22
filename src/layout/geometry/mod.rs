@@ -103,7 +103,7 @@ impl LaneGeometry {
 
 pub enum SectorType {
     /// Between Arm N's exit and Arm N's entry.
-    InterArm,
+    InterArm { next_arm_angle: Rot2 },
     /// Between Arm N's entry and Arm (N + 1)'s exit.
     IntraArm,
 }
@@ -118,8 +118,6 @@ impl CirculatingSectorGeometry {
     pub fn generate(
         sector_type: SectorType,
         arm_angle: Rot2,
-        // Todo: Add next_arm_angle into SectorType::InterArm for cleaner code.
-        next_arm_angle: Option<Rot2>,
         lane_index: usize,
         roundabout_radius: f32,
         deflection_radius: f32,
@@ -128,9 +126,9 @@ impl CirculatingSectorGeometry {
         let angular_displacement = deflection_radius / radius;
 
         let (start_angle, mut end_angle) = match sector_type {
-            SectorType::InterArm => {
+            SectorType::InterArm { next_arm_angle } => {
                 let start = arm_angle.as_radians() + angular_displacement;
-                let end = next_arm_angle.unwrap().as_radians() - angular_displacement;
+                let end = next_arm_angle.as_radians() - angular_displacement;
                 (start, end)
             }
             SectorType::IntraArm => {

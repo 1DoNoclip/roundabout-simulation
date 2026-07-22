@@ -162,9 +162,8 @@ pub fn assemble_roundabout(
             ));
 
             let inter_arm_sector_geometry = CirculatingSectorGeometry::generate(
-                SectorType::InterArm,
+                SectorType::InterArm { next_arm_angle },
                 arm.angle,
-                Some(next_arm_angle),
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -182,7 +181,6 @@ pub fn assemble_roundabout(
             let intra_arm_sector_geometry = CirculatingSectorGeometry::generate(
                 SectorType::IntraArm,
                 arm.angle,
-                None,
                 lane_index,
                 inner_radius,
                 deflection_radius,
