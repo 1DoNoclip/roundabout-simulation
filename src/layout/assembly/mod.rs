@@ -81,7 +81,12 @@ pub fn assemble_roundabout(
     }
 
     for (arm_index, arm) in sorted_arms.iter().enumerate() {
-        let next_arm_index = (arm_index + 1) % sorted_arms.len();
+        let next_arm_index = if arm_index == 0 {
+            number_of_arms - 1
+        } else {
+            arm_index - 1
+        };
+
         let next_arm_angle = sorted_arms[next_arm_index].angle;
 
         for lane_index in 0..number_of_lanes {

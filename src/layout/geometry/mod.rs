@@ -46,49 +46,55 @@ impl LaneGeometry {
                 // Entry sits on the left side of the arm centerline (+perpendicular).
                 let deflection_start =
                     (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
-                let approach_start = deflection_start + (arm_vector * 100.0);
 
-                let entry_angle = arm_angle * Rot2::radians(-angular_displacement);
+                // Entry starts 100m out and travels in towards deflection_start.
+                let spawn_point_start = deflection_start + (arm_vector * 100.0);
+
+                // For clockwise flow, entry connects slightly ahead anti-clockwise (+angular_displacement)
+                // so traffic merges smoothly clockwise into the ring.
+                let entry_angle = arm_angle * Rot2::radians(angular_displacement);
                 let deflection_end = Vec3::new(
                     target_ring_radius * entry_angle.cos,
                     target_ring_radius * entry_angle.sin,
                     0.0,
                 );
 
-                let roundabout_tangent = Vec3::new(-entry_angle.sin, entry_angle.cos, 0.0);
+                let clockwise_tangent = Vec3::new(entry_angle.sin, -entry_angle.cos, 0.0);
 
+                // Control points push inwards (-arm_vector) then along the clockwise ring tangent.
                 let p1 = deflection_start - (arm_vector * handle_strength);
-                let p2 = deflection_end + (roundabout_tangent * handle_strength);
+                let p2 = deflection_end - (clockwise_tangent * handle_strength);
 
                 LaneGeometry {
-                    straight_line: [approach_start, deflection_start],
+                    straight_line: [spawn_point_start, deflection_start],
                     deflection_curve: [deflection_start, p1, p2, deflection_end],
                 }
             }
             LaneType::Exit => {
                 // Exit sits on the right side of the arm centerline (-perpendicular).
-                let deflection_end_point =
+                let deflection_end =
                     (arm_vector * deflection_start_distance) - (perpendicular_vector * lane_offset);
-                let exit_end_point = deflection_end_point + (arm_vector * 100.0);
 
-                // Exit connects to the ring slightly before the arm angle (+angular displacement).
-                let exit_angle = arm_angle * Rot2::radians(angular_displacement);
-                let deflection_start_on_ring = Vec3::new(
+                // Exit straight travels from deflection end outwards (+arm_vector).
+                let end_point_end = deflection_end + (arm_vector * 100.0);
+
+                // Exit leaves the ring slightly before reaching the arm angle (-angular_displacement).
+                let exit_angle = arm_angle * Rot2::radians(-angular_displacement);
+                let deflection_start = Vec3::new(
                     target_ring_radius * exit_angle.cos,
                     target_ring_radius * exit_angle.sin,
                     0.0,
                 );
 
-                // Tangent pointing out of the roundabout ring.
-                let exit_tangent = Vec3::new(-exit_angle.sin, exit_angle.cos, 0.0);
+                let clockwise_tangent = Vec3::new(exit_angle.sin, -exit_angle.cos, 0.0);
 
-                let p1 = deflection_start_on_ring + (exit_tangent * handle_strength);
-                let p2 = deflection_end_point - (arm_vector * handle_strength);
+                // Control points leave along ring tangent, then align outwards (+arm_vector).
+                let p1 = deflection_start + (clockwise_tangent * handle_strength);
+                let p2 = deflection_end - (arm_vector * handle_strength);
 
                 LaneGeometry {
-                    // From ring out to exit straight;
-                    straight_line: [deflection_end_point, exit_end_point],
-                    deflection_curve: [deflection_start_on_ring, p1, p2, deflection_end_point],
+                    straight_line: [deflection_end, end_point_end],
+                    deflection_curve: [deflection_start, p1, p2, deflection_end],
                 }
             }
         }
