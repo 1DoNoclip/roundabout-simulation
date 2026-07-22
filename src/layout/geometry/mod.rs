@@ -44,9 +44,9 @@ impl LaneGeometry {
 
         match geometry_type {
             LaneType::Entry => {
-                // Entry sits on the left side of the arm centerline (+perpendicular).
+                // Entry sits on the left side of the arm centerline (-perpendicular).
                 let deflection_start =
-                    (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
+                    (arm_vector * deflection_start_distance) - (perpendicular_vector * lane_offset);
 
                 // Entry starts 100m out and travels in towards deflection_start.
                 let spawn_point_start = deflection_start + (arm_vector * 100.0);
@@ -72,9 +72,9 @@ impl LaneGeometry {
                 }
             }
             LaneType::Exit => {
-                // Exit sits on the right side of the arm centerline (-perpendicular).
+                // Exit sits on the right side of the arm centerline (+perpendicular).
                 let deflection_end =
-                    (arm_vector * deflection_start_distance) - (perpendicular_vector * lane_offset);
+                    (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
 
                 // Exit straight travels from deflection end outwards (+arm_vector).
                 let end_point_end = deflection_end + (arm_vector * 100.0);
