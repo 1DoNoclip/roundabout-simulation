@@ -20,7 +20,7 @@ pub struct IntersectionBlueprint {
     /// The number of lanes for each carriageway (entry and exit roads, including roundabout circle).
     pub number_of_lanes: usize,
     /// Speed limit in ms-1
-    pub speed_limit: SpeedLimit,
+    pub speed_limit: Speed,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
     /// Increases capacity and reduces safety by increasing entry speeds.
     pub deflection_radius: f32,
@@ -30,7 +30,7 @@ impl IntersectionBlueprint {
     pub fn try_new(
         arms: Vec<ArmBlueprint>,
         number_of_lanes: usize,
-        speed_limit: SpeedLimit,
+        speed_limit: Speed,
         deflection_radius: f32,
     ) -> Result<Self, String> {
         let arms_length = arms.len();
@@ -116,7 +116,7 @@ mod tests {
         ];
         let number_of_lanes = 2;
         let speed_limit =
-            SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit");
+            Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit");
         let deflection_radius = 15.0;
 
         IntersectionBlueprint::try_new(arms, number_of_lanes, speed_limit, deflection_radius)

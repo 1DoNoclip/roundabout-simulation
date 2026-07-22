@@ -40,7 +40,7 @@ fn setup_layout(mut commands: Commands) {
             Vec3::new(100.0, 200.0, 0.0),
         ]),
         end_point_id,
-        SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
+        Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
     )).id();
 
     let segment1_curve_points = [
@@ -54,7 +54,7 @@ fn setup_layout(mut commands: Commands) {
         .spawn(Segment::new(
             line,
             Connection::NextSegments { next_segments: vec![segment2_id], requires_yield: false },
-            SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
+            Speed::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
         ))
         .id();
 

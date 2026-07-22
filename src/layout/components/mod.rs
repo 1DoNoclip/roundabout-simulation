@@ -1,22 +1,19 @@
 use crate::*;
 
-pub mod speed_limit;
+pub mod speed;
 
-pub use speed_limit::*;
+pub use speed::*;
 
 pub struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SpeedLimitPlugin)
+        app.add_plugins(SpeedPlugin)
             .register_type::<Connection>()
             .register_type::<SpawnPoint>()
             .register_type::<EndPoint>();
     }
 }
-
-/// The width of a singular lane of roads and roundabout in metres.
-pub const LANE_WIDTH: f32 = 3.5;
 
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
@@ -38,11 +35,11 @@ pub struct Segment {
     pub length: f32,
 
     /// The maximum speed allowed for vehicles to travel at.
-    pub speed_limit: SpeedLimit,
+    pub speed_limit: Speed,
 }
 
 impl Segment {
-    pub fn new<C: SegmentCurve>(curve: C, connection: Connection, speed_limit: SpeedLimit) -> Self {
+    pub fn new<C: SegmentCurve>(curve: C, connection: Connection, speed_limit: Speed) -> Self {
         let length = curve.length();
         Segment {
             evaluator: curve.into_evaluator(),
@@ -52,7 +49,7 @@ impl Segment {
         }
     }
 
-    pub fn to_end<C: SegmentCurve>(curve: C, end_point: Entity, speed_limit: SpeedLimit) -> Self {
+    pub fn to_end<C: SegmentCurve>(curve: C, end_point: Entity, speed_limit: Speed) -> Self {
         let connection = Connection::EndPoint { end_point };
         Segment::new(curve, connection, speed_limit)
     }

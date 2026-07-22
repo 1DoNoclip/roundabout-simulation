@@ -6,6 +6,9 @@ impl Plugin for GeometryPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
+/// The width of a singular lane of roads and roundabout in metres.
+pub const LANE_WIDTH: f32 = 3.5;
+
 pub enum LaneType {
     Entry,
     Exit,
