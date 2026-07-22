@@ -35,8 +35,8 @@ impl LaneGeometry {
             roundabout_radius + (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
         let deflection_start_distance = roundabout_radius + deflection_radius;
 
-        let arm_vector = Vec3::new(arm_angle.cos, 0.0, arm_angle.sin);
-        let perpendicular_vector = Vec3::new(-arm_angle.sin, 0.0, arm_angle.cos);
+        let arm_vector = Vec3::new(arm_angle.cos, arm_angle.sin, 0.0);
+        let perpendicular_vector = Vec3::new(-arm_angle.sin, arm_angle.cos, 0.0);
 
         let angular_displacement = deflection_radius / roundabout_radius;
         let handle_strength = deflection_radius * 0.35;
@@ -51,11 +51,11 @@ impl LaneGeometry {
                 let entry_angle = arm_angle * Rot2::radians(-angular_displacement);
                 let deflection_end = Vec3::new(
                     target_ring_radius * entry_angle.cos,
-                    0.0,
                     target_ring_radius * entry_angle.sin,
+                    0.0,
                 );
 
-                let roundabout_tangent = Vec3::new(-entry_angle.sin, 0.0, entry_angle.cos);
+                let roundabout_tangent = Vec3::new(-entry_angle.sin, entry_angle.cos, 0.0);
 
                 let p1 = deflection_start - (arm_vector * handle_strength);
                 let p2 = deflection_end + (roundabout_tangent * handle_strength);
@@ -75,12 +75,12 @@ impl LaneGeometry {
                 let exit_angle = arm_angle * Rot2::radians(angular_displacement);
                 let deflection_start_on_ring = Vec3::new(
                     target_ring_radius * exit_angle.cos,
-                    0.0,
                     target_ring_radius * exit_angle.sin,
+                    0.0,
                 );
 
                 // Tangent pointing out of the roundabout ring.
-                let exit_tangent = Vec3::new(-exit_angle.sin, 0.0, exit_angle.cos);
+                let exit_tangent = Vec3::new(-exit_angle.sin, exit_angle.cos, 0.0);
 
                 let p1 = deflection_start_on_ring + (exit_tangent * handle_strength);
                 let p2 = deflection_end_point - (arm_vector * handle_strength);
@@ -151,7 +151,7 @@ impl IntoEvaluator for CirculatingSectorGeometry {
     fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
         Box::new(move |time| {
             let angle = self.start_angle + time * (self.end_angle - self.start_angle);
-            Vec3::new(self.radius * angle.cos(), 0.0, self.radius * angle.sin())
+            Vec3::new(self.radius * angle.cos(), self.radius * angle.sin(), 0.0)
         })
     }
 }

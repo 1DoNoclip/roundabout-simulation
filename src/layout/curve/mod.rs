@@ -116,12 +116,12 @@ mod tests {
     #[test]
     fn curved_bezier_length() {
         // Arrange: A 90-degree corner curve mapped via a single 4-point Bézier segment.
-        // Start at (0,0,0), pull towards (10,0,0), pull towards (10,0,10), end at (10,0,10)
+        // Start at (0, 0, 0), pull towards (10, 0, 0), pull towards (10, 10, 0), end at (10, 10, 0).
         let points = [
             Vec3::new(0.0, 0.0, 0.0),
             Vec3::new(10.0, 0.0, 0.0),
-            Vec3::new(10.0, 0.0, 10.0),
-            Vec3::new(10.0, 0.0, 10.0),
+            Vec3::new(10.0, 10.0, 0.0),
+            Vec3::new(10.0, 10.0, 0.0),
         ];
         let curve = CubicBezier::new([points]);
 
