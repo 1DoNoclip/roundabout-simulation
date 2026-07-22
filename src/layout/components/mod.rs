@@ -28,7 +28,7 @@ pub struct Segment {
     pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
 
     /// The next segments / end point that this segment connects to.
-    connection: Connection,
+    pub connection: Connection,
 
     /// While length can be calculated automatically with curve.length()
     /// this is computationally expensive so it is only run once and cached.

@@ -33,7 +33,7 @@ pub fn spawn_vehicles(
     mut commands: Commands,
     time: Res<Time>,
     spawn_points: Query<&SpawnPoint>,
-    segments: Query<Entity, With<Segment>>,
+    segments: Query<&Segment>,
 ) {
     let delta_time = time.delta_secs();
 
@@ -47,7 +47,19 @@ pub fn spawn_vehicles(
         // of spawn rates.
         let frame_probability = spawn_point.max_vehicles_per_second * delta_time;
         if rand::random::<f32>() < frame_probability {
-            let initial_route = vec![segments.single().expect("failed to select single segment")];
+            let segment1_id = spawn_point.segment;
+            let Ok(segment1) = segments.get(segment1_id) else {
+                continue;
+            };
+
+            let segment2_id = match &segment1.connection {
+                Connection::NextSegments { next_segments, .. } => {
+                    next_segments.get(0).expect("expected Segment 2 at index 0")
+                }
+                Connection::EndPoint { .. } => continue,
+            };
+
+            let initial_route = vec![segment1_id, *segment2_id];
 
             commands.spawn((
                 Name::new("Vehicle"),

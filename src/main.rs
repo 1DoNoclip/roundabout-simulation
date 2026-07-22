@@ -34,35 +34,35 @@ fn setup_world(mut commands: Commands) {
 fn setup_layout(mut commands: Commands) {
     let end_point_id = commands.spawn((Name::new("EndPoint"), EndPoint)).id();
 
-    let segment_curve_points = [
+    let segment2_id = commands.spawn(Segment::to_end(
+        LinearSpline::new([
+            Vec3::new(100.0, 100.0, 0.0),
+            Vec3::new(100.0, 200.0, 0.0),
+        ]),
+        end_point_id,
+        SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
+    )).id();
+
+    let segment1_curve_points = [
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(55.228, 0.0, 0.0),
         Vec3::new(100.0, 44.772, 0.0),
         Vec3::new(100.0, 100.0, 0.0),
     ];
-    let line = CubicBezier::new([segment_curve_points]);
-    let segment_id = commands
-        .spawn(Segment::to_end(
+    let line = CubicBezier::new([segment1_curve_points]);
+    let segment1_id = commands
+        .spawn(Segment::new(
             line,
-            end_point_id,
+            Connection::NextSegments { next_segments: vec![segment2_id], requires_yield: false },
             SpeedLimit::from_miles_per_hour(30.0).expect("failed to create SpeedLimit"),
         ))
         .id();
-
-    // // Connects segment to end point.
-    // commands.spawn((
-    //     Name::new("Connection"),
-    //     Connection {
-    //         next_segments: vec![endpoint_id],
-    //         requires_yield: false,
-    //     },
-    // ));
 
     let weights = EntityHashMap::from_iter([(end_point_id, 100)]);
     commands.spawn((
         Name::new("SpawnPoint"),
         SpawnPoint {
-            segment: segment_id,
+            segment: segment1_id,
             max_vehicles_per_second: 0.5,
             destination_weights: weights,
         },

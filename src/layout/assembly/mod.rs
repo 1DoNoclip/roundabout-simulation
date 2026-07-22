@@ -115,7 +115,7 @@ pub fn assemble_roundabout(
             // Weave (Exit N -> Entry N).
             let sector_b_index = arm_index * 2 + 1;
 
-            let sector_a_geometry
+            // let sector_a_geometry
         }
     }
 }
