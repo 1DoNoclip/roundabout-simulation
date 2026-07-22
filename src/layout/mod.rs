@@ -14,7 +14,12 @@ pub struct LayoutPlugin;
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((CurvePlugin, GeometryPlugin));
+        app.add_plugins((
+            AssemblyPlugin,
+            ComponentsPlugin,
+            CurvePlugin,
+            GeometryPlugin,
+        ));
     }
 }
 

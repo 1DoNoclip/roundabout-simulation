@@ -5,36 +5,23 @@ pub struct AssemblyPlugin;
 
 impl Plugin for AssemblyPlugin {
     fn build(&self, app: &mut App) {
-        app
-            // Initial build right after Startup finishes flushing commands.
-            .add_systems(
-                PostStartup,
-                assemble_roundabout
-                    .run_if(resource_exists::<IntersectionBlueprint>)
-                    .run_if(resource_exists::<RoundaboutCircleBlueprint>),
-            )
-            // Dynamic rebuild whenever a resource is edited at runtime.
-            .add_systems(
-                Update,
-                assemble_roundabout
-                    .run_if(resource_exists::<IntersectionBlueprint>)
-                    .run_if(resource_exists::<RoundaboutCircleBlueprint>)
-                    .run_if(
-                        resource_changed::<IntersectionBlueprint>
-                            .or_else(resource_changed::<RoundaboutCircleBlueprint>),
-                    ),
-            );
+        app.add_systems(Update, assemble_roundabout);
     }
 }
 
 pub fn assemble_roundabout(
     mut commands: Commands,
+    existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
     existing_segments: Query<Entity, With<Segment>>,
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
     intersection_blueprint: Res<IntersectionBlueprint>,
     roundabout_circle_blueprint: Res<RoundaboutCircleBlueprint>,
 ) {
+    for vehicle in existing_vehicles {
+        commands.entity(vehicle).despawn();
+    }
+
     // Despawn old segments before assembling new layout.
     for entity in existing_segments
         .iter()

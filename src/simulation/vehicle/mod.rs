@@ -125,8 +125,6 @@ pub fn vehicle_movement(
                     *kinematics.speed = *kinematics.target_speed;
                 }
             }
-        } else {
-            panic!("Could not get Segment associated with a Segment Entity");
         }
     }
 }
