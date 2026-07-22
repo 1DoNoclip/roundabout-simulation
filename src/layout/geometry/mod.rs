@@ -139,3 +139,23 @@ impl CirculatingSectorGeometry {
         }
     }
 }
+
+impl CurveLength for CirculatingSectorGeometry {
+    fn length(&self) -> f32 {
+        let delta_angle = (self.end_angle - self.start_angle).abs();
+        self.radius * delta_angle
+    }
+}
+
+impl IntoEvaluator for CirculatingSectorGeometry {
+    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
+        Box::new(move |time| {
+            let angle = self.start_angle + time * (self.end_angle - self.start_angle);
+            Vec3::new(
+                self.radius * angle.cos(),
+                0.0,
+                self.radius * angle.sin(),
+            )
+        })
+    }
+}
