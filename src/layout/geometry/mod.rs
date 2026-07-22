@@ -40,7 +40,6 @@ impl LaneGeometry {
         let perpendicular_vector = Vec3::new(-arm_angle.sin, arm_angle.cos, 0.0);
 
         let angular_displacement = deflection_radius / roundabout_radius;
-        let handle_strength = deflection_radius * 0.35;
 
         match geometry_type {
             LaneType::Entry => {
@@ -59,11 +58,14 @@ impl LaneGeometry {
                     0.0,
                 );
 
+                let chord_length = (deflection_end - deflection_start).length();
+                let handle_length = chord_length / 3.0;
+
                 let clockwise_tangent = Vec3::new(entry_angle.sin, -entry_angle.cos, 0.0);
 
                 // Control points push inwards (-arm_vector) then along the clockwise ring tangent.
-                let p1 = deflection_start - (arm_vector * handle_strength);
-                let p2 = deflection_end - (clockwise_tangent * handle_strength);
+                let p1 = deflection_start - (arm_vector * handle_length);
+                let p2 = deflection_end - (clockwise_tangent * handle_length);
 
                 LaneGeometry {
                     straight_line: [spawn_point_start, deflection_start],
@@ -86,11 +88,14 @@ impl LaneGeometry {
                     0.0,
                 );
 
+                let chord_length = (deflection_end - deflection_start).length();
+                let handle_length = chord_length / 3.0;
+
                 let clockwise_tangent = Vec3::new(exit_angle.sin, -exit_angle.cos, 0.0);
 
                 // Control points leave along ring tangent, then align outwards (+arm_vector).
-                let p1 = deflection_start + (clockwise_tangent * handle_strength);
-                let p2 = deflection_end - (arm_vector * handle_strength);
+                let p1 = deflection_start + (clockwise_tangent * handle_length);
+                let p2 = deflection_end - (arm_vector * handle_length);
 
                 LaneGeometry {
                     straight_line: [deflection_end, end_point_end],
