@@ -125,7 +125,7 @@ impl CirculatingSectorGeometry {
         let radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
         let angular_displacement = deflection_radius / radius;
 
-        let (start_angle, end_angle) = match sector_type {
+        let (start_angle, raw_end_angle) = match sector_type {
             SectorType::InterArm { next_arm_angle } => {
                 let start = arm_angle.as_radians() + angular_displacement;
                 let end = next_arm_angle.as_radians() - angular_displacement;
@@ -138,21 +138,8 @@ impl CirculatingSectorGeometry {
             }
         };
 
-        // Example using degrees:
-        // start_angle = 90° - 15° = 75°
-        // end_angle = 90° + 15° = 105°
-        // Raw distance between = 30°
-        // offset = 30° rem_euclid 360° = 30° (the clockwise distance)
-        // end_angle = 75° + 30° - 360° = -255°
-        // -255° = 105°, but satisfies the condition that end_angle must be less than start_angle.
-
-        // Finds the angular distance between start and end angle.
-        // Uses `.rem_euclid(TAU)` (Euclidean modulo with 2π) to ensure that offset
-        // is the shortest possible distance between start and end angle.
-        let offset = (end_angle - start_angle).rem_euclid(std::f32::consts::TAU);
-        // By adding the offset, then subtracting a circle, end_angle is guaranteed
-        // to be less than start_angle.
-        let end_angle = start_angle + offset - std::f32::consts::TAU;
+        let clockwise_sweep = (start_angle - raw_end_angle).rem_euclid(std::f32::consts::TAU);
+        let end_angle = start_angle - clockwise_sweep;
 
         Self {
             radius,
