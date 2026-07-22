@@ -70,7 +70,7 @@ impl Default for Segment {
     }
 }
 
-#[derive(Component, Reflect)]
+#[derive(Reflect)]
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
 pub enum Connection {
     /// This connection connects to other segments.
