@@ -62,6 +62,7 @@ pub fn spawn_vehicles(
             };
 
             let initial_route = vec![segment1_id, *segment2_id];
+            let start_position = (segment1.evaluator)(0.0);
 
             // Spawning.
             commands.spawn((
@@ -78,7 +79,7 @@ pub fn spawn_vehicles(
                     progress: 0.0,
                 },
                 // make visible
-                Transform::default(),
+                Transform::from_translation(start_position),
                 Visibility::default(),
             ));
         }
