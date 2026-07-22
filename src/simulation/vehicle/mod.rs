@@ -48,6 +48,7 @@ pub fn spawn_vehicles(
         // of spawn rates.
         let frame_probability = spawn_point.max_vehicles_per_second * delta_time;
         if rand::random::<f32>() < frame_probability {
+            // Pathfinding.
             let segment1_id = spawn_point.segment;
             let Ok(segment1) = segments.get(segment1_id) else {
                 continue;
@@ -62,6 +63,7 @@ pub fn spawn_vehicles(
 
             let initial_route = vec![segment1_id, *segment2_id];
 
+            // Spawning.
             commands.spawn((
                 Name::new("Vehicle"),
                 Kinematics {
@@ -115,14 +117,16 @@ pub fn vehicle_movement(
             } else {
                 transform.translation = segment.sample_clamped(navigator.progress);
             }
-        }
 
-        // Increases speed due to acceleration.
-        if *kinematics.speed < *kinematics.target_speed {
-            *kinematics.speed += kinematics.max_acceleration * delta_seconds;
-            if *kinematics.speed > *kinematics.target_speed {
-                *kinematics.speed = *kinematics.target_speed;
+            // Increases speed due to acceleration.
+            if *kinematics.speed < *kinematics.target_speed {
+                *kinematics.speed += kinematics.max_acceleration * delta_seconds;
+                if *kinematics.speed > *kinematics.target_speed {
+                    *kinematics.speed = *kinematics.target_speed;
+                }
             }
+        } else {
+            panic!("Could not get Segment associated with a Segment Entity");
         }
     }
 }
