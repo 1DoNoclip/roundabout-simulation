@@ -2,54 +2,19 @@ use roundabout_simulation::*;
 
 fn main() {
     App::new()
+        // Core Bevy & third-party plugins.
         .add_plugins((
             DefaultPlugins,
             EguiPlugin::default(),
             WorldInspectorPlugin::default(),
+        ))
+        // Domain plugins.
+        .add_plugins((
+            AppSetupPlugin,
             BlueprintPlugin,
             GraphicsPlugin,
             LayoutPlugin,
             SimulationPlugin,
         ))
-        .add_systems(Startup, (setup_world, setup_roundabout_layout))
         .run();
-}
-
-fn setup_world(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        Projection::Orthographic(OrthographicProjection {
-            // Lower scale = zoom in.
-            scale: 0.5,
-            ..OrthographicProjection::default_2d()
-        }),
-    ));
-    commands.insert_resource(Statistics::default());
-}
-
-fn setup_roundabout_layout(mut commands: Commands) {
-    // Define the overall intersection blueprint parameters.
-    commands.insert_resource(IntersectionBlueprint {
-        number_of_lanes: 1,
-        deflection_radius: 15.0,
-        speed_limit: Speed::from_miles_per_hour(30.0).expect("failed to create Speed"),
-        arms: vec![
-            // 4-arm roundabout layout.
-            ArmBlueprint {
-                angle: Rot2::degrees(0.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(120.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(225.0),
-            },
-            // ArmBlueprint {
-            //     angle: Rot2::degrees(270.0),
-            // },
-        ],
-    });
-
-    // Define the central roundabout dimensions.
-    commands.insert_resource(RoundaboutCircleBlueprint { radius: 25.0 });
 }
