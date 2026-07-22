@@ -21,7 +21,6 @@ fn setup_world(mut commands: Commands) {
 }
 
 fn setup_roundabout_layout(mut commands: Commands) {
-    info!("---> Executing setup_roundabout_layout!");
     // Define the overall intersection blueprint parameters.
     commands.insert_resource(IntersectionBlueprint {
         number_of_lanes: 2,

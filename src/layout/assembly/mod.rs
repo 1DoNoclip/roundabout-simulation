@@ -5,7 +5,13 @@ pub struct AssemblyPlugin;
 
 impl Plugin for AssemblyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, assemble_roundabout);
+        app.add_systems(
+            Update,
+            assemble_roundabout.run_if(
+                resource_changed::<IntersectionBlueprint>
+                    .or_else(resource_changed::<RoundaboutCircleBlueprint>),
+            ),
+        );
     }
 }
 
@@ -18,6 +24,8 @@ pub fn assemble_roundabout(
     intersection_blueprint: Res<IntersectionBlueprint>,
     roundabout_circle_blueprint: Res<RoundaboutCircleBlueprint>,
 ) {
+    info!("Assembling roundabout from blueprints");
+
     for vehicle in existing_vehicles {
         commands.entity(vehicle).despawn();
     }
