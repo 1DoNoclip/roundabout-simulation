@@ -15,38 +15,66 @@ pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Naviga
         gizmos.circle_2d(
             transform.translation.truncate(),
             1.0,
-            Color::linear_rgb(255.0, 0.0, 0.0),
+            Color::linear_rgb(255.0, 100.0, 0.0),
         );
     }
 }
 
 pub fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
-    const SAMPLE_STEPS: usize = 50;
+    const NUMBER_OF_SAMPLES: usize = 100;
 
-    for segment in &segments {
-        let color = match segment.connection {
-            Connection::NextSegments {
-                requires_yield: true,
-                ..
-            } => Color::srgb(1.0, 0.2, 0.2), // Red for yield.
-            Connection::NextSegments {
-                requires_yield: false,
-                ..
-            } => Color::srgb(0.2, 0.8, 1.0), // Blue for standard continuation.
-            Connection::EndPoint { .. } => Color::srgb(0.2, 1.0, 0.2), // Green for exit.
-        };
+    for segment in segments {
+        let gizmo_colors = GizmoColors::get_colors(&segment.connection);
 
-        // Draw the segment's path
         let mut previous_point = (segment.evaluator)(0.0);
-        for step in 1..=SAMPLE_STEPS {
-            let time = step as f32 / SAMPLE_STEPS as f32;
+        for step in 1..=NUMBER_OF_SAMPLES {
+            let time = step as f32 / NUMBER_OF_SAMPLES as f32;
             let current_point = (segment.evaluator)(time);
-
-            gizmos.line(previous_point, current_point, color);
+            gizmos.line(previous_point, current_point, gizmo_colors.segment);
             previous_point = current_point;
         }
 
         // Small sphere marker at the segment end point.
-        gizmos.sphere(Isometry3d::from_translation(previous_point), 0.5, color);
+        gizmos.sphere(Isometry3d::from_translation(previous_point), 0.75, gizmo_colors.point);
+    }
+}
+
+struct GizmoColors {
+    /// The color of the segment.
+    segment: Color,
+    /// The color of the end of the segment (a point placed at the end).
+    point: Color,
+}
+
+impl GizmoColors {
+    fn srgb_u8(segment: [u8; 3], point: [u8; 3]) -> Self {
+        GizmoColors {
+            segment: Color::srgb_u8(segment[0], segment[1], segment[2]),
+            point: Color::srgb_u8(point[0], point[1], point[2]),
+        }
+    }
+
+    /// Uses a segment's connection type to determine the color of the segment and the end of the segment.
+    fn get_colors(connection: &Connection) -> GizmoColors {
+        match connection {
+            Connection::NextSegments {
+                requires_yield: true,
+                ..
+            } => {
+                // Yellow / dark yellow.
+                GizmoColors::srgb_u8([200, 200, 46], [149, 149, 34])
+            }
+            Connection::NextSegments {
+                requires_yield: false,
+                ..
+            } => {
+                // White / grey.
+                GizmoColors::srgb_u8([203, 203, 203], [142, 142, 142])
+            }
+            Connection::EndPoint { .. } => {
+                // red / dark.
+                GizmoColors::srgb_u8([200, 20, 32], [161, 16, 25])
+            }
+        }
     }
 }
