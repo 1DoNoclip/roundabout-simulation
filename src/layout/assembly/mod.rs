@@ -46,6 +46,7 @@ pub fn assemble_roundabout(
         commands.entity(entity).despawn();
     }
 
+    // The order of with the intra and inter arm sectors are in circulating_sectors
     const INTRA_ARM_SECTOR_INDEX: usize = 0;
     const INTER_ARM_SECTOR_INDEX: usize = 1;
 
@@ -55,8 +56,6 @@ pub fn assemble_roundabout(
     let speed_limit = intersection_blueprint.speed_limit;
 
     let mut sorted_arms = intersection_blueprint.arms.clone();
-    // sorted_arms.sort_by_key(|arm| FloatOrd(arm.angle.as_radians()));
-    // sorted_arms.sort_by(|a, b| FloatOrd(b.angle.as_radians()).cmp(&FloatOrd(a.angle.as_radians())));
     sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
     let sorted_arms = sorted_arms;
     let number_of_arms = sorted_arms.len();
@@ -163,7 +162,7 @@ pub fn assemble_roundabout(
                 speed_limit,
             ));
 
-            let inter_arm_sector_geometry = CirculatingSectorGeometry::generate(
+            let inter_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::InterArm { next_arm_angle },
                 arm.angle,
                 lane_index,
@@ -180,7 +179,7 @@ pub fn assemble_roundabout(
                 speed_limit,
             ));
 
-            let intra_arm_sector_geometry = CirculatingSectorGeometry::generate(
+            let intra_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::IntraArm,
                 arm.angle,
                 lane_index,

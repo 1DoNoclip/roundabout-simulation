@@ -14,11 +14,12 @@ pub enum LaneType {
     Exit,
 }
 
-/// Defines the geometry of a singular approach lane.
+/// Defines the geometry of a singular lane that approaches or exits the roundabout.
+/// At least one entry and one exit `LaneGeometry` is required to make up an arm.
 pub struct LaneGeometry {
-    /// Straight 100m line road as [start, end].
+    /// Straight 100m line road as `[start, end]`.
     pub straight_line: [Vec3; 2],
-    /// 4-point Cubic Bezier curve control points as [start, ..., end].
+    /// 4-point `CubicBezier` curve control points as `[start, ..., end]`.
     pub deflection_curve: [Vec3; 4],
 }
 
@@ -106,6 +107,7 @@ impl LaneGeometry {
     }
 }
 
+/// Decides where on the circle the sector lies.
 pub enum SectorType {
     /// Between Arm N's exit and Arm N's entry.
     InterArm { next_arm_angle: Rot2 },
@@ -113,13 +115,17 @@ pub enum SectorType {
     IntraArm,
 }
 
-pub struct CirculatingSectorGeometry {
+/// Defines a singular sector on the circulating part of the roundabout.
+pub struct SectorGeometry {
+    /// The radius of the sector.
     radius: f32,
+    /// The angle where the sector begins.
     start_angle: f32,
+    /// The angle where the sector ends.
     end_angle: f32,
 }
 
-impl CirculatingSectorGeometry {
+impl SectorGeometry {
     pub fn generate(
         sector_type: SectorType,
         arm_angle: Rot2,
@@ -127,8 +133,9 @@ impl CirculatingSectorGeometry {
         roundabout_radius: f32,
         deflection_radius: f32,
     ) -> Self {
+        // The radius of this circulating sector.
         let radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
-        let angular_displacement = deflection_radius / radius;
+        let angular_displacement = deflection_radius / roundabout_radius;
 
         let (start_angle, raw_end_angle) = match sector_type {
             SectorType::InterArm { next_arm_angle } => {
@@ -155,14 +162,14 @@ impl CirculatingSectorGeometry {
     }
 }
 
-impl CurveLength for CirculatingSectorGeometry {
+impl CurveLength for SectorGeometry {
     #[inline]
     fn length(&self) -> f32 {
         self.radius * (self.start_angle - self.end_angle)
     }
 }
 
-impl IntoEvaluator for CirculatingSectorGeometry {
+impl IntoEvaluator for SectorGeometry {
     fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
         Box::new(move |time| {
             let angle = self.start_angle + time * (self.end_angle - self.start_angle);
