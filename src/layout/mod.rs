@@ -19,7 +19,21 @@ impl Plugin for LayoutPlugin {
             ComponentsPlugin,
             CurvePlugin,
             GeometryPlugin,
-        ));
+        ))
+        .add_systems(
+            Update,
+            // Only runs if the blueprint resources have changed since last frame.
+            assemble_roundabout.run_if(
+                // Uses `.or_eager` instead of `.or_else` so both change ticks are checked
+                // and cleared on frame 1. Lazy evaluation (`.or_else`) short-circuits,
+                // leaving the second blueprint's tick 'unread' and triggering a redundant
+                // second assembly run on frame 2.
+                // The simulation should be able to handle redundant roundabout rebuilds without issues,
+                // but redundant rebuilds do result in unneccessary work to be carried out.
+                resource_changed::<IntersectionBlueprint>
+                    .or_eager(resource_changed::<RoundaboutCircleBlueprint>),
+            ),
+        );
     }
 }
 

@@ -39,7 +39,7 @@ pub fn spawn_vehicles(
     let delta_time = time.delta_secs();
 
     for spawn_point in spawn_points {
-        // Note: Replace spawning probability with Poisson Process.
+        // Temporary: Replace spawning probability with Poisson Process.
         // The current implementation has an issue where if there is a lag spike,
         // the spawn probability will exceed 100%, however only 1 vehicle is spawned.
         // This means the extra value above 100% is lost, resulting in incorrect spawn rates.
