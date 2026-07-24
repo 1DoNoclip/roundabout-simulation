@@ -41,7 +41,8 @@ pub fn assemble_roundabout(
     // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
     let number_of_arms = arms.len();
 
-    let segment_entities = SegmentEntities::new(&mut commands, number_of_lanes, number_of_arms);
+    let roundabout_topology =
+        RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
 
     for (arm_index, arm) in arms.iter().enumerate() {
         let next_arm_index = if arm_index == 0 {
@@ -59,7 +60,8 @@ pub fn assemble_roundabout(
         };
 
         for lane_index in 0..number_of_lanes {
-            let entities = segment_entities.get_entities_for(arm_index, lane_index, next_arm_index);
+            let entities =
+                roundabout_topology.get_entities_for(arm_index, lane_index, next_arm_index);
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
@@ -190,20 +192,20 @@ fn clear_existing_layout(
 }
 
 /// Stores each segment entity at [arm_index][lane_index].
-type SegmentEntity = Vec<Vec<Entity>>;
+type SegmentMatrix = Vec<Vec<Entity>>;
 
-/// Different Segment entities for different parts of the roundabout.
-struct SegmentEntities {
-    entries: SegmentEntity,
-    entry_deflections: SegmentEntity,
-    exits: SegmentEntity,
-    exit_deflections: SegmentEntity,
+/// Different Segment matrices for different parts of the roundabout.
+struct RoundaboutTopology {
+    entries: SegmentMatrix,
+    entry_deflections: SegmentMatrix,
+    exits: SegmentMatrix,
+    exit_deflections: SegmentMatrix,
     /// Circulating sectors holds a Vec for intra and inter arms.
     /// Stored as [arm_index][lane_index][intra or inter arm]
     circulating_sectors: Vec<Vec<Vec<Entity>>>,
 }
 
-impl SegmentEntities {
+impl RoundaboutTopology {
     fn new(commands: &mut Commands, number_of_lanes: usize, number_of_arms: usize) -> Self {
         // Create vectors.
         let mut entries = vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
@@ -229,7 +231,7 @@ impl SegmentEntities {
             }
         }
 
-        SegmentEntities {
+        RoundaboutTopology {
             entries,
             entry_deflections,
             exits,
