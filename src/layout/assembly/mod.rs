@@ -59,17 +59,7 @@ pub fn assemble_roundabout(
         };
 
         for lane_index in 0..number_of_lanes {
-            let entry_line_id = segment_entities.entries[arm_index][lane_index];
-            let entry_deflection_id = segment_entities.entry_deflections[arm_index][lane_index];
-            let exit_line_id = segment_entities.exits[arm_index][lane_index];
-            let exit_deflection_id = segment_entities.exit_deflections[next_arm_index][lane_index];
-
-            let intra_arm_sector_id =
-                segment_entities.circulating_sectors[arm_index][lane_index][INTRA_ARM_SECTOR_INDEX];
-            let inter_arm_sector_id =
-                segment_entities.circulating_sectors[arm_index][lane_index][INTER_ARM_SECTOR_INDEX];
-            let next_intra_arm_id = segment_entities.circulating_sectors[next_arm_index]
-                [lane_index][INTRA_ARM_SECTOR_INDEX];
+            let entities = segment_entities.get_entities_for(arm_index, lane_index, next_arm_index);
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
@@ -79,26 +69,28 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands.entity(entry_deflection_id).insert(Segment::new(
-                CubicBezier::new([entry_geometry.deflection_curve]),
-                Connection::NextSegments {
-                    next_segments: vec![intra_arm_sector_id],
-                    requires_yield: true,
-                },
-                speed_limit,
-            ));
+            commands
+                .entity(entities.entry_deflection)
+                .insert(Segment::new(
+                    CubicBezier::new([entry_geometry.deflection_curve]),
+                    Connection::NextSegments {
+                        next_segments: vec![entities.intra_arm_sector],
+                        requires_yield: true,
+                    },
+                    speed_limit,
+                ));
 
-            commands.entity(entry_line_id).insert(Segment::new(
+            commands.entity(entities.entry_line).insert(Segment::new(
                 LinearSpline::new(entry_geometry.straight_line),
                 Connection::NextSegments {
-                    next_segments: vec![entry_deflection_id],
+                    next_segments: vec![entities.entry_deflection],
                     requires_yield: false,
                 },
                 speed_limit,
             ));
 
             commands.spawn(SpawnPoint {
-                segment: entry_line_id,
+                segment: entities.entry_line,
                 max_vehicles_per_second: 0.5,
                 destination_weights: EntityHashMap::default(),
             });
@@ -113,7 +105,7 @@ pub fn assemble_roundabout(
 
             let end_point_id = commands.spawn(EndPoint).id();
 
-            commands.entity(exit_line_id).insert(Segment::new(
+            commands.entity(entities.exit_line).insert(Segment::new(
                 LinearSpline::new(exit_geometry.straight_line),
                 Connection::EndPoint {
                     end_point: end_point_id,
@@ -121,14 +113,16 @@ pub fn assemble_roundabout(
                 speed_limit,
             ));
 
-            commands.entity(exit_deflection_id).insert(Segment::new(
-                CubicBezier::new([exit_geometry.deflection_curve]),
-                Connection::NextSegments {
-                    next_segments: vec![exit_line_id],
-                    requires_yield: false,
-                },
-                speed_limit,
-            ));
+            commands
+                .entity(entities.exit_deflection)
+                .insert(Segment::new(
+                    CubicBezier::new([exit_geometry.deflection_curve]),
+                    Connection::NextSegments {
+                        next_segments: vec![entities.exit_line],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ));
 
             let inter_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::InterArm { next_arm_angle },
@@ -138,14 +132,19 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands.entity(inter_arm_sector_id).insert(Segment::new(
-                inter_arm_sector_geometry,
-                Connection::NextSegments {
-                    next_segments: vec![exit_deflection_id, next_intra_arm_id],
-                    requires_yield: false,
-                },
-                speed_limit,
-            ));
+            commands
+                .entity(entities.inter_arm_sector)
+                .insert(Segment::new(
+                    inter_arm_sector_geometry,
+                    Connection::NextSegments {
+                        next_segments: vec![
+                            entities.exit_deflection,
+                            entities.next_intra_arm_sector,
+                        ],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ));
 
             let intra_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::IntraArm,
@@ -155,14 +154,16 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands.entity(intra_arm_sector_id).insert(Segment::new(
-                intra_arm_sector_geometry,
-                Connection::NextSegments {
-                    next_segments: vec![inter_arm_sector_id],
-                    requires_yield: false,
-                },
-                speed_limit,
-            ));
+            commands
+                .entity(entities.intra_arm_sector)
+                .insert(Segment::new(
+                    intra_arm_sector_geometry,
+                    Connection::NextSegments {
+                        next_segments: vec![entities.inter_arm_sector],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ));
         }
     }
 }
@@ -236,4 +237,35 @@ impl SegmentEntities {
             circulating_sectors,
         }
     }
+
+    /// Get the entities for the current iteration of assembly.
+    fn get_entities_for(
+        &self,
+        arm_index: usize,
+        lane_index: usize,
+        next_arm_index: usize,
+    ) -> CurrentIterationEntities {
+        CurrentIterationEntities {
+            entry_line: self.entries[arm_index][lane_index],
+            entry_deflection: self.entry_deflections[arm_index][lane_index],
+            exit_line: self.exits[arm_index][lane_index],
+            exit_deflection: self.exit_deflections[next_arm_index][lane_index],
+            intra_arm_sector: self.circulating_sectors[arm_index][lane_index]
+                [INTRA_ARM_SECTOR_INDEX],
+            inter_arm_sector: self.circulating_sectors[arm_index][lane_index]
+                [INTER_ARM_SECTOR_INDEX],
+            next_intra_arm_sector: self.circulating_sectors[next_arm_index][lane_index]
+                [INTRA_ARM_SECTOR_INDEX],
+        }
+    }
+}
+
+struct CurrentIterationEntities {
+    entry_line: Entity,
+    entry_deflection: Entity,
+    exit_line: Entity,
+    exit_deflection: Entity,
+    intra_arm_sector: Entity,
+    inter_arm_sector: Entity,
+    next_intra_arm_sector: Entity,
 }
