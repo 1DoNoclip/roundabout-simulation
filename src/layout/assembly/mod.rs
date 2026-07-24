@@ -77,6 +77,12 @@ pub fn assemble_roundabout(
 
         let next_arm_angle = sorted_arms[next_arm_index].angle;
 
+        // If the arm has a speed limit override, use that instead of the intersection default speed limit.
+        let speed_limit = match arm.speed_limit {
+            Some(speed_limit) => speed_limit,
+            None => speed_limit
+        };
+
         for lane_index in 0..number_of_lanes {
             let entry_deflection_id = arm_entry_deflections[arm_index][lane_index];
             let entry_line_id = arm_entries[arm_index][lane_index];
