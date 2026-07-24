@@ -65,11 +65,11 @@ pub fn assemble_roundabout(
             let exit_deflection_id = segment_entities.exit_deflections[next_arm_index][lane_index];
 
             let intra_arm_sector_id =
-                segment_entities.circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index];
+                segment_entities.circulating_sectors[arm_index][lane_index][INTRA_ARM_SECTOR_INDEX];
             let inter_arm_sector_id =
-                segment_entities.circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index];
+                segment_entities.circulating_sectors[arm_index][lane_index][INTER_ARM_SECTOR_INDEX];
             let next_intra_arm_id = segment_entities.circulating_sectors[next_arm_index]
-                [INTRA_ARM_SECTOR_INDEX][lane_index];
+                [lane_index][INTRA_ARM_SECTOR_INDEX];
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
@@ -212,7 +212,7 @@ impl SegmentEntities {
         let mut exit_deflections =
             vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
         let mut circulating_sectors =
-            vec![vec![vec![commands.spawn_empty().id(); number_of_lanes]; 2]; number_of_arms];
+            vec![vec![vec![commands.spawn_empty().id(); 2]; number_of_lanes]; number_of_arms];
 
         // Populate vectors with entities.
         for arm_index in 0..number_of_arms {
@@ -221,9 +221,9 @@ impl SegmentEntities {
                 entry_deflections[arm_index][lane_index] = commands.spawn_empty().id();
                 exits[arm_index][lane_index] = commands.spawn_empty().id();
                 exit_deflections[arm_index][lane_index] = commands.spawn_empty().id();
-                circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index] =
+                circulating_sectors[arm_index][lane_index][INTRA_ARM_SECTOR_INDEX] =
                     commands.spawn_empty().id();
-                circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index] =
+                circulating_sectors[arm_index][lane_index][INTER_ARM_SECTOR_INDEX] =
                     commands.spawn_empty().id();
             }
         }
