@@ -87,13 +87,21 @@ pub struct ArmBlueprint {
     /// Maximum speed for vehicles to travel at.
     /// Overrides the global `IntersectionBlueprint` resource's speed limit for this arm.
     pub speed_limit: Option<Speed>,
+    /// The maximum vehicles spawned per second. The actual spawn rate may
+    /// be less due to lack of space in the network to spawn another vehicle.
+    pub max_vehicles_per_second: f32,
 }
 
 impl ArmBlueprint {
-    pub fn from_degrees(degrees: f32, speed_limit: Option<Speed>) -> Self {
+    pub fn from_degrees(
+        degrees: f32,
+        speed_limit: Option<Speed>,
+        max_vehicles_per_second: f32,
+    ) -> Self {
         ArmBlueprint {
             angle: Rot2::degrees(degrees),
             speed_limit,
+            max_vehicles_per_second,
         }
     }
 }
@@ -104,7 +112,7 @@ mod tests {
 
     #[test]
     fn new_arm_blueprint() {
-        ArmBlueprint::from_degrees(90.0, None);
+        ArmBlueprint::from_degrees(90.0, None, 0.5);
     }
 
     #[test]
@@ -115,9 +123,9 @@ mod tests {
     #[test]
     fn try_new_intersection_blueprint() {
         let arms = vec![
-            ArmBlueprint::from_degrees(0.0, None),
-            ArmBlueprint::from_degrees(90.0, None),
-            ArmBlueprint::from_degrees(180.0, None),
+            ArmBlueprint::from_degrees(0.0, None, 0.5),
+            ArmBlueprint::from_degrees(90.0, None, 0.5),
+            ArmBlueprint::from_degrees(180.0, None, 0.5),
         ];
         let number_of_lanes = 2;
         let speed_limit = Speed::from_miles_per_hour(30.0).expect("failed to create");

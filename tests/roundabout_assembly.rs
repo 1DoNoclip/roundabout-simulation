@@ -7,9 +7,9 @@ fn test_assemble_roundabout_spawns_correct_topology() {
     app.insert_resource(
         IntersectionBlueprint::try_new(
             vec![
-                ArmBlueprint::from_degrees(0.0, None),
-                ArmBlueprint::from_degrees(120.0, None),
-                ArmBlueprint::from_degrees(240.0, None),
+                ArmBlueprint::from_degrees(0.0, None, 0.5),
+                ArmBlueprint::from_degrees(120.0, None, 0.5),
+                ArmBlueprint::from_degrees(240.0, None, 0.5),
             ],
             2,
             Speed::from_miles_per_hour(30.0).expect("failed to create"),

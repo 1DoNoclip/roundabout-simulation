@@ -21,7 +21,7 @@ pub fn assemble_roundabout(
     intersection_blueprint: Res<IntersectionBlueprint>,
     roundabout_circle_blueprint: Res<RoundaboutCircleBlueprint>,
 ) {
-    info!("Assembling roundabout from blueprints");
+    info!("Assembling roundabout from blueprints.");
 
     clear_existing_layout(
         &mut commands,
@@ -93,7 +93,7 @@ pub fn assemble_roundabout(
 
             commands.spawn(SpawnPoint {
                 segment: entities.entry_line,
-                max_vehicles_per_second: 0.5,
+                max_vehicles_per_second: arm.max_vehicles_per_second,
                 destination_weights: EntityHashMap::default(),
             });
 

@@ -49,10 +49,12 @@ fn setup_roundabout_layout(mut commands: Commands) {
     commands.insert_resource(
         IntersectionBlueprint::try_new(
             vec![
-                ArmBlueprint::from_degrees(45.0, None),
-                ArmBlueprint::from_degrees(-45.0, None),
-                ArmBlueprint::from_degrees(-135.0, None),
-                ArmBlueprint::from_degrees(-225.0, None),
+                ArmBlueprint::from_degrees(60.0, None, 0.25),
+                ArmBlueprint::from_degrees(0.0, None, 0.5),
+                ArmBlueprint::from_degrees(-60.0, None, 1.0),
+                ArmBlueprint::from_degrees(-120.0, None, 2.0),
+                ArmBlueprint::from_degrees(-180.0, None, 4.0),
+                ArmBlueprint::from_degrees(-240.0, None, 16.0),
             ],
             2,
             Speed::from_miles_per_hour(30.0).expect("failed to create"),
