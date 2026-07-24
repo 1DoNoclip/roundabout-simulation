@@ -4,8 +4,7 @@ use bevy::math::FloatOrd;
 pub struct AssemblyPlugin;
 
 impl Plugin for AssemblyPlugin {
-    fn build(&self, _app: &mut App) {
-    }
+    fn build(&self, _app: &mut App) {}
 }
 
 /// Assembles the roundabout using the blueprint resources.

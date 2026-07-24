@@ -102,8 +102,8 @@ pub fn spawn_vehicles(
             commands.spawn((
                 Name::new("Vehicle"),
                 Kinematics {
-                    speed: Speed::from_miles_per_hour(5.0).expect("failed to create Speed"),
-                    target_speed: Speed::from_miles_per_hour(60.0).expect("failed to create Speed"),
+                    speed: Speed::from_miles_per_hour(5.0).expect("failed to create"),
+                    target_speed: Speed::from_miles_per_hour(60.0).expect("failed to create"),
                     max_acceleration: 3.0,
                     max_deceleration: 8.0,
                 },

@@ -4,23 +4,26 @@ use roundabout_simulation::*;
 fn test_assemble_roundabout_spawns_correct_topology() {
     let mut app = App::new();
 
-    app.insert_resource(IntersectionBlueprint {
-        number_of_lanes: 2,
-        deflection_radius: 15.0,
-        speed_limit: Speed::from_miles_per_hour(30.0).expect("failed to create Speed"),
-        arms: vec![
-            ArmBlueprint {
-                angle: Rot2::degrees(0.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(120.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(240.0),
-            },
-        ],
-    });
-    app.insert_resource(RoundaboutCircleBlueprint { radius: 20.0 });
+    app.insert_resource(
+        IntersectionBlueprint::try_new(
+            vec![
+                ArmBlueprint {
+                    angle: Rot2::degrees(0.0),
+                },
+                ArmBlueprint {
+                    angle: Rot2::degrees(120.0),
+                },
+                ArmBlueprint {
+                    angle: Rot2::degrees(240.0),
+                },
+            ],
+            2,
+            Speed::from_miles_per_hour(30.0).expect("failed to create"),
+            15.0,
+        )
+        .expect("failed to create"),
+    );
+    app.insert_resource(RoundaboutCircleBlueprint::try_new(20.0).expect("failed to create"));
 
     app.add_systems(Update, assemble_roundabout);
 

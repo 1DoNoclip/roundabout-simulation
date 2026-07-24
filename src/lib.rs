@@ -46,25 +46,28 @@ fn setup_world(mut commands: Commands) {
 }
 
 fn setup_roundabout_layout(mut commands: Commands) {
-    commands.insert_resource(IntersectionBlueprint {
-        number_of_lanes: 2,
-        deflection_radius: 12.5,
-        speed_limit: Speed::from_miles_per_hour(30.0).expect("failed to create Speed"),
-        arms: vec![
-            ArmBlueprint {
-                angle: Rot2::degrees(45.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(-45.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(-135.0),
-            },
-            ArmBlueprint {
-                angle: Rot2::degrees(-225.0),
-            },
-        ],
-    });
+    commands.insert_resource(
+        IntersectionBlueprint::try_new(
+            vec![
+                ArmBlueprint {
+                    angle: Rot2::degrees(45.0),
+                },
+                ArmBlueprint {
+                    angle: Rot2::degrees(-45.0),
+                },
+                ArmBlueprint {
+                    angle: Rot2::degrees(-135.0),
+                },
+                ArmBlueprint {
+                    angle: Rot2::degrees(-225.0),
+                },
+            ],
+            2,
+            Speed::from_miles_per_hour(30.0).expect("failed to create"),
+            12.5,
+        )
+        .expect("failed to create"),
+    );
 
-    commands.insert_resource(RoundaboutCircleBlueprint { radius: 25.0 });
+    commands.insert_resource(RoundaboutCircleBlueprint::try_new(25.0).expect("failed to create"));
 }
