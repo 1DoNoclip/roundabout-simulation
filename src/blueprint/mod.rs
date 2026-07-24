@@ -20,7 +20,9 @@ pub struct IntersectionBlueprint {
     /// A number 1 -> 3.
     /// The number of lanes for each carriageway (entry and exit roads, including roundabout circle).
     pub number_of_lanes: usize,
-    /// Speed limit in ms-1
+    /// Maximum speed for vehicles to travel at.
+    /// Default speed limit of the roundabout and arms in ms-1.
+    /// Can be overridden on individual arms.
     pub speed_limit: Speed,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
     /// Increases capacity and reduces safety by increasing entry speeds.
@@ -82,12 +84,16 @@ impl RoundaboutCircleBlueprint {
 pub struct ArmBlueprint {
     /// In degrees / °.
     pub angle: Rot2,
+    /// Maximum speed for vehicles to travel at.
+    /// Overrides the global `IntersectionBlueprint` resource's speed limit for this arm.
+    pub speed_limit: Option<Speed>,
 }
 
 impl ArmBlueprint {
-    pub fn from_degrees(degrees: f32) -> Self {
+    pub fn from_degrees(degrees: f32, speed_limit: Option<Speed>) -> Self {
         ArmBlueprint {
             angle: Rot2::degrees(degrees),
+            speed_limit,
         }
     }
 }
@@ -98,9 +104,7 @@ mod tests {
 
     #[test]
     fn new_arm_blueprint() {
-        ArmBlueprint {
-            angle: Rot2::degrees(90.0),
-        };
+        ArmBlueprint::from_degrees(90.0, None);
     }
 
     #[test]
@@ -111,9 +115,9 @@ mod tests {
     #[test]
     fn try_new_intersection_blueprint() {
         let arms = vec![
-            ArmBlueprint::from_degrees(0.0),
-            ArmBlueprint::from_degrees(90.0),
-            ArmBlueprint::from_degrees(180.0),
+            ArmBlueprint::from_degrees(0.0, None),
+            ArmBlueprint::from_degrees(90.0, None),
+            ArmBlueprint::from_degrees(180.0, None),
         ];
         let number_of_lanes = 2;
         let speed_limit = Speed::from_miles_per_hour(30.0).expect("failed to create");
