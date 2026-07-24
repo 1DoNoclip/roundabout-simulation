@@ -35,7 +35,11 @@ pub fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
         }
 
         // Small sphere marker at the segment end point.
-        gizmos.sphere(Isometry3d::from_translation(previous_point), 0.75, gizmo_colors.point);
+        gizmos.sphere(
+            Isometry3d::from_translation(previous_point),
+            0.75,
+            gizmo_colors.point,
+        );
     }
 }
 

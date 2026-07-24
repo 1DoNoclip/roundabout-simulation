@@ -22,6 +22,8 @@ impl Plugin for AssemblyPlugin {
     }
 }
 
+/// Assembles the roundabout using the blueprint resources.
+/// Removes the existing layout and vehicles before calculating and spawning the new layout.
 pub fn assemble_roundabout(
     mut commands: Commands,
     existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,

@@ -37,10 +37,10 @@ impl LaneGeometry {
         let lane_offset = (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
         let deflection_start_distance = roundabout_radius + deflection_radius;
 
+        let angular_displacement = deflection_radius / roundabout_radius;
+
         let arm_vector = Vec3::new(arm_angle.cos, arm_angle.sin, 0.0);
         let perpendicular_vector = Vec3::new(-arm_angle.sin, arm_angle.cos, 0.0);
-
-        let angular_displacement = deflection_radius / roundabout_radius;
 
         match geometry_type {
             LaneType::Entry => {
