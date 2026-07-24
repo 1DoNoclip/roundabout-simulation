@@ -1,5 +1,4 @@
 use crate::*;
-use bevy::math::FloatOrd;
 
 pub struct AssemblyPlugin;
 
@@ -20,18 +19,13 @@ pub fn assemble_roundabout(
 ) {
     info!("Assembling roundabout from blueprints");
 
-    for vehicle in existing_vehicles {
-        commands.entity(vehicle).despawn();
-    }
-
-    // Despawn old segments before assembling new layout.
-    for entity in existing_segments
-        .iter()
-        .chain(existing_spawns.iter())
-        .chain(existing_ends.iter())
-    {
-        commands.entity(entity).despawn();
-    }
+    clear_existing_layout(
+        &mut commands,
+        existing_vehicles,
+        existing_segments,
+        existing_spawns,
+        existing_ends,
+    );
 
     // The order of with the intra and inter arm sectors are in circulating_sectors
     const INTRA_ARM_SECTOR_INDEX: usize = 0;
@@ -42,10 +36,10 @@ pub fn assemble_roundabout(
     let deflection_radius = intersection_blueprint.deflection_radius;
     let speed_limit = intersection_blueprint.speed_limit;
 
-    let mut sorted_arms = intersection_blueprint.arms.clone();
-    sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
-    let sorted_arms = sorted_arms;
-    let number_of_arms = sorted_arms.len();
+    let arms = &intersection_blueprint.arms;
+    // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
+    // let sorted_arms = sorted_arms;
+    let number_of_arms = arms.len();
 
     let mut arm_entries = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
     let mut arm_entry_deflections =
@@ -68,19 +62,19 @@ pub fn assemble_roundabout(
         }
     }
 
-    for (arm_index, arm) in sorted_arms.iter().enumerate() {
+    for (arm_index, arm) in arms.iter().enumerate() {
         let next_arm_index = if arm_index == 0 {
             number_of_arms - 1
         } else {
             arm_index - 1
         };
 
-        let next_arm_angle = sorted_arms[next_arm_index].angle;
+        let next_arm_angle = arms[next_arm_index].angle;
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
         let speed_limit = match arm.speed_limit {
             Some(speed_limit) => speed_limit,
-            None => speed_limit
+            None => speed_limit,
         };
 
         for lane_index in 0..number_of_lanes {
@@ -189,5 +183,26 @@ pub fn assemble_roundabout(
                 speed_limit,
             ));
         }
+    }
+}
+
+fn clear_existing_layout(
+    commands: &mut Commands,
+    existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
+    existing_segments: Query<Entity, With<Segment>>,
+    existing_spawns: Query<Entity, With<SpawnPoint>>,
+    existing_ends: Query<Entity, With<EndPoint>>,
+) {
+    for vehicle in existing_vehicles {
+        commands.entity(vehicle).despawn();
+    }
+
+    // Despawn old segments before assembling new layout.
+    for entity in existing_segments
+        .iter()
+        .chain(existing_spawns.iter())
+        .chain(existing_ends.iter())
+    {
+        commands.entity(entity).despawn();
     }
 }
