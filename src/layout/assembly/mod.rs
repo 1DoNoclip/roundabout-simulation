@@ -6,6 +6,10 @@ impl Plugin for AssemblyPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
+// The order of with the intra and inter arm sectors are in circulating_sectors
+const INTRA_ARM_SECTOR_INDEX: usize = 0;
+const INTER_ARM_SECTOR_INDEX: usize = 1;
+
 /// Assembles the roundabout using the blueprint resources.
 /// Removes the existing layout and vehicles before calculating and spawning the new layout.
 pub fn assemble_roundabout(
@@ -27,40 +31,62 @@ pub fn assemble_roundabout(
         existing_ends,
     );
 
-    // The order of with the intra and inter arm sectors are in circulating_sectors
-    const INTRA_ARM_SECTOR_INDEX: usize = 0;
-    const INTER_ARM_SECTOR_INDEX: usize = 1;
-
     let number_of_lanes = intersection_blueprint.number_of_lanes;
     let inner_radius = roundabout_circle_blueprint.radius;
     let deflection_radius = intersection_blueprint.deflection_radius;
     let speed_limit = intersection_blueprint.speed_limit;
 
     let arms = &intersection_blueprint.arms;
+    // Temporary: I assume that the below line is redundant. Will remove later.
     // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
-    // let sorted_arms = sorted_arms;
     let number_of_arms = arms.len();
 
-    let mut arm_entries = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-    let mut arm_entry_deflections =
-        vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-    let mut arm_exits = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-    let mut arm_exit_deflections = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-    let mut circulating_sectors =
-        vec![vec![vec![Entity::PLACEHOLDER; number_of_lanes]; 2]; number_of_arms];
+    let entity_vectors = get_entity_vectors(&mut commands, number_of_lanes, number_of_arms);
 
-    for arm_index in 0..number_of_arms {
-        for lane_index in 0..number_of_lanes {
-            arm_entries[arm_index][lane_index] = commands.spawn_empty().id();
-            arm_entry_deflections[arm_index][lane_index] = commands.spawn_empty().id();
-            arm_exits[arm_index][lane_index] = commands.spawn_empty().id();
-            arm_exit_deflections[arm_index][lane_index] = commands.spawn_empty().id();
-            circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index] =
-                commands.spawn_empty().id();
-            circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index] =
-                commands.spawn_empty().id();
-        }
-    }
+    // let arm_entries: Vec<Vec<_>> = std::iter::repeat_with(|| {
+    //     std::iter::repeat_with(|| commands.spawn_empty().id())
+    //         .take(number_of_lanes)
+    //         .collect()
+    // })
+    // .take(number_of_arms)
+    // .collect();
+
+    // let arm_entry_deflections: Vec<Vec<_>> = std::iter::repeat_with(|| {
+    //     std::iter::repeat_with(|| commands.spawn_empty().id())
+    //         .take(number_of_lanes)
+    //         .collect()
+    // })
+    // .take(number_of_arms)
+    // .collect();
+
+    // let arm_exits: Vec<Vec<_>> = std::iter::repeat_with(|| {
+    //     std::iter::repeat_with(|| commands.spawn_empty().id())
+    //         .take(number_of_lanes)
+    //         .collect()
+    // })
+    // .take(number_of_arms)
+    // .collect();
+
+    // let arm_exit_deflections: Vec<Vec<_>> = std::iter::repeat_with(|| {
+    //     std::iter::repeat_with(|| commands.spawn_empty().id())
+    //         .take(number_of_lanes)
+    //         .collect()
+    // })
+    // .take(number_of_arms)
+    // .collect();
+
+    // let circulating_sectors: Vec<Vec<Vec<_>>> = std::iter::repeat_with(|| {
+    //     vec![
+    //         std::iter::repeat_with(|| commands.spawn_empty().id())
+    //             .take(number_of_lanes)
+    //             .collect(), // Intra.
+    //         std::iter::repeat_with(|| commands.spawn_empty().id())
+    //             .take(number_of_lanes)
+    //             .collect(), // Inter.
+    //     ]
+    // })
+    // .take(number_of_arms)
+    // .collect();
 
     for (arm_index, arm) in arms.iter().enumerate() {
         let next_arm_index = if arm_index == 0 {
@@ -78,17 +104,18 @@ pub fn assemble_roundabout(
         };
 
         for lane_index in 0..number_of_lanes {
-            let entry_deflection_id = arm_entry_deflections[arm_index][lane_index];
-            let entry_line_id = arm_entries[arm_index][lane_index];
-            let exit_line_id = arm_exits[arm_index][lane_index];
-            let exit_deflection_id = arm_exit_deflections[next_arm_index][lane_index];
+            let entry_deflection_id = entity_vectors.arm_entry_deflections[arm_index][lane_index];
+            let entry_line_id = entity_vectors.arm_entries[arm_index][lane_index];
+            let exit_line_id = entity_vectors.arm_exits[arm_index][lane_index];
+            let exit_deflection_id =
+                entity_vectors.arm_exit_deflections[next_arm_index][lane_index];
 
             let intra_arm_sector_id =
-                circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index];
+                entity_vectors.circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index];
             let inter_arm_sector_id =
-                circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index];
-            let next_intra_arm_id =
-                circulating_sectors[next_arm_index][INTRA_ARM_SECTOR_INDEX][lane_index];
+                entity_vectors.circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index];
+            let next_intra_arm_id = entity_vectors.circulating_sectors[next_arm_index]
+                [INTRA_ARM_SECTOR_INDEX][lane_index];
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
@@ -205,4 +232,51 @@ fn clear_existing_layout(
     {
         commands.entity(entity).despawn();
     }
+}
+
+fn get_entity_vectors(
+    commands: &mut Commands,
+    number_of_lanes: usize,
+    number_of_arms: usize,
+) -> EntityVectors {
+    let mut arm_entries = vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
+    let mut arm_entry_deflections =
+        vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
+    let mut arm_exits = vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
+    let mut arm_exit_deflections =
+        vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
+    let mut circulating_sectors =
+        vec![vec![vec![commands.spawn_empty().id(); number_of_lanes]; 2]; number_of_arms];
+
+    // Populate vectors with entities.
+    for arm_index in 0..number_of_arms {
+        for lane_index in 0..number_of_lanes {
+            arm_entries[arm_index][lane_index] = commands.spawn_empty().id();
+            arm_entry_deflections[arm_index][lane_index] = commands.spawn_empty().id();
+            arm_exits[arm_index][lane_index] = commands.spawn_empty().id();
+            arm_exit_deflections[arm_index][lane_index] = commands.spawn_empty().id();
+            circulating_sectors[arm_index][INTRA_ARM_SECTOR_INDEX][lane_index] =
+                commands.spawn_empty().id();
+            circulating_sectors[arm_index][INTER_ARM_SECTOR_INDEX][lane_index] =
+                commands.spawn_empty().id();
+        }
+    }
+
+    EntityVectors {
+        arm_entries,
+        arm_entry_deflections,
+        arm_exits,
+        arm_exit_deflections,
+        circulating_sectors,
+    }
+}
+
+type EntityVector = Vec<Vec<Entity>>;
+
+struct EntityVectors {
+    arm_entries: EntityVector,
+    arm_entry_deflections: EntityVector,
+    arm_exits: EntityVector,
+    arm_exit_deflections: EntityVector,
+    circulating_sectors: Vec<EntityVector>,
 }
