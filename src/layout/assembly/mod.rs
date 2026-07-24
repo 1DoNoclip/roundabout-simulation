@@ -60,6 +60,10 @@ pub fn assemble_roundabout(
         };
 
         for lane_index in 0..number_of_lanes {
+            // A unique identifier for naming purposes.
+            // Serves no functional purpose, other than being
+            // able to identify related Entities in the inspector.
+            let unique_identifier = format!("[{arm_index}, {lane_index}]");
             let entities =
                 roundabout_topology.get_entities_for(arm_index, lane_index, next_arm_index);
 
@@ -71,31 +75,38 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands
-                .entity(entities.entry_deflection)
-                .insert(Segment::new(
+            commands.entity(entities.entry_deflection).insert((
+                Name::new(format!("EntryDeflection {unique_identifier}")),
+                Segment::new(
                     CubicBezier::new([entry_geometry.deflection_curve]),
                     Connection::NextSegments {
                         next_segments: vec![entities.intra_arm_sector],
                         requires_yield: true,
                     },
                     speed_limit,
-                ));
-
-            commands.entity(entities.entry_line).insert(Segment::new(
-                LinearSpline::new(entry_geometry.straight_line),
-                Connection::NextSegments {
-                    next_segments: vec![entities.entry_deflection],
-                    requires_yield: false,
-                },
-                speed_limit,
+                ),
             ));
 
-            commands.spawn(SpawnPoint {
-                segment: entities.entry_line,
-                max_vehicles_per_second: arm.max_vehicles_per_second,
-                destination_weights: EntityHashMap::default(),
-            });
+            commands.entity(entities.entry_line).insert((
+                Name::new(format!("EntryLine {unique_identifier}")),
+                Segment::new(
+                    LinearSpline::new(entry_geometry.straight_line),
+                    Connection::NextSegments {
+                        next_segments: vec![entities.entry_deflection],
+                        requires_yield: false,
+                    },
+                    speed_limit,
+                ),
+            ));
+
+            commands.spawn((
+                Name::new(format!("SpawnPoint {unique_identifier}")),
+                SpawnPoint {
+                    segment: entities.entry_line,
+                    max_vehicles_per_second: arm.max_vehicles_per_second,
+                    destination_weights: EntityHashMap::default(),
+                },
+            ));
 
             let exit_geometry = LaneGeometry::generate(
                 LaneType::Exit,
@@ -105,26 +116,32 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            let end_point_id = commands.spawn(EndPoint).id();
+            let end_point_id = commands
+                .spawn((Name::new(format!("EndPoint {unique_identifier}")), EndPoint))
+                .id();
 
-            commands.entity(entities.exit_line).insert(Segment::new(
-                LinearSpline::new(exit_geometry.straight_line),
-                Connection::EndPoint {
-                    end_point: end_point_id,
-                },
-                speed_limit,
+            commands.entity(entities.exit_line).insert((
+                Name::new(format!("ExitLine {unique_identifier}")),
+                Segment::new(
+                    LinearSpline::new(exit_geometry.straight_line),
+                    Connection::EndPoint {
+                        end_point: end_point_id,
+                    },
+                    speed_limit,
+                ),
             ));
 
-            commands
-                .entity(entities.exit_deflection)
-                .insert(Segment::new(
+            commands.entity(entities.exit_deflection).insert((
+                Name::new(format!("ExitDeflection {unique_identifier}")),
+                Segment::new(
                     CubicBezier::new([exit_geometry.deflection_curve]),
                     Connection::NextSegments {
                         next_segments: vec![entities.exit_line],
                         requires_yield: false,
                     },
                     speed_limit,
-                ));
+                ),
+            ));
 
             let inter_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::InterArm { next_arm_angle },
@@ -134,9 +151,9 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands
-                .entity(entities.inter_arm_sector)
-                .insert(Segment::new(
+            commands.entity(entities.inter_arm_sector).insert((
+                Name::new(format!("InterArmSector {unique_identifier}")),
+                Segment::new(
                     inter_arm_sector_geometry,
                     Connection::NextSegments {
                         next_segments: vec![
@@ -146,7 +163,8 @@ pub fn assemble_roundabout(
                         requires_yield: false,
                     },
                     speed_limit,
-                ));
+                ),
+            ));
 
             let intra_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::IntraArm,
@@ -156,16 +174,17 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands
-                .entity(entities.intra_arm_sector)
-                .insert(Segment::new(
+            commands.entity(entities.intra_arm_sector).insert((
+                Name::new(format!("IntraArmSector {unique_identifier}")),
+                Segment::new(
                     intra_arm_sector_geometry,
                     Connection::NextSegments {
                         next_segments: vec![entities.inter_arm_sector],
                         requires_yield: false,
                     },
                     speed_limit,
-                ));
+                ),
+            ));
         }
     }
 }
@@ -208,14 +227,13 @@ struct RoundaboutTopology {
 impl RoundaboutTopology {
     fn new(commands: &mut Commands, number_of_lanes: usize, number_of_arms: usize) -> Self {
         // Create vectors.
-        let mut entries = vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
+        let mut entries = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
         let mut entry_deflections =
-            vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
-        let mut exits = vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
-        let mut exit_deflections =
-            vec![vec![commands.spawn_empty().id(); number_of_lanes]; number_of_arms];
+            vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
+        let mut exits = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
+        let mut exit_deflections = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
         let mut circulating_sectors =
-            vec![vec![vec![commands.spawn_empty().id(); 2]; number_of_lanes]; number_of_arms];
+            vec![vec![vec![Entity::PLACEHOLDER; 2]; number_of_lanes]; number_of_arms];
 
         // Populate vectors with entities.
         for arm_index in 0..number_of_arms {

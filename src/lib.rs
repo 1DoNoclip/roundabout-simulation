@@ -36,6 +36,7 @@ fn play_pause_time(
 
 fn setup_world(mut commands: Commands) {
     commands.spawn((
+        Name::new("Camera"),
         Camera2d,
         Projection::Orthographic(OrthographicProjection {
             scale: 0.5,
