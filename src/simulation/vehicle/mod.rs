@@ -9,8 +9,8 @@ impl Plugin for VehiclePlugin {
     }
 }
 
-#[derive(Component, Reflect)]
 /// The motion characteristics for the vehicle.
+#[derive(Component, Reflect)]
 pub struct Kinematics {
     pub speed: Speed,
     /// Target speed that the driver would aim for on an empty road.
@@ -19,8 +19,8 @@ pub struct Kinematics {
     pub max_deceleration: f32,
 }
 
-#[derive(Component, Reflect)]
 /// Decides how the vehicle navigates the map.
+#[derive(Component, Reflect)]
 pub struct Navigator {
     /// The route for the vehicle to follow.
     pub route: Vec<Entity>,

@@ -15,13 +15,13 @@ impl Plugin for ComponentsPlugin {
     }
 }
 
+/// A road segment between connections.
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
-/// A road segment between connections.
 pub struct Segment {
-    #[reflect(ignore)]
     /// The shape of the curve, where the f32 is the progress along the
     /// curve (between 0.0 and 1.0) and Vec3 is the result position.
+    #[reflect(ignore)]
     pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
 
     /// The next segments / end point that this segment connects to.
@@ -70,8 +70,8 @@ impl Default for Segment {
     }
 }
 
-#[derive(Reflect)]
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
+#[derive(Reflect)]
 pub enum Connection {
     /// This connection connects to other segments.
     NextSegments {
@@ -84,8 +84,8 @@ pub enum Connection {
     EndPoint { end_point: Entity },
 }
 
-#[derive(Component, Reflect)]
 /// Where vehicles spawn from.
+#[derive(Component, Reflect)]
 pub struct SpawnPoint {
     /// The segment that this spawn point is attached to.
     pub segment: Entity,
@@ -96,6 +96,6 @@ pub struct SpawnPoint {
     pub destination_weights: EntityHashMap<u32>,
 }
 
-#[derive(Component, Reflect)]
 /// Where a vehicle may choose to head to.
+#[derive(Component, Reflect)]
 pub struct EndPoint;
