@@ -1,4 +1,5 @@
 use crate::*;
+use rand::{RngExt, SeedableRng, rng, rngs::StdRng, seq::IteratorRandom};
 
 pub struct VehiclePlugin;
 
@@ -30,15 +31,35 @@ pub struct Navigator {
     pub progress: f32,
 }
 
+/// Used in spawn_vehicles.
+#[derive(Deref, DerefMut)]
+pub struct SpawnerRng(StdRng);
+
+// Local requires Default to initialize the struct.
+impl Default for SpawnerRng {
+    fn default() -> Self {
+        Self(StdRng::from_rng(&mut rng()))
+    }
+}
+
 pub fn spawn_vehicles(
     mut commands: Commands,
+    // A unique instance of SpawnerRng is created for this system (Local).
+    // It is handed to us each time Bevy calls this system.
+    mut spawner_rng: Local<SpawnerRng>,
     time: Res<Time>,
+    arms: Query<(Entity, &Arm)>,
     spawn_points: Query<&SpawnPoint>,
     segments: Query<&Segment>,
 ) {
-    let delta_time = time.delta_secs();
+    let delta_seconds = time.delta_secs();
 
-    for spawn_point in spawn_points {
+    for (arm_id, arm) in arms {
+        // For now the chosen lane will be randomly selected before pathfinding is implemented.
+        let arm_spawn_points = spawn_points
+            .iter()
+            .filter(|spawn_point| spawn_point.arm == arm_id);
+
         // Temporary: Replace spawning probability with Poisson Process.
         // The current implementation has an issue where if there is a lag spike,
         // the spawn probability will exceed 100%, however only 1 vehicle is spawned.
@@ -46,8 +67,16 @@ pub fn spawn_vehicles(
         // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
         // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
         // of spawn rates.
-        let frame_probability = spawn_point.max_vehicles_per_second * delta_time;
-        if rand::random::<f32>() < frame_probability {
+        let frame_probability = arm.max_vehicles_per_second * delta_seconds;
+        if frame_probability > spawner_rng.random::<f32>() {
+            // Temporary: In future, the lane will be chosen based on destination.
+            // Destination weights will choose a destination.
+            // The lane (and therefore, spawn point) will be chosen based on the arm angle
+            // difference between the entry and exit arms and the number of lanes.
+            let spawn_point = arm_spawn_points
+                .choose(&mut spawner_rng)
+                .expect("no SpawnPoints found for this Arm");
+
             // Pathfinding.
             let segment1_id = spawn_point.segment;
             let Ok(segment1) = segments.get(segment1_id) else {

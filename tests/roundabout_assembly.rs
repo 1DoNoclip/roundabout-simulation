@@ -1,7 +1,7 @@
 use roundabout_simulation::*;
 
 #[test]
-fn test_assemble_roundabout_spawns_correct_topology() {
+fn assemble_roundabout_spawns_correct_topology() {
     let mut app = App::new();
 
     app.insert_resource(

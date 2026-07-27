@@ -22,11 +22,24 @@ impl Plugin for ComponentsPlugin {
 pub struct Arm {
     /// The unique index of this arm.
     pub index: usize,
+    /// The maximum vehicles spawned per second. The actual spawn rate may
+    /// be less due to lack of space in the network to spawn another vehicle.
+    pub max_vehicles_per_second: f32,
+    /// The desirability of each destination from this spawn point.
+    pub destination_weights: EntityHashMap<u32>,
 }
 
 impl Arm {
-    pub fn new(index: usize) -> Self {
-        Arm { index }
+    pub fn new(
+        index: usize,
+        max_vehicles_per_second: f32,
+        destination_weights: EntityHashMap<u32>,
+    ) -> Self {
+        Arm {
+            index,
+            max_vehicles_per_second,
+            destination_weights,
+        }
     }
 }
 
@@ -104,13 +117,10 @@ pub enum Connection {
 pub struct SpawnPoint {
     /// The arm that this `SpawnPoint`'s road lies on.
     pub arm: Entity,
-    /// The segment that this spawn point is attached to.
+    /// The `Segment` that this `SpawnPoint` attaches to.
+    /// Vehicles will spawn from this `SpawnPoint` and immediately
+    /// begin moving along this `Segment`.
     pub segment: Entity,
-    /// The maximum vehicles spawned per second. The actual spawn rate may
-    /// be less due to lack of space in the network to spawn another vehicle.
-    pub max_vehicles_per_second: f32,
-    /// The desirability of each destination from this spawn point.
-    pub destination_weights: EntityHashMap<u32>,
 }
 
 /// Where a vehicle may choose to head to.

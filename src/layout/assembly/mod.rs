@@ -44,7 +44,7 @@ pub fn assemble_roundabout(
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
 
-    for (arm_index, arm) in arms.iter().enumerate() {
+    for (arm_index, arm_blueprint) in arms.iter().enumerate() {
         let next_arm_index = if arm_index == 0 {
             number_of_arms - 1
         } else {
@@ -52,14 +52,19 @@ pub fn assemble_roundabout(
         };
 
         let arm_id = roundabout_topology.get_arm_at(arm_index);
-        commands
-            .entity(arm_id)
-            .insert((Name::new(format!("Arm [{arm_index}]")), Arm::new(arm_index)));
+        commands.entity(arm_id).insert((
+            Name::new(format!("Arm [{arm_index}]")),
+            Arm::new(
+                arm_index,
+                arm_blueprint.max_vehicles_per_second,
+                EntityHashMap::default(),
+            ),
+        ));
 
         let next_arm_angle = arms[next_arm_index].angle;
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
-        let speed_limit = match arm.speed_limit {
+        let speed_limit = match arm_blueprint.speed_limit {
             Some(speed_limit) => speed_limit,
             None => speed_limit,
         };
@@ -74,7 +79,7 @@ pub fn assemble_roundabout(
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
-                arm.angle,
+                arm_blueprint.angle,
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -109,14 +114,12 @@ pub fn assemble_roundabout(
                 SpawnPoint {
                     arm: arm_id,
                     segment: entities.entry_line,
-                    max_vehicles_per_second: arm.max_vehicles_per_second,
-                    destination_weights: EntityHashMap::default(),
                 },
             ));
 
             let exit_geometry = LaneGeometry::generate(
                 LaneType::Exit,
-                arm.angle,
+                arm_blueprint.angle,
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -154,7 +157,7 @@ pub fn assemble_roundabout(
 
             let inter_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::InterArm { next_arm_angle },
-                arm.angle,
+                arm_blueprint.angle,
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -177,7 +180,7 @@ pub fn assemble_roundabout(
 
             let intra_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::IntraArm,
-                arm.angle,
+                arm_blueprint.angle,
                 lane_index,
                 inner_radius,
                 deflection_radius,
