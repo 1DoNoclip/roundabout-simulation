@@ -51,6 +51,10 @@ pub fn assemble_roundabout(
             arm_index - 1
         };
 
+        commands
+            .entity(roundabout_topology.get_arm_at(arm_index))
+            .insert((Name::new(format!("Arm [{arm_index}]")), Arm::new(arm_index)));
+
         let next_arm_angle = arms[next_arm_index].angle;
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
@@ -117,7 +121,10 @@ pub fn assemble_roundabout(
             );
 
             let end_point_id = commands
-                .spawn((Name::new(format!("EndPoint {unique_identifier}")), EndPoint))
+                .spawn((
+                    Name::new(format!("EndPoint {unique_identifier}")),
+                    EndPoint { arm_index },
+                ))
                 .id();
 
             commands.entity(entities.exit_line).insert((
@@ -215,6 +222,7 @@ type SegmentMatrix = Vec<Vec<Entity>>;
 
 /// Different Segment matrices for different parts of the roundabout.
 struct RoundaboutTopology {
+    arms: Vec<Entity>,
     entries: SegmentMatrix,
     entry_deflections: SegmentMatrix,
     exits: SegmentMatrix,
@@ -227,6 +235,7 @@ struct RoundaboutTopology {
 impl RoundaboutTopology {
     fn new(commands: &mut Commands, number_of_lanes: usize, number_of_arms: usize) -> Self {
         // Create vectors.
+        let mut arms = vec![Entity::PLACEHOLDER; number_of_arms];
         let mut entries = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
         let mut entry_deflections =
             vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
@@ -237,6 +246,7 @@ impl RoundaboutTopology {
 
         // Populate vectors with entities.
         for arm_index in 0..number_of_arms {
+            arms[arm_index] = commands.spawn_empty().id();
             for lane_index in 0..number_of_lanes {
                 entries[arm_index][lane_index] = commands.spawn_empty().id();
                 entry_deflections[arm_index][lane_index] = commands.spawn_empty().id();
@@ -250,12 +260,17 @@ impl RoundaboutTopology {
         }
 
         RoundaboutTopology {
+            arms,
             entries,
             entry_deflections,
             exits,
             exit_deflections,
             circulating_sectors,
         }
+    }
+
+    fn get_arm_at(&self, arm_index: usize) -> Entity {
+        self.arms[arm_index]
     }
 
     /// Get the entities for the current iteration of assembly.

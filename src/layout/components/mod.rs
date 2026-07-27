@@ -9,9 +9,24 @@ pub struct ComponentsPlugin;
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpeedPlugin)
+            .register_type::<Arm>()
+            .register_type::<Segment>()
             .register_type::<Connection>()
             .register_type::<SpawnPoint>()
             .register_type::<EndPoint>();
+    }
+}
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct Arm {
+    /// The unique index of this arm.
+    pub index: usize,
+}
+
+impl Arm {
+    pub fn new(index: usize) -> Self {
+        Arm { index }
     }
 }
 
@@ -98,4 +113,7 @@ pub struct SpawnPoint {
 
 /// Where a vehicle may choose to head to.
 #[derive(Component, Reflect)]
-pub struct EndPoint;
+pub struct EndPoint {
+    /// The arm number that this `EndPoint`'s road lies on.
+    pub arm_index: usize,
+}
