@@ -163,7 +163,6 @@ impl SectorGeometry {
 }
 
 impl CurveLength for SectorGeometry {
-    #[inline]
     fn length(&self) -> f32 {
         self.radius * (self.start_angle - self.end_angle)
     }

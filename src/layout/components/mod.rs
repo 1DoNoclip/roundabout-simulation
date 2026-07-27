@@ -10,10 +10,10 @@ impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SpeedPlugin)
             .register_type::<Arm>()
-            .register_type::<Segment>()
             .register_type::<Connection>()
-            .register_type::<SpawnPoint>()
-            .register_type::<EndPoint>();
+            .register_type::<EndPoint>()
+            .register_type::<Segment>()
+            .register_type::<SpawnPoint>();
     }
 }
 
@@ -46,7 +46,7 @@ pub struct Segment {
     /// this is computationally expensive so it is only run once and cached.
     ///
     /// Performing curve.length() each frame for each segment is a
-    /// huge waste of resources when the length does not change.
+    /// huge waste of resources when the length does not change after creation.
     pub length: f32,
 
     /// The maximum speed allowed for vehicles to travel at.
