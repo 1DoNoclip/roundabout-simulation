@@ -51,8 +51,9 @@ pub fn assemble_roundabout(
             arm_index - 1
         };
 
+        let arm_id = roundabout_topology.get_arm_at(arm_index);
         commands
-            .entity(roundabout_topology.get_arm_at(arm_index))
+            .entity(arm_id)
             .insert((Name::new(format!("Arm [{arm_index}]")), Arm::new(arm_index)));
 
         let next_arm_angle = arms[next_arm_index].angle;
@@ -106,6 +107,7 @@ pub fn assemble_roundabout(
             commands.spawn((
                 Name::new(format!("SpawnPoint {unique_identifier}")),
                 SpawnPoint {
+                    arm: arm_id,
                     segment: entities.entry_line,
                     max_vehicles_per_second: arm.max_vehicles_per_second,
                     destination_weights: EntityHashMap::default(),
@@ -123,7 +125,7 @@ pub fn assemble_roundabout(
             let end_point_id = commands
                 .spawn((
                     Name::new(format!("EndPoint {unique_identifier}")),
-                    EndPoint { arm_index },
+                    EndPoint { arm: arm_id },
                 ))
                 .id();
 

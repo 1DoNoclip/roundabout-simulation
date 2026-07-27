@@ -102,6 +102,8 @@ pub enum Connection {
 /// Where vehicles spawn from.
 #[derive(Component, Reflect)]
 pub struct SpawnPoint {
+    /// The arm that this `SpawnPoint`'s road lies on.
+    pub arm: Entity,
     /// The segment that this spawn point is attached to.
     pub segment: Entity,
     /// The maximum vehicles spawned per second. The actual spawn rate may
@@ -114,6 +116,6 @@ pub struct SpawnPoint {
 /// Where a vehicle may choose to head to.
 #[derive(Component, Reflect)]
 pub struct EndPoint {
-    /// The arm number that this `EndPoint`'s road lies on.
-    pub arm_index: usize,
+    /// The arm that this `EndPoint`'s road lies on.
+    pub arm: Entity,
 }
