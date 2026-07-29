@@ -19,9 +19,14 @@ impl Plugin for ComponentsPlugin {
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
+/// A marker for spawned road `Segment`s and other components to assign themselves to.
+///
+/// E.g., a `SpawnPoint` and `EndPoint` point to an `Arm` entity.
 pub struct Arm {
     /// The unique index of this arm.
     pub index: usize,
+    /// The angle of the arm to the roundabout.
+    pub angle: Rot2,
     /// The maximum vehicles spawned per second. The actual spawn rate may
     /// be less due to lack of space in the network to spawn another vehicle.
     pub max_vehicles_per_second: f32,
@@ -32,11 +37,13 @@ pub struct Arm {
 impl Arm {
     pub fn new(
         index: usize,
+        angle: Rot2,
         max_vehicles_per_second: f32,
         destination_weights: EntityHashMap<u32>,
     ) -> Self {
         Arm {
             index,
+            angle,
             max_vehicles_per_second,
             destination_weights,
         }

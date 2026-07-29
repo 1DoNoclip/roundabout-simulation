@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::*;
 
 pub struct AssemblyPlugin;
@@ -35,16 +37,16 @@ pub fn assemble_roundabout(
     let inner_radius = roundabout_circle_blueprint.radius;
     let deflection_radius = intersection_blueprint.deflection_radius;
     let speed_limit = intersection_blueprint.speed_limit;
+    let arm_blueprints = &intersection_blueprint.arms;
 
-    let arms = &intersection_blueprint.arms;
     // Temporary: I assume that the below line is redundant. Will remove later.
     // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
-    let number_of_arms = arms.len();
+    let number_of_arms = arm_blueprints.len();
 
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
 
-    for (arm_index, arm_blueprint) in arms.iter().enumerate() {
+    for (arm_index, arm_blueprint) in arm_blueprints.iter().enumerate() {
         let next_arm_index = if arm_index == 0 {
             number_of_arms - 1
         } else {
@@ -52,19 +54,21 @@ pub fn assemble_roundabout(
         };
 
         let arm_id = roundabout_topology.get_arm_at(arm_index);
+        // Add the Arm component.
         commands.entity(arm_id).insert((
             Name::new(format!("Arm [{arm_index}]")),
             Arm::new(
                 arm_index,
+                arm_blueprint.angle,
                 arm_blueprint.max_vehicles_per_second,
-                EntityHashMap::default(),
+                calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
             ),
         ));
 
-        let next_arm_angle = arms[next_arm_index].angle;
+        let next_arm_angle = arm_blueprints[next_arm_index].angle;
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
-        let speed_limit = match arm_blueprint.speed_limit {
+        let speed_limit = match arm_blueprint.speed_limit_override {
             Some(speed_limit) => speed_limit,
             None => speed_limit,
         };
@@ -201,6 +205,7 @@ pub fn assemble_roundabout(
     }
 }
 
+/// Issues eviction notices to all entities part of the previous blueprint designs.
 fn clear_existing_layout(
     commands: &mut Commands,
     existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
@@ -220,6 +225,40 @@ fn clear_existing_layout(
     {
         commands.entity(entity).despawn();
     }
+}
+
+/// Calculates relative exit weights for vehicles entering from `current_arm_index`.
+///
+/// Returns an `EntityHashMap<u32>` mapping target arm `Entities` to their integer destination weights.
+fn calculate_destination_weights(
+    arm_blueprints: &[ArmBlueprint],
+    current_arm_index: usize,
+    roundabout_topology: &RoundaboutTopology,
+) -> EntityHashMap<u32> {
+    /// The minimum destination weight of an exit road. Assigned to U-turns.
+    const UTURN_WEIGHT: f32 = 0.05;
+
+    let mut destination_weights = EntityHashMap::default();
+
+    let source_angle = arm_blueprints[current_arm_index].angle.as_radians();
+
+    for (target_index, target_blueprint) in arm_blueprints.iter().enumerate() {
+        let target_arm_id = roundabout_topology.get_arm_at(target_index);
+        let target_angle = target_blueprint.angle.as_radians();
+
+        let difference = target_angle - source_angle;
+
+        // Score based on angle difference of exit arm to entry arm.
+        let alignment_score = (1.0 + (difference - PI).cos()) / 2.0;
+        let normalized_weight = UTURN_WEIGHT + (1.0 - UTURN_WEIGHT) * alignment_score;
+
+        // Scale to integer range (between UTURN_WEIGHT * 100 and 100).
+        let u32_weight = (normalized_weight * 100.0).round() as u32;
+
+        destination_weights.insert(target_arm_id, u32_weight);
+    }
+
+    destination_weights
 }
 
 /// Stores each segment entity at [arm_index][lane_index].

@@ -82,11 +82,11 @@ impl RoundaboutCircleBlueprint {
 /// Represent a singular arm to the roundabout.
 #[derive(Clone, Component, Copy, Reflect)]
 pub struct ArmBlueprint {
-    /// In degrees / °.
+    /// The angle of the arm to the roundabout.
     pub angle: Rot2,
     /// Maximum speed for vehicles to travel at.
     /// Overrides the global `IntersectionBlueprint` resource's speed limit for this arm.
-    pub speed_limit: Option<Speed>,
+    pub speed_limit_override: Option<Speed>,
     /// The maximum vehicles spawned per second. The actual spawn rate may
     /// be less due to lack of space in the network to spawn another vehicle.
     pub max_vehicles_per_second: f32,
@@ -95,12 +95,12 @@ pub struct ArmBlueprint {
 impl ArmBlueprint {
     pub fn from_degrees(
         degrees: f32,
-        speed_limit: Option<Speed>,
+        speed_limit_override: Option<Speed>,
         max_vehicles_per_second: f32,
     ) -> Self {
         ArmBlueprint {
             angle: Rot2::degrees(degrees),
-            speed_limit,
+            speed_limit_override,
             max_vehicles_per_second,
         }
     }
