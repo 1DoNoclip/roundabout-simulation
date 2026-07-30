@@ -226,12 +226,12 @@ fn clear_existing_layout(
 
 /// Calculates relative exit weights for vehicles entering from `current_arm_index`.
 ///
-/// Returns an `EntityHashMap<u32>` mapping target arm `Entities` to their integer destination weights.
+/// Returns an `EntityHashMap`<`u32`> mapping target arm entities to their integer destination weights.
 fn calculate_destination_weights(
     arm_blueprints: &[ArmBlueprint],
     current_arm_index: usize,
     roundabout_topology: &RoundaboutTopology,
-) -> EntityHashMap<u32> {
+) -> DestinationWeights {
     /// The minimum destination weight of an exit road. Assigned to U-turns.
     const UTURN_WEIGHT: f32 = 0.05;
 

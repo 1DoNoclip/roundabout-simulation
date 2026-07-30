@@ -17,6 +17,8 @@ impl Plugin for ComponentsPlugin {
     }
 }
 
+pub type DestinationWeights = EntityHashMap<u32>;
+
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 /// A marker for spawned road `Segment`s and other components to assign themselves to.
@@ -31,7 +33,7 @@ pub struct Arm {
     /// be less due to lack of space in the network to spawn another vehicle.
     pub max_vehicles_per_second: f32,
     /// The desirability of each destination from this spawn point.
-    pub destination_weights: EntityHashMap<u32>,
+    pub destination_weights: DestinationWeights,
 }
 
 impl Arm {
@@ -39,7 +41,7 @@ impl Arm {
         index: usize,
         angle: Rot2,
         max_vehicles_per_second: f32,
-        destination_weights: EntityHashMap<u32>,
+        destination_weights: DestinationWeights,
     ) -> Self {
         Arm {
             index,
