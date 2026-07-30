@@ -124,10 +124,22 @@ pub enum Connection {
 pub struct SpawnPoint {
     /// The arm that this `SpawnPoint`'s road lies on.
     pub arm: Entity,
+    /// The index of the lane this `SpawnPoint` connects to.
+    pub lane_index: usize,
     /// The `Segment` that this `SpawnPoint` attaches to.
     /// Vehicles will spawn from this `SpawnPoint` and immediately
     /// begin moving along this `Segment`.
     pub segment: Entity,
+}
+
+impl SpawnPoint {
+    pub fn new(arm: Entity, lane_index: usize, segment: Entity) -> Self {
+        SpawnPoint {
+            arm,
+            lane_index,
+            segment,
+        }
+    }
 }
 
 /// Where a vehicle may choose to head to.
@@ -135,4 +147,12 @@ pub struct SpawnPoint {
 pub struct EndPoint {
     /// The arm that this `EndPoint`'s road lies on.
     pub arm: Entity,
+    /// The index of the lane this `EndPoint` is connected to.
+    pub lane_index: usize,
+}
+
+impl EndPoint {
+    pub fn new(arm: Entity, lane_index: usize) -> Self {
+        EndPoint { arm, lane_index }
+    }
 }

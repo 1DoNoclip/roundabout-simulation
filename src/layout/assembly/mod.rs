@@ -115,10 +115,7 @@ pub fn assemble_roundabout(
 
             commands.spawn((
                 Name::new(format!("SpawnPoint {unique_identifier}")),
-                SpawnPoint {
-                    arm: arm_id,
-                    segment: entities.entry_line,
-                },
+                SpawnPoint::new(arm_id, lane_index, entities.entry_line),
             ));
 
             let exit_geometry = LaneGeometry::generate(
@@ -132,7 +129,7 @@ pub fn assemble_roundabout(
             let end_point_id = commands
                 .spawn((
                     Name::new(format!("EndPoint {unique_identifier}")),
-                    EndPoint { arm: arm_id },
+                    EndPoint::new(arm_id, lane_index),
                 ))
                 .id();
 
