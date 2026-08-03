@@ -53,10 +53,10 @@ pub fn calculate_route(
         }
     }
 
+    // Reconstruct path from end back to start.
     if let Some(end_segment) = final_segment {
         let mut current_segment = end_segment;
         let mut path = vec![current_segment];
-
         while let Some(&parent) = came_from.get(&current_segment) {
             path.push(parent);
             current_segment = parent;

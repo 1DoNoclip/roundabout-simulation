@@ -50,7 +50,7 @@ pub fn spawn_vehicles(
     time: Res<Time>,
     arms: Query<(Entity, &Arm)>,
     spawn_points: Query<&SpawnPoint>,
-    end_points: Query<&EndPoint>,
+    end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
 ) {
     let delta_seconds = time.delta_secs();
@@ -76,65 +76,23 @@ pub fn spawn_vehicles(
             let spawn_point = arm_spawn_points
                 .choose(&mut spawner_rng)
                 .expect("no SpawnPoints found for this Arm");
-            let starting_segment = spawn_point.segment;
+            let starting_segment_id = spawn_point.segment;
+            let starting_segment = segments
+                .get(starting_segment_id)
+                .expect("failed to get Segment from segment entity");
+            let start_position = (starting_segment.evaluator)(0.0);
 
             let end_arm_id = select_destination_arm(&mut spawner_rng, &arm.destination_weights);
             let mut arm_end_points = end_points
                 .iter()
-                .filter(|end_point| end_point.arm == end_arm_id);
+                .filter(|(_, end_point)| end_point.arm == end_arm_id);
             let end_point = arm_end_points
-                .find(|end_point| end_point.lane_index == spawn_point.lane_index)
+                .find(|(_, end_point)| end_point.lane_index == spawn_point.lane_index)
                 .expect("no valid EndPoint found");
 
             // Pathfinding.
-            let segment1_id = spawn_point.segment;
-            let Ok(segment1) = segments.get(segment1_id) else {
-                continue;
-            };
-
-            let segment2_id = match &segment1.connection {
-                Connection::NextSegments { next_segments, .. } => next_segments
-                    .first()
-                    .expect("expected Segment 2 at index 0"),
-                Connection::EndPoint { .. } => continue,
-            };
-            let Ok(segment2) = segments.get(*segment2_id) else {
-                continue;
-            };
-
-            let segment3_id = match &segment2.connection {
-                Connection::NextSegments { next_segments, .. } => next_segments
-                    .first()
-                    .expect("expected Segment 3 at index 0"),
-                Connection::EndPoint { .. } => continue,
-            };
-            let Ok(segment3) = segments.get(*segment3_id) else {
-                continue;
-            };
-            let segment4_id = match &segment3.connection {
-                Connection::NextSegments { next_segments, .. } => next_segments
-                    .first()
-                    .expect("expected Segment 4 at index 0"),
-                Connection::EndPoint { .. } => continue,
-            };
-            let Ok(segment4) = segments.get(*segment4_id) else {
-                continue;
-            };
-            let segment5_id = match &segment4.connection {
-                Connection::NextSegments { next_segments, .. } => next_segments
-                    .first()
-                    .expect("expected Segment 5 at index 0"),
-                Connection::EndPoint { .. } => continue,
-            };
-
-            let initial_route = vec![
-                segment1_id,
-                *segment2_id,
-                *segment3_id,
-                *segment4_id,
-                *segment5_id,
-            ];
-            let start_position = (segment1.evaluator)(0.0);
+            let route = calculate_route(starting_segment_id, end_point.0, &segments)
+                .expect("failed to pathfind to EndPoint");
 
             // Spawning.
             commands.spawn((
@@ -146,7 +104,7 @@ pub fn spawn_vehicles(
                     max_deceleration: 8.0,
                 },
                 Navigator {
-                    route: initial_route,
+                    route,
                     current_segment: 0,
                     progress: 0.0,
                 },
