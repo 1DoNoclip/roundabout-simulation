@@ -94,7 +94,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     CubicBezier::new([entry_geometry.deflection_curve]),
                     Connection::NextSegments {
-                        next_segments: vec![entities.intra_arm_sector],
+                        next_segment_ids: vec![entities.intra_arm_sector],
                         requires_yield: true,
                     },
                     speed_limit,
@@ -106,7 +106,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     LinearSpline::new(entry_geometry.straight_line),
                     Connection::NextSegments {
-                        next_segments: vec![entities.entry_deflection],
+                        next_segment_ids: vec![entities.entry_deflection],
                         requires_yield: false,
                     },
                     speed_limit,
@@ -138,7 +138,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     LinearSpline::new(exit_geometry.straight_line),
                     Connection::EndPoint {
-                        end_point: end_point_id,
+                        end_point_id,
                     },
                     speed_limit,
                 ),
@@ -149,7 +149,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     CubicBezier::new([exit_geometry.deflection_curve]),
                     Connection::NextSegments {
-                        next_segments: vec![entities.exit_line],
+                        next_segment_ids: vec![entities.exit_line],
                         requires_yield: false,
                     },
                     speed_limit,
@@ -169,7 +169,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     inter_arm_sector_geometry,
                     Connection::NextSegments {
-                        next_segments: vec![
+                        next_segment_ids: vec![
                             entities.exit_deflection,
                             entities.next_intra_arm_sector,
                         ],
@@ -192,7 +192,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     intra_arm_sector_geometry,
                     Connection::NextSegments {
-                        next_segments: vec![entities.inter_arm_sector],
+                        next_segment_ids: vec![entities.inter_arm_sector],
                         requires_yield: false,
                     },
                     speed_limit,

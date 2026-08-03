@@ -10,43 +10,62 @@ use std::collections::VecDeque;
 ///
 /// Uses Breadth-First Search (BFS).
 pub fn calculate_route(
-    start_segment: Entity,
-    target_end_point: Entity,
+    start_segment_id: Entity,
+    target_end_point_id: Entity,
     segments: &Query<&Segment>,
 ) -> Option<Vec<Entity>> {
     // Edge case.
-    if start_segment == target_end_point {
+    if start_segment_id == target_end_point_id {
         return Some(Vec::new());
+    }
+
+    // Check if the start segment immediately connects to the target end point.
+    if let Ok(start_segment) = segments.get(start_segment_id) {
+        if let Connection::EndPoint { end_point_id: end_point } = &start_segment.connection {
+            if *end_point == target_end_point_id {
+                return Some(vec![start_segment_id]);
+            }
+        }
     }
 
     // Queue used in BFS traversal: stores the current segment entity being explored.
     let mut queue = VecDeque::new();
-    queue.push_back(start_segment);
+    queue.push_back(start_segment_id);
     // Stores visited segments to prevent infinite looping around.
     let mut visited = BevyHashSet::new();
-    visited.insert(start_segment);
+    visited.insert(start_segment_id);
     // Maps a child segment to its parent segment to reconstruct the path later.
-    let mut came_from = BevyHashMap::new();
+    let mut came_from: BevyHashMap<Entity, Entity> = BevyHashMap::new();
     // Stores the final segment that connects to the end point.
-    let mut final_segment = None;
+    let mut final_segment: Option<Entity> = None;
 
     // BFS search loop.
-    while let Some(current_segment) = queue.pop_front() {
-        if let Ok(segment) = segments.get(current_segment) {
+    'search: while let Some(current_segment_id) = queue.pop_front() {
+        if let Ok(segment) = segments.get(current_segment_id) {
             match &segment.connection {
-                Connection::NextSegments { next_segments, .. } => {
-                    for next_segment in next_segments {
-                        if !visited.contains(next_segment) {
-                            visited.insert(*next_segment);
-                            came_from.insert(next_segment, current_segment);
-                            queue.push_back(*next_segment);
+                Connection::NextSegments { next_segment_ids, .. } => {
+                    for next_segment_id in next_segment_ids {
+                        if !visited.contains(next_segment_id) {
+                            visited.insert(*next_segment_id);
+                            came_from.insert(*next_segment_id, current_segment_id);
+
+                            if let Ok(next_segment) = segments.get(*next_segment_id) {
+                                if let Connection::EndPoint { end_point_id } = next_segment.connection {
+                                    if end_point_id == target_end_point_id {
+                                        final_segment = Some(*next_segment_id);
+                                        break 'search;
+                                    }
+                                }
+                            }
+
+                            queue.push_back(*next_segment_id);
                         }
                     }
                 }
-                Connection::EndPoint { end_point } => {
-                    if *end_point == target_end_point {
-                        final_segment = Some(current_segment);
-                        break;
+                Connection::EndPoint { end_point_id } => {
+                    if *end_point_id == target_end_point_id {
+                        final_segment = Some(current_segment_id);
+                        break 'search;
                     }
                 }
             }

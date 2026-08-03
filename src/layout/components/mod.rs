@@ -87,7 +87,7 @@ impl Segment {
     }
 
     pub fn to_end<C: SegmentCurve>(curve: C, end_point: Entity, speed_limit: Speed) -> Self {
-        let connection = Connection::EndPoint { end_point };
+        let connection = Connection::EndPoint { end_point_id: end_point };
         Segment::new(curve, connection, speed_limit)
     }
 
@@ -112,13 +112,13 @@ impl Default for Segment {
 pub enum Connection {
     /// This connection connects to other segments.
     NextSegments {
-        next_segments: Vec<Entity>,
+        next_segment_ids: Vec<Entity>,
         /// Determines whether the segment must yield to traffic on the new road.
         /// e.g., the entry into the roundabout requires yielding to circulating traffic.
         requires_yield: bool,
     },
     /// This connection exits the map.
-    EndPoint { end_point: Entity },
+    EndPoint { end_point_id: Entity },
 }
 
 /// Where vehicles spawn from.
