@@ -56,16 +56,12 @@ pub fn spawn_vehicles(
     time: Res<Time>,
     arms: Query<(Entity, &Arm)>,
     spawn_points: Query<&SpawnPoint>,
+    end_points: Query<&EndPoint>,
     segments: Query<&Segment>,
 ) {
     let delta_seconds = time.delta_secs();
 
-    for (arm_id, arm) in arms {
-        // For now the chosen lane will be randomly selected before pathfinding is implemented.
-        let arm_spawn_points = spawn_points
-            .iter()
-            .filter(|spawn_point| spawn_point.arm == arm_id);
-
+    for (spawn_arm_id, arm) in arms {
         // Temporary: Replace spawning probability with Poisson Process.
         // The current implementation has an issue where if there is a lag spike,
         // the spawn probability will exceed 100%, however only 1 vehicle is spawned.
@@ -75,6 +71,10 @@ pub fn spawn_vehicles(
         // of spawn rates.
         let frame_probability = arm.max_vehicles_per_second * delta_seconds;
         if frame_probability > spawner_rng.random::<f32>() {
+            // For now the chosen lane will be randomly selected before pathfinding is implemented.
+            let arm_spawn_points = spawn_points
+                .iter()
+                .filter(|spawn_point| spawn_point.arm == spawn_arm_id);
             // Temporary: In future, the lane will be chosen based on destination.
             // Destination weights will choose a destination.
             // The lane (and therefore, spawn point) will be chosen based on the arm angle
@@ -82,6 +82,15 @@ pub fn spawn_vehicles(
             let spawn_point = arm_spawn_points
                 .choose(&mut spawner_rng)
                 .expect("no SpawnPoints found for this Arm");
+
+            let end_arm_id = select_destination_arm(&mut spawner_rng, &arm.destination_weights);
+            let mut arm_end_points = end_points
+                .iter()
+                .filter(|end_point| end_point.arm == end_arm_id);
+            let end_point =
+                arm_end_points.find(|end_point| end_point.lane_index == spawn_point.lane_index)
+                    .expect("no valid EndPoint found");
+            info!("{end_point:?}");
 
             // Pathfinding.
             let segment1_id = spawn_point.segment;
@@ -155,7 +164,7 @@ pub fn spawn_vehicles(
     }
 }
 
-pub fn vehicle_movement(
+pub fn move_vehicles(
     mut commands: Commands,
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,

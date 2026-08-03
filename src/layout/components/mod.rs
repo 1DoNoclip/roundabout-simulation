@@ -19,7 +19,7 @@ impl Plugin for ComponentsPlugin {
 
 pub type DestinationWeights = EntityHashMap<u32>;
 
-#[derive(Component, Reflect)]
+#[derive(Component, Debug, Reflect)]
 #[reflect(Component)]
 /// A marker for spawned road `Segment`s and other components to assign themselves to.
 ///
@@ -108,7 +108,7 @@ impl Default for Segment {
 }
 
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
-#[derive(Reflect)]
+#[derive(Debug, Reflect)]
 pub enum Connection {
     /// This connection connects to other segments.
     NextSegments {
@@ -122,7 +122,7 @@ pub enum Connection {
 }
 
 /// Where vehicles spawn from.
-#[derive(Component, Reflect)]
+#[derive(Component, Debug, Reflect)]
 pub struct SpawnPoint {
     /// The arm that this `SpawnPoint`'s road lies on.
     pub arm: Entity,
@@ -145,7 +145,7 @@ impl SpawnPoint {
 }
 
 /// Where a vehicle may choose to head to.
-#[derive(Component, Reflect)]
+#[derive(Component, Debug, Reflect)]
 pub struct EndPoint {
     /// The arm that this `EndPoint`'s road lies on.
     pub arm: Entity,
