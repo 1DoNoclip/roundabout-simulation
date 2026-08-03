@@ -1,8 +1,10 @@
 use crate::*;
 
+pub mod pathfinding;
 pub mod statistics;
 pub mod vehicle;
 
+pub use pathfinding::*;
 pub use statistics::*;
 pub use vehicle::*;
 

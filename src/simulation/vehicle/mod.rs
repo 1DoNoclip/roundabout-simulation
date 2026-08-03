@@ -1,11 +1,5 @@
-use crate::*;
-use rand::{
-    RngExt, SeedableRng,
-    distr::{Distribution, weighted::WeightedIndex},
-    rng,
-    rngs::StdRng,
-    seq::IteratorRandom,
-};
+use crate::{simulation::select_destination_arm, *};
+use rand::{RngExt, SeedableRng, rng, rngs::StdRng, seq::IteratorRandom};
 
 pub struct VehiclePlugin;
 
@@ -82,15 +76,15 @@ pub fn spawn_vehicles(
             let spawn_point = arm_spawn_points
                 .choose(&mut spawner_rng)
                 .expect("no SpawnPoints found for this Arm");
+            let starting_segment = spawn_point.segment;
 
             let end_arm_id = select_destination_arm(&mut spawner_rng, &arm.destination_weights);
             let mut arm_end_points = end_points
                 .iter()
                 .filter(|end_point| end_point.arm == end_arm_id);
-            let end_point =
-                arm_end_points.find(|end_point| end_point.lane_index == spawn_point.lane_index)
-                    .expect("no valid EndPoint found");
-            info!("{end_point:?}");
+            let end_point = arm_end_points
+                .find(|end_point| end_point.lane_index == spawn_point.lane_index)
+                .expect("no valid EndPoint found");
 
             // Pathfinding.
             let segment1_id = spawn_point.segment;
@@ -206,23 +200,6 @@ pub fn move_vehicles(
             }
         }
     }
-}
-
-fn select_destination_arm(
-    mut spawner_rng: &mut StdRng,
-    destination_weights: &DestinationWeights,
-) -> Entity {
-    if destination_weights.is_empty() {
-        panic!("Cannot select a destination arm from an empty destination_weights");
-    }
-
-    let arms = destination_weights.keys().cloned().collect::<Vec<_>>();
-    let weights = destination_weights.values().cloned().collect::<Vec<_>>();
-
-    let distribution = WeightedIndex::new(&weights)
-        .expect("failed to create WeightedIndex, ensure that not every weight is zero");
-    let selected_index = distribution.sample(&mut spawner_rng);
-    arms[selected_index]
 }
 
 #[cfg(test)]
