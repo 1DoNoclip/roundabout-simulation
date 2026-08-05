@@ -8,10 +8,6 @@ impl Plugin for AssemblyPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
-// The order of with the intra and inter arm sectors are in circulating_sectors
-const INTRA_ARM_SECTOR_INDEX: usize = 0;
-const INTER_ARM_SECTOR_INDEX: usize = 1;
-
 /// Assembles the roundabout using the blueprint resources.
 /// Removes the existing layout and vehicles before spawning the new layout.
 pub fn assemble_roundabout(
@@ -258,8 +254,8 @@ struct RoundaboutTopology {
     exits: SegmentMatrix,
     exit_deflections: SegmentMatrix,
     /// Circulating sectors holds a Vec for intra and inter arms.
-    /// Stored as [arm_index][lane_index][intra or inter arm]
-    circulating_sectors: Vec<Vec<Vec<Entity>>>,
+    /// Stored as [arm_index][lane_index].<sector type>.
+    circulating_sectors: Vec<Vec<CirculatingSectors>>,
 }
 
 impl RoundaboutTopology {
@@ -272,7 +268,7 @@ impl RoundaboutTopology {
         let mut exits = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
         let mut exit_deflections = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
         let mut circulating_sectors =
-            vec![vec![vec![Entity::PLACEHOLDER; 2]; number_of_lanes]; number_of_arms];
+            vec![vec![CirculatingSectors::placeholders(); number_of_lanes]; number_of_arms];
 
         // Populate vectors with entities.
         for arm_index in 0..number_of_arms {
@@ -282,9 +278,9 @@ impl RoundaboutTopology {
                 entry_deflections[arm_index][lane_index] = commands.spawn_empty().id();
                 exits[arm_index][lane_index] = commands.spawn_empty().id();
                 exit_deflections[arm_index][lane_index] = commands.spawn_empty().id();
-                circulating_sectors[arm_index][lane_index][INTRA_ARM_SECTOR_INDEX] =
+                circulating_sectors[arm_index][lane_index].intra =
                     commands.spawn_empty().id();
-                circulating_sectors[arm_index][lane_index][INTER_ARM_SECTOR_INDEX] =
+                circulating_sectors[arm_index][lane_index].inter =
                     commands.spawn_empty().id();
             }
         }
@@ -315,14 +311,23 @@ impl RoundaboutTopology {
             entry_deflection: self.entry_deflections[arm_index][lane_index],
             exit_line: self.exits[arm_index][lane_index],
             exit_deflection: self.exit_deflections[arm_index][lane_index],
-            intra_arm_sector: self.circulating_sectors[arm_index][lane_index]
-                [INTRA_ARM_SECTOR_INDEX],
-            inter_arm_sector: self.circulating_sectors[arm_index][lane_index]
-                [INTER_ARM_SECTOR_INDEX],
-            next_intra_arm_sector: self.circulating_sectors[next_arm_index][lane_index]
-                [INTRA_ARM_SECTOR_INDEX],
+            intra_arm_sector: self.circulating_sectors[arm_index][lane_index].intra,
+            inter_arm_sector: self.circulating_sectors[arm_index][lane_index].inter,
+            next_intra_arm_sector: self.circulating_sectors[next_arm_index][lane_index].intra,
             next_exit_deflection: self.exit_deflections[next_arm_index][lane_index],
         }
+    }
+}
+
+#[derive(Clone)]
+struct CirculatingSectors {
+    intra: Entity,
+    inter: Entity,
+}
+
+impl CirculatingSectors {
+    fn placeholders() -> Self {
+        CirculatingSectors { intra: Entity::PLACEHOLDER, inter: Entity::PLACEHOLDER }
     }
 }
 
