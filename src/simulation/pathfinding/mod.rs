@@ -24,7 +24,9 @@ pub fn calculate_route(
         let route_segment_length = route.len();
         let number_of_segments = segments.iter().len();
         if route_segment_length > number_of_segments {
-            return Err(format!("number of segments in route ({route_segment_length}) exceeds number of segments {number_of_segments}"));
+            return Err(format!(
+                "number of segments in route ({route_segment_length}) exceeds number of segments {number_of_segments}"
+            ));
         }
         let current_segment_id = *route
             .last()

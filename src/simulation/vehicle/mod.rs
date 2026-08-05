@@ -95,14 +95,8 @@ pub fn spawn_vehicles(
                 .expect("expected to find a Segment component");
 
             // Pathfinding.
-            let route = calculate_route(
-                &arms,
-                &end_points,
-                &segments,
-                spawn_point,
-                end_arm.index,
-            )
-            .expect("failed to pathfind from SpawnPoint to EndPoint");
+            let route = calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index)
+                .expect("failed to pathfind from SpawnPoint to EndPoint");
 
             // Spawning.
             commands.spawn((
@@ -153,6 +147,7 @@ pub fn move_vehicles(
                 } else {
                     // Reached the end point (add stats in future)
                     statistics.total_vehicles_passed += 1;
+                    info!("Despawning vehicle");
                     commands.entity(entity).despawn();
                 }
             } else {

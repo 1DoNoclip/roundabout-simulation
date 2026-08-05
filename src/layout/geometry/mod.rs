@@ -138,14 +138,14 @@ impl SectorGeometry {
         let angular_displacement = deflection_radius / roundabout_radius;
 
         let (start_angle, raw_end_angle) = match sector_type {
-            SectorType::InterArm { next_arm_angle } => {
-                let start = arm_angle.as_radians() + angular_displacement;
-                let end = next_arm_angle.as_radians() - angular_displacement;
-                (start, end)
-            }
             SectorType::IntraArm => {
                 let start = arm_angle.as_radians() - angular_displacement;
                 let end = arm_angle.as_radians() + angular_displacement;
+                (start, end)
+            }
+            SectorType::InterArm { next_arm_angle } => {
+                let start = arm_angle.as_radians() + angular_displacement;
+                let end = next_arm_angle.as_radians() - angular_displacement;
                 (start, end)
             }
         };

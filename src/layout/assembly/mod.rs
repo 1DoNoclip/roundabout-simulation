@@ -13,7 +13,7 @@ const INTRA_ARM_SECTOR_INDEX: usize = 0;
 const INTER_ARM_SECTOR_INDEX: usize = 1;
 
 /// Assembles the roundabout using the blueprint resources.
-/// Removes the existing layout and vehicles before calculating and spawning the new layout.
+/// Removes the existing layout and vehicles before spawning the new layout.
 pub fn assemble_roundabout(
     mut commands: Commands,
     existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
@@ -38,9 +38,6 @@ pub fn assemble_roundabout(
     let deflection_radius = intersection_blueprint.deflection_radius;
     let speed_limit = intersection_blueprint.speed_limit;
     let arm_blueprints = &intersection_blueprint.arms;
-
-    // Temporary: I assume that the below line is redundant. Will remove later.
-    // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
     let number_of_arms = arm_blueprints.len();
 
     let roundabout_topology =
@@ -94,7 +91,7 @@ pub fn assemble_roundabout(
                 Segment::new(
                     CubicBezier::new([entry_geometry.deflection_curve]),
                     Connection::Merge {
-                        next_segment_id: entities.intra_arm_sector,
+                        next_segment_id: entities.inter_arm_sector,
                     },
                     speed_limit,
                 ),
@@ -202,6 +199,7 @@ fn clear_existing_layout(
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
 ) {
+    info!("Despawning vehicles");
     for vehicle in existing_vehicles {
         commands.entity(vehicle).despawn();
     }
@@ -212,6 +210,7 @@ fn clear_existing_layout(
         .chain(existing_spawns.iter())
         .chain(existing_ends.iter())
     {
+        info!("Despawning segment entity");
         commands.entity(entity).despawn();
     }
 }

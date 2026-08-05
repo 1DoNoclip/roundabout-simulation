@@ -65,9 +65,13 @@ impl GizmoColors {
                 // Yellow / dark yellow.
                 GizmoColors::srgb_u8([200, 200, 46], [149, 149, 34])
             }
-            Connection::Direct { .. } | Connection::Diverge { .. } => {
+            Connection::Direct { .. } => {//| Connection::Diverge { .. } => {
                 // White / grey.
                 GizmoColors::srgb_u8([203, 203, 203], [142, 142, 142])
+            }
+            // Temporary.
+            Connection::Diverge { .. } => {
+                GizmoColors::srgb_u8([100, 100, 100], [100, 100, 100])
             }
             Connection::EndPoint { .. } => {
                 // red / dark.
