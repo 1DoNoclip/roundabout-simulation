@@ -65,33 +65,6 @@ pub fn spawn_vehicles(
         // of spawn rates.
         let frame_probability = spawn_arm.max_vehicles_per_second * delta_seconds;
         if frame_probability > spawner_rng.random::<f32>() {
-            // // For now the chosen lane will be randomly selected before pathfinding is implemented.
-            // let arm_spawn_points = spawn_points
-            //     .iter()
-            //     .filter(|spawn_point| spawn_point.arm == spawn_arm_id);
-            // // Temporary: In future, the lane will be chosen based on destination.
-            // // Destination weights will choose a destination.
-            // // The lane (and therefore, spawn point) will be chosen based on the arm angle
-            // // difference between the entry and exit arms and the number of lanes.
-            // let spawn_point = arm_spawn_points
-            //     .choose(&mut spawner_rng)
-            //     .expect("no SpawnPoints found for this Arm");
-            // let starting_segment_id = spawn_point.segment;
-            // let starting_segment = segments
-            //     .get(starting_segment_id)
-            //     .expect("failed to get Segment from segment entity");
-            // let start_position = (starting_segment.evaluator)(0.0);
-
-            // let end_arm_id = select_destination_arm(&mut spawner_rng, &arm.destination_weights);
-            // let mut arm_end_points = end_points
-            //     .iter()
-            //     .filter(|(_, end_point)| end_point.arm == end_arm_id);
-            // let end_point = arm_end_points
-            //     .find(|(_, end_point)| end_point.lane_index == spawn_point.lane_index)
-            //     .expect("no valid EndPoint found");
-
-            // let arm_spawn_points = spawn_points.iter().filter(|spawn_point| spawn_point.arm == spawn_arm_id);
-
             let end_arm_id = select_destination_arm(&mut spawner_rng, &spawn_arm.destination_weights);
             let (_, end_arm) = arms.get(end_arm_id).expect("entity does not have an Arm component");
 
