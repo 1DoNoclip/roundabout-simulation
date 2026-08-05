@@ -55,7 +55,7 @@ pub fn spawn_vehicles(
 ) {
     let delta_seconds = time.delta_secs();
 
-    for (spawn_arm_id, arm) in arms {
+    for (spawn_arm_id, spawn_arm) in arms {
         // Temporary: Replace spawning probability with Poisson Process.
         // The current implementation has an issue where if there is a lag spike,
         // the spawn probability will exceed 100%, however only 1 vehicle is spawned.
@@ -63,7 +63,7 @@ pub fn spawn_vehicles(
         // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
         // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
         // of spawn rates.
-        let frame_probability = arm.max_vehicles_per_second * delta_seconds;
+        let frame_probability = spawn_arm.max_vehicles_per_second * delta_seconds;
         if frame_probability > spawner_rng.random::<f32>() {
             // // For now the chosen lane will be randomly selected before pathfinding is implemented.
             // let arm_spawn_points = spawn_points
@@ -90,10 +90,10 @@ pub fn spawn_vehicles(
             //     .find(|(_, end_point)| end_point.lane_index == spawn_point.lane_index)
             //     .expect("no valid EndPoint found");
 
+            // let arm_spawn_points = spawn_points.iter().filter(|spawn_point| spawn_point.arm == spawn_arm_id);
 
-            let arm_spawn_points = spawn_points.iter().filter(|spawn_point| spawn_point.arm == spawn_arm_id);
-            let end_arm_id = select_destination_arm(&mut spawner_rng, &arm.destination_weights);
-
+            let end_arm_id = select_destination_arm(&mut spawner_rng, &spawn_arm.destination_weights);
+            let (_, end_arm) = arms.get(end_arm_id).expect("entity does not have an Arm component");
 
             // Pathfinding.
             let route = calculate_route(starting_segment_id, end_point.0, &segments)
