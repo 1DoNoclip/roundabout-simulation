@@ -47,11 +47,7 @@ pub fn assemble_roundabout(
     sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
     let sorted_arms = sorted_arms;
     for (arm_index, arm_blueprint) in sorted_arms.iter().enumerate() {
-        let next_arm_index = if arm_index == 0 {
-            number_of_arms - 1
-        } else {
-            arm_index - 1
-        };
+        let next_arm_index = (arm_index + 1) % number_of_arms;
         let next_arm_angle = sorted_arms[next_arm_index].angle;
 
         let arm_id = roundabout_topology.get_arm_at(arm_index);
