@@ -10,14 +10,14 @@ use rand::{
 ///
 /// Returns `Some(Vec<Entity>)`, a vector of `Segment` entities if a route is found from start to end.
 /// Returns `None` if a route is not found.
-pub fn calculate_route(
+pub(crate) fn calculate_route(
     arms: &Query<(Entity, &Arm)>,
     end_points: &Query<(Entity, &EndPoint)>,
     segments: &Query<&Segment>,
     spawn_point: &SpawnPoint,
     end_arm_index: usize,
 ) -> Result<Vec<Entity>, String> {
-    let start_segment_id = spawn_point.segment;
+    let start_segment_id = spawn_point.segment();
 
     let mut route = vec![start_segment_id];
     loop {
@@ -34,7 +34,7 @@ pub fn calculate_route(
         let current_segment = segments
             .get(current_segment_id)
             .map_err(|error| format!("failed to get Segment from Segment entity: {error}"))?;
-        match current_segment.connection {
+        match *current_segment.connection() {
             Connection::Direct { next_segment_id } => {
                 route.push(next_segment_id);
             }
@@ -54,7 +54,7 @@ pub fn calculate_route(
                     format!("failed to get EndPoint from EndPoint entity: {error}")
                 })?;
                 let (_, arm) = arms
-                    .get(end_point.arm)
+                    .get(end_point.arm())
                     .map_err(|error| format!("failed to get Arm from Arm entity: {error}"))?;
                 if arm.index == end_arm_index {
                     break;

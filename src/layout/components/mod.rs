@@ -59,20 +59,20 @@ pub struct Segment {
     /// The shape of the curve, where the f32 is the progress along the
     /// curve (between 0.0 and 1.0) and Vec3 is the result position.
     #[reflect(ignore)]
-    pub evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
+    evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
 
     /// The next segments / end point that this segment connects to.
-    pub connection: Connection,
+    connection: Connection,
 
     /// While length can be calculated automatically with curve.length()
     /// this is computationally expensive so it is only run once and cached.
     ///
     /// Performing curve.length() each frame for each segment is a
     /// huge waste of resources when the length does not change after creation.
-    pub length: f32,
+    length: f32,
 
     /// The maximum speed allowed for vehicles to travel at.
-    pub speed_limit: Speed,
+    speed_limit: Speed,
 }
 
 impl Segment {
@@ -95,6 +95,22 @@ impl Segment {
 
     pub fn sample_clamped(&self, time: f32) -> Vec3 {
         (self.evaluator)(time)
+    }
+
+    pub fn evaluate(&self, time: f32) -> Vec3 {
+        (self.evaluator)(time)
+    }
+
+    pub const fn connection(&self) -> &Connection {
+        &self.connection
+    }
+
+    pub const fn length(&self) -> f32 {
+        self.length
+    }
+
+    pub const fn speed_limt(&self) -> Speed {
+        self.speed_limit
     }
 }
 
@@ -130,36 +146,56 @@ pub enum Connection {
 #[derive(Component, Debug, Reflect)]
 pub struct SpawnPoint {
     /// The arm that this `SpawnPoint`'s road lies on.
-    pub arm: Entity,
+    arm: Entity,
     /// The index of the lane this `SpawnPoint` connects to.
-    pub lane_index: usize,
+    lane_index: usize,
     /// The `Segment` that this `SpawnPoint` attaches to.
     /// Vehicles will spawn from this `SpawnPoint` and immediately
     /// begin moving along this `Segment`.
-    pub segment: Entity,
+    segment: Entity,
 }
 
 impl SpawnPoint {
-    pub fn new(arm: Entity, lane_index: usize, segment: Entity) -> Self {
+    pub const fn new(arm: Entity, lane_index: usize, segment: Entity) -> Self {
         SpawnPoint {
             arm,
             lane_index,
             segment,
         }
     }
+
+    pub const fn arm(&self) -> Entity {
+        self.arm
+    }
+
+    pub const fn lane_index(&self) -> usize {
+        self.lane_index
+    }
+
+    pub const fn segment(&self) -> Entity {
+        self.segment
+    }
 }
 
 /// Where a vehicle may choose to head to.
 #[derive(Component, Debug, Reflect)]
-pub struct EndPoint {
+pub(crate) struct EndPoint {
     /// The arm that this `EndPoint`'s road lies on.
-    pub arm: Entity,
+    arm: Entity,
     /// The index of the lane this `EndPoint` is connected to.
-    pub lane_index: usize,
+    lane_index: usize,
 }
 
 impl EndPoint {
-    pub fn new(arm: Entity, lane_index: usize) -> Self {
+    pub const fn new(arm: Entity, lane_index: usize) -> Self {
         EndPoint { arm, lane_index }
     }
+
+    pub const fn arm(&self) -> Entity {
+        self.arm
+    }
+
+    // pub const fn lane_index(&self) -> usize {
+    //     self.lane_index
+    // }
 }

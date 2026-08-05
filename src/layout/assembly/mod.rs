@@ -9,7 +9,7 @@ impl Plugin for AssemblyPlugin {
 
 /// Assembles the roundabout using the blueprint resources.
 /// Removes the existing layout and vehicles before spawning the new layout.
-pub fn assemble_roundabout(
+pub(crate) fn assemble_roundabout(
     mut commands: Commands,
     existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
     existing_segments: Query<Entity, With<Segment>>,
@@ -28,22 +28,18 @@ pub fn assemble_roundabout(
         existing_ends,
     );
 
-    let number_of_lanes = intersection_blueprint.number_of_lanes;
-    let inner_radius = roundabout_circle_blueprint.radius;
-    let deflection_radius = intersection_blueprint.deflection_radius;
-    let speed_limit = intersection_blueprint.speed_limit;
-    let arm_blueprints = &intersection_blueprint.arms;
+    let number_of_lanes = intersection_blueprint.number_of_lanes();
+    let inner_radius = roundabout_circle_blueprint.radius();
+    let deflection_radius = intersection_blueprint.deflection_radius();
+    let speed_limit = intersection_blueprint.speed_limit();
+    let arm_blueprints = &intersection_blueprint.arm_blueprints();
     let number_of_arms = arm_blueprints.len();
 
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
-
-    // let mut sorted_arms = arm_blueprints.clone();
-    // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
-    // let sorted_arms = sorted_arms;
     for (arm_index, arm_blueprint) in arm_blueprints.iter().enumerate() {
         let next_arm_index = (arm_index + 1) % number_of_arms;
-        let next_arm_angle = arm_blueprints[next_arm_index].angle;
+        let next_arm_angle = arm_blueprints[next_arm_index].angle();
 
         let arm_id = roundabout_topology.get_arm_id_at(arm_index);
         // Add the Arm component.
@@ -51,14 +47,14 @@ pub fn assemble_roundabout(
             Name::new(format!("Arm [{arm_index}]")),
             Arm::new(
                 arm_index,
-                arm_blueprint.angle,
-                arm_blueprint.max_vehicles_per_second,
-                calculate_destination_weights(&arm_blueprints, arm_index, &roundabout_topology),
+                arm_blueprint.angle(),
+                arm_blueprint.max_vehicles_per_second(),
+                calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
             ),
         ));
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
-        let speed_limit = arm_blueprint.speed_limit_override.unwrap_or(speed_limit);
+        let speed_limit = arm_blueprint.speed_limit_override().unwrap_or(speed_limit);
 
         for lane_index in 0..number_of_lanes {
             // A unique identifier for naming purposes.
@@ -69,7 +65,7 @@ pub fn assemble_roundabout(
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
-                arm_blueprint.angle,
+                arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -104,7 +100,7 @@ pub fn assemble_roundabout(
 
             let exit_geometry = LaneGeometry::generate(
                 LaneType::Exit,
-                arm_blueprint.angle,
+                arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -139,7 +135,7 @@ pub fn assemble_roundabout(
 
             let intra_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::IntraArm,
-                arm_blueprint.angle,
+                arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -158,7 +154,7 @@ pub fn assemble_roundabout(
 
             let inter_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::InterArm { next_arm_angle },
-                arm_blueprint.angle,
+                arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
                 deflection_radius,
@@ -188,18 +184,18 @@ fn clear_existing_layout(
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
 ) {
-    info!("Despawning vehicles");
+    info!("Despawning all vehicles");
     for vehicle in existing_vehicles {
         commands.entity(vehicle).despawn();
     }
 
     // Despawn old segments before assembling new layout.
+    info!("Despawning all segments, spawn points and end points");
     for entity in existing_segments
         .iter()
         .chain(existing_spawns.iter())
         .chain(existing_ends.iter())
     {
-        info!("Despawning segment entity");
         commands.entity(entity).despawn();
     }
 }
@@ -217,11 +213,11 @@ fn calculate_destination_weights(
 
     let mut destination_weights = EntityHashMap::default();
 
-    let source_angle = arm_blueprints[current_arm_index].angle.as_radians();
+    let source_angle = arm_blueprints[current_arm_index].angle().as_radians();
 
     for (target_index, target_blueprint) in arm_blueprints.iter().enumerate() {
         let target_arm_id = roundabout_topology.get_arm_id_at(target_index);
-        let target_angle = target_blueprint.angle.as_radians();
+        let target_angle = target_blueprint.angle().as_radians();
 
         let difference = target_angle - source_angle;
 
@@ -277,7 +273,8 @@ impl RoundaboutTopology {
         next_arm_index: usize,
     ) -> CurrentIterationIds {
         let arm_lane_topology = &self.arm_topologies[arm_index].arm_lane_topologies[lane_index];
-        let next_arm_lane_topology = &self.arm_topologies[next_arm_index].arm_lane_topologies[lane_index];
+        let next_arm_lane_topology =
+            &self.arm_topologies[next_arm_index].arm_lane_topologies[lane_index];
         CurrentIterationIds {
             entry_line: arm_lane_topology.entry_line_id,
             entry_deflection: arm_lane_topology.entry_deflection_id,

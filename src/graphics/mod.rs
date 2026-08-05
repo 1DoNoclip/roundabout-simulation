@@ -67,12 +67,12 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
     const NUMBER_OF_SAMPLES: usize = 100;
 
     let gizmo_colors =
-        color_override.unwrap_or_else(|| GizmoColors::get_colors(&segment.connection));
+        color_override.unwrap_or_else(|| GizmoColors::get_colors(segment.connection()));
 
-    let mut previous_point = (segment.evaluator)(0.0);
+    let mut previous_point = segment.evaluate(0.0);
     for step in 1..=NUMBER_OF_SAMPLES {
         let time = step as f32 / NUMBER_OF_SAMPLES as f32;
-        let current_point = (segment.evaluator)(time);
+        let current_point = segment.evaluate(time);
         gizmos.line(previous_point, current_point, gizmo_colors.segment);
         previous_point = current_point;
     }

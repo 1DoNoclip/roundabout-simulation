@@ -42,7 +42,7 @@ impl Default for SpawnerRng {
     }
 }
 
-pub fn spawn_vehicles(
+pub(crate) fn spawn_vehicles(
     mut commands: Commands,
     // A unique instance of SpawnerRng is created for this system (Local).
     // It is handed to us each time Bevy calls this system.
@@ -85,11 +85,11 @@ pub fn spawn_vehicles(
             let spawn_point = spawn_points
                 .iter()
                 .find(|(_, spawn_point)| {
-                    spawn_point.arm == spawn_arm_id && spawn_point.lane_index == lane_index
+                    spawn_point.arm() == spawn_arm_id && spawn_point.lane_index() == lane_index
                 })
                 .map(|(_, spawn_point)| spawn_point)
                 .expect("expected to find one SpawnPoint entity with matching lane_index");
-            let start_segment_id = spawn_point.segment;
+            let start_segment_id = spawn_point.segment();
             let start_segment = segments
                 .get(start_segment_id)
                 .expect("expected to find a Segment component");
@@ -113,7 +113,7 @@ pub fn spawn_vehicles(
                     progress: 0.0,
                 },
                 // make visible
-                Transform::from_translation((start_segment.evaluator)(0.0)),
+                Transform::from_translation(start_segment.evaluate(0.0)),
                 Visibility::default(),
             ));
         }
@@ -137,7 +137,7 @@ pub fn move_vehicles(
         let segment_id = navigator.route[navigator.current_segment_index];
 
         if let Ok(segment) = segments.get(segment_id) {
-            let delta_progress = (*kinematics.speed * delta_seconds) / segment.length;
+            let delta_progress = (*kinematics.speed * delta_seconds) / segment.length();
             navigator.progress += delta_progress;
 
             if navigator.progress >= 1.0 {

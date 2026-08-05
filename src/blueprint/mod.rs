@@ -18,17 +18,19 @@ impl Plugin for BlueprintPlugin {
 pub struct IntersectionBlueprint {
     /// Length between 3 -> 6.
     /// Max 2 lanes allowed when there are 3 arms.
-    pub arms: Vec<ArmBlueprint>,
+    ///
+    /// Must be sorted in reverse angle order.
+    arm_blueprints: Vec<ArmBlueprint>,
     /// A number 1 -> 3.
     /// The number of lanes for each carriageway (entry and exit roads, including roundabout circle).
-    pub number_of_lanes: usize,
+    number_of_lanes: usize,
     /// Maximum speed for vehicles to travel at.
     /// Default speed limit of the roundabout and arms in ms-1.
     /// Can be overridden on individual arms.
-    pub speed_limit: Speed,
+    speed_limit: Speed,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
     /// Increases capacity and reduces safety by increasing entry speeds.
-    pub deflection_radius: f32,
+    deflection_radius: f32,
 }
 
 impl IntersectionBlueprint {
@@ -36,12 +38,12 @@ impl IntersectionBlueprint {
     ///
     /// Sorts arms into reverse angle order for correct creation.
     pub fn try_new(
-        mut arms: Vec<ArmBlueprint>,
+        mut arm_blueprints: Vec<ArmBlueprint>,
         number_of_lanes: usize,
         speed_limit: Speed,
         deflection_radius: f32,
     ) -> Result<Self, String> {
-        let arms_length = arms.len();
+        let arms_length = arm_blueprints.len();
         if !(3..=6).contains(&arms_length) {
             return Err(format!(
                 "length of arms must be between 3 and 6 inclusive, found {arms_length}"
@@ -58,14 +60,34 @@ impl IntersectionBlueprint {
             ));
         }
 
-        arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
+        arm_blueprints
+            .sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
 
         Ok(IntersectionBlueprint {
-            arms,
+            arm_blueprints,
             number_of_lanes,
             speed_limit,
             deflection_radius,
         })
+    }
+
+    pub const fn arm_blueprints(&self) -> &[ArmBlueprint] {
+        // Using &self.arm_blueprints is not yet stable const.
+        // .as_slice is directly implemented on a Vec, but the &[]
+        // slice is a trait-based implementation.
+        self.arm_blueprints.as_slice()
+    }
+
+    pub const fn number_of_lanes(&self) -> usize {
+        self.number_of_lanes
+    }
+
+    pub const fn speed_limit(&self) -> Speed {
+        self.speed_limit
+    }
+
+    pub const fn deflection_radius(&self) -> f32 {
+        self.deflection_radius
     }
 }
 
@@ -75,7 +97,7 @@ impl IntersectionBlueprint {
 pub struct RoundaboutCircleBlueprint {
     /// Radius of the inner roundabout circle in metres.
     /// The distance between the centre and the centre of the inner circulating lane.
-    pub radius: f32,
+    radius: f32,
 }
 
 impl RoundaboutCircleBlueprint {
@@ -85,19 +107,23 @@ impl RoundaboutCircleBlueprint {
         }
         Ok(RoundaboutCircleBlueprint { radius })
     }
+
+    pub const fn radius(&self) -> f32 {
+        self.radius
+    }
 }
 
 /// Represent a singular arm to the roundabout.
 #[derive(Clone, Component, Copy, Reflect)]
 pub struct ArmBlueprint {
     /// The angle of the arm to the roundabout.
-    pub angle: Rot2,
+    angle: Rot2,
     /// Maximum speed for vehicles to travel at.
     /// Overrides the global `IntersectionBlueprint` resource's speed limit for this arm.
-    pub speed_limit_override: Option<Speed>,
+    speed_limit_override: Option<Speed>,
     /// The maximum vehicles spawned per second. The actual spawn rate may
     /// be less due to lack of space in the network to spawn another vehicle.
-    pub max_vehicles_per_second: f32,
+    max_vehicles_per_second: f32,
 }
 
 impl ArmBlueprint {
@@ -111,6 +137,18 @@ impl ArmBlueprint {
             speed_limit_override,
             max_vehicles_per_second,
         }
+    }
+
+    pub const fn angle(&self) -> Rot2 {
+        self.angle
+    }
+
+    pub const fn speed_limit_override(&self) -> Option<Speed> {
+        self.speed_limit_override
+    }
+
+    pub const fn max_vehicles_per_second(&self) -> f32 {
+        self.max_vehicles_per_second
     }
 }
 
