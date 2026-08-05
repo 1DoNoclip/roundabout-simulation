@@ -4,10 +4,13 @@ pub struct GraphicsPlugin;
 
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SegmentInspectorState>().register_type::<HighlightSegment>().add_systems(
-            Update,
-            (draw_layout, draw_vehicles, cycle_segment_gizmos).chain(),
-        );
+        app.init_resource::<SegmentInspectorState>()
+            .register_type::<HighlightSegment>()
+            .register_type::<SegmentInspectorState>()
+            .add_systems(
+                Update,
+                (draw_layout, draw_vehicles, cycle_segment_gizmos).chain(),
+            );
     }
 }
 
@@ -41,9 +44,11 @@ pub fn draw_selected_segment(
     }
 }
 
-#[derive(Resource, Default)]
+// The default value for Option is None.
+#[derive(Default, Reflect, Resource)]
+#[reflect(Resource)]
 pub struct SegmentInspectorState {
-    pub selected_index: usize,
+    pub selected_index: Option<usize>,
 }
 
 pub fn cycle_segment_gizmos(
@@ -61,12 +66,20 @@ pub fn cycle_segment_gizmos(
 
     // Press Tab to cycle through segments.
     if keyboard.just_pressed(KeyCode::Tab) {
-        state.selected_index = (state.selected_index + 1) % segment_list.len();
+        state.selected_index = Some(match state.selected_index {
+            Some(index) => (index + 1) % segment_list.len(),
+            None => 0,
+        });
     }
 
     // Render the currently selected segment in green.
-    if let Some(segment) = segment_list.get(state.selected_index) {
-        draw_segment(&mut gizmos, segment, Some(HIGHLIGHT_COLORS));
+    if let Some(index) = state.selected_index {
+        if let Some(segment) = segment_list.get(index) {
+            draw_segment(&mut gizmos, segment, Some(HIGHLIGHT_COLORS));
+        } else {
+            // Clamp to maximum if the inspector GUI has gone over limit.
+            state.selected_index = Some(segment_list.len() - 1);
+        }
     }
 }
 
