@@ -67,27 +67,37 @@ pub fn spawn_vehicles(
         if frame_probability > spawner_rng.random::<f32>() {
             let end_arm_id =
                 select_destination_arm(&mut spawner_rng, &spawn_arm.destination_weights);
+            let (_, end_arm) = arms
+                .get(end_arm_id)
+                .expect("expected to find an Arm entity with the matching Arm entity");
+
+            // In future, this will be gotten from the zone system.
+            let lane_index = 0;
+
             let end_point_id = end_points
                 .iter()
-                .find(|(_, end_point)| end_point.arm == end_arm_id && end_point.lane_index == 0)
+                .find(|(_, end_point)| {
+                    end_point.arm == end_arm_id && end_point.lane_index == lane_index
+                })
                 .map(|(id, _)| id)
-                .expect("expected to find one EndPoint entity with lane_index = 0");
+                .expect("expected to find one EndPoint entity with matching lane_index");
 
             let spawn_point = spawn_points
                 .iter()
                 .find(|(_, spawn_point)| {
-                    spawn_point.arm == spawn_arm_id && spawn_point.lane_index == 0
+                    spawn_point.arm == spawn_arm_id && spawn_point.lane_index == lane_index
                 })
                 .map(|(_, spawn_point)| spawn_point)
-                .expect("expected to find one SpawnPoint entity with lane_index = 0");
+                .expect("expected to find one SpawnPoint entity with matching lane_index");
             let start_segment_id = spawn_point.segment;
             let start_segment = segments
                 .get(start_segment_id)
                 .expect("expected to find a Segment component");
 
             // Pathfinding.
-            let route = calculate_route(start_segment_id, end_point_id, &segments)
-                .expect("failed to pathfind to EndPoint");
+            let route =
+                calculate_route(&segments, &arms, lane_index, spawn_arm.index, end_arm.index)
+                    .expect("failed to pathfind from SpawnPoint to EndPoint");
 
             // Spawning.
             commands.spawn((

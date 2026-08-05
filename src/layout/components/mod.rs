@@ -112,13 +112,10 @@ impl Default for Segment {
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
 #[derive(Debug, Reflect)]
 pub enum Connection {
-    /// This connection connects to other segments.
-    NextSegments {
-        next_segment_ids: Vec<Entity>,
-        /// Determines whether the segment must yield to traffic on the new road.
-        /// e.g., the entry into the roundabout requires yielding to circulating traffic.
-        requires_yield: bool,
-    },
+    /// A merge onto the roundabout, requiring a yield.
+    Merge { next_segment_id: Entity },
+    /// An exit from the roundabout.
+    Diverge { exit_arm_index: usize, exit_segment_id: Entity, circulating_segment_id: Entity },
     /// This connection exits the map.
     EndPoint { end_point_id: Entity },
 }
