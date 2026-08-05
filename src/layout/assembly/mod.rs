@@ -1,5 +1,4 @@
 use crate::*;
-use bevy::math::FloatOrd;
 use std::f32::consts::PI;
 
 pub struct AssemblyPlugin;
@@ -39,14 +38,14 @@ pub fn assemble_roundabout(
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
 
-    let mut sorted_arms = arm_blueprints.clone();
-    sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
-    let sorted_arms = sorted_arms;
-    for (arm_index, arm_blueprint) in sorted_arms.iter().enumerate() {
+    // let mut sorted_arms = arm_blueprints.clone();
+    // sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
+    // let sorted_arms = sorted_arms;
+    for (arm_index, arm_blueprint) in arm_blueprints.iter().enumerate() {
         let next_arm_index = (arm_index + 1) % number_of_arms;
-        let next_arm_angle = sorted_arms[next_arm_index].angle;
+        let next_arm_angle = arm_blueprints[next_arm_index].angle;
 
-        let arm_id = roundabout_topology.get_arm_at(arm_index);
+        let arm_id = roundabout_topology.get_arm_id_at(arm_index);
         // Add the Arm component.
         commands.entity(arm_id).insert((
             Name::new(format!("Arm [{arm_index}]")),
@@ -54,23 +53,19 @@ pub fn assemble_roundabout(
                 arm_index,
                 arm_blueprint.angle,
                 arm_blueprint.max_vehicles_per_second,
-                calculate_destination_weights(&sorted_arms, arm_index, &roundabout_topology),
+                calculate_destination_weights(&arm_blueprints, arm_index, &roundabout_topology),
             ),
         ));
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
-        let speed_limit = match arm_blueprint.speed_limit_override {
-            Some(speed_limit) => speed_limit,
-            None => speed_limit,
-        };
+        let speed_limit = arm_blueprint.speed_limit_override.unwrap_or(speed_limit);
 
         for lane_index in 0..number_of_lanes {
             // A unique identifier for naming purposes.
-            // Serves no functional purpose, other than being
-            // able to identify related Entities in the inspector.
+            // Serves no functional purpose for simulation, other than
+            // being able to identify related Entities in the inspector.
             let unique_identifier = format!("[{arm_index}, {lane_index}]");
-            let entities =
-                roundabout_topology.get_entities_for(arm_index, lane_index, next_arm_index);
+            let ids = roundabout_topology.get_ids_for(arm_index, lane_index, next_arm_index);
 
             let entry_geometry = LaneGeometry::generate(
                 LaneType::Entry,
@@ -80,23 +75,23 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands.entity(entities.entry_deflection).insert((
+            commands.entity(ids.entry_deflection).insert((
                 Name::new(format!("EntryDeflection {unique_identifier}")),
                 Segment::new(
                     CubicBezier::new([entry_geometry.deflection_curve]),
                     Connection::Merge {
-                        next_segment_id: entities.inter_arm_sector,
+                        next_segment_id: ids.inter_arm_sector,
                     },
                     speed_limit,
                 ),
             ));
 
-            commands.entity(entities.entry_line).insert((
+            commands.entity(ids.entry_line).insert((
                 Name::new(format!("EntryLine {unique_identifier}")),
                 Segment::new(
                     LinearSpline::new(entry_geometry.straight_line),
                     Connection::Direct {
-                        next_segment_id: entities.entry_deflection,
+                        next_segment_id: ids.entry_deflection,
                     },
                     speed_limit,
                 ),
@@ -104,7 +99,7 @@ pub fn assemble_roundabout(
 
             commands.spawn((
                 Name::new(format!("SpawnPoint {unique_identifier}")),
-                SpawnPoint::new(arm_id, lane_index, entities.entry_line),
+                SpawnPoint::new(arm_id, lane_index, ids.entry_line),
             ));
 
             let exit_geometry = LaneGeometry::generate(
@@ -122,7 +117,7 @@ pub fn assemble_roundabout(
                 ))
                 .id();
 
-            commands.entity(entities.exit_line).insert((
+            commands.entity(ids.exit_line).insert((
                 Name::new(format!("ExitLine {unique_identifier}")),
                 Segment::new(
                     LinearSpline::new(exit_geometry.straight_line),
@@ -131,12 +126,12 @@ pub fn assemble_roundabout(
                 ),
             ));
 
-            commands.entity(entities.exit_deflection).insert((
+            commands.entity(ids.exit_deflection).insert((
                 Name::new(format!("ExitDeflection {unique_identifier}")),
                 Segment::new(
                     CubicBezier::new([exit_geometry.deflection_curve]),
                     Connection::Direct {
-                        next_segment_id: entities.exit_line,
+                        next_segment_id: ids.exit_line,
                     },
                     speed_limit,
                 ),
@@ -150,12 +145,12 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands.entity(entities.intra_arm_sector).insert((
+            commands.entity(ids.intra_arm_sector).insert((
                 Name::new(format!("IntraArmSector {unique_identifier}")),
                 Segment::new(
                     intra_arm_sector_geometry,
                     Connection::Direct {
-                        next_segment_id: entities.inter_arm_sector,
+                        next_segment_id: ids.inter_arm_sector,
                     },
                     speed_limit,
                 ),
@@ -169,14 +164,14 @@ pub fn assemble_roundabout(
                 deflection_radius,
             );
 
-            commands.entity(entities.inter_arm_sector).insert((
+            commands.entity(ids.inter_arm_sector).insert((
                 Name::new(format!("InterArmSector {unique_identifier}")),
                 Segment::new(
                     inter_arm_sector_geometry,
                     Connection::Diverge {
                         exit_arm_index: next_arm_index,
-                        exit_segment_id: entities.next_exit_deflection,
-                        circulating_segment_id: entities.next_intra_arm_sector,
+                        exit_segment_id: ids.next_exit_deflection,
+                        circulating_segment_id: ids.next_intra_arm_sector,
                     },
                     speed_limit,
                 ),
@@ -225,7 +220,7 @@ fn calculate_destination_weights(
     let source_angle = arm_blueprints[current_arm_index].angle.as_radians();
 
     for (target_index, target_blueprint) in arm_blueprints.iter().enumerate() {
-        let target_arm_id = roundabout_topology.get_arm_at(target_index);
+        let target_arm_id = roundabout_topology.get_arm_id_at(target_index);
         let target_angle = target_blueprint.angle.as_radians();
 
         let difference = target_angle - source_angle;
@@ -243,101 +238,93 @@ fn calculate_destination_weights(
     destination_weights
 }
 
-/// Stores each segment entity at [arm_index][lane_index].
-type SegmentMatrix = Vec<Vec<Entity>>;
-
-/// Different Segment matrices for different parts of the roundabout.
+/// Points to all of the entities forming the roundabout.
 struct RoundaboutTopology {
-    arms: Vec<Entity>,
-    entries: SegmentMatrix,
-    entry_deflections: SegmentMatrix,
-    exits: SegmentMatrix,
-    exit_deflections: SegmentMatrix,
-    /// Circulating sectors holds a Vec for intra and inter arms.
-    /// Stored as [arm_index][lane_index].<sector type>.
-    circulating_sectors: Vec<Vec<CirculatingSectors>>,
+    arm_topologies: Vec<ArmTopology>,
 }
 
 impl RoundaboutTopology {
     fn new(commands: &mut Commands, number_of_lanes: usize, number_of_arms: usize) -> Self {
-        // Create vectors.
-        let mut arms = vec![Entity::PLACEHOLDER; number_of_arms];
-        let mut entries = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-        let mut entry_deflections =
-            vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-        let mut exits = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-        let mut exit_deflections = vec![vec![Entity::PLACEHOLDER; number_of_lanes]; number_of_arms];
-        let mut circulating_sectors =
-            vec![vec![CirculatingSectors::placeholders(); number_of_lanes]; number_of_arms];
+        let arm_topologies = (0..number_of_arms)
+            .map(|_| ArmTopology {
+                id: commands.spawn_empty().id(),
+                arm_lane_topologies: (0..number_of_lanes)
+                    .map(|_| ArmLaneTopology {
+                        entry_line_id: commands.spawn_empty().id(),
+                        entry_deflection_id: commands.spawn_empty().id(),
+                        exit_line_id: commands.spawn_empty().id(),
+                        exit_deflection_id: commands.spawn_empty().id(),
+                        circulating_sector: CirculatingSector {
+                            intra_id: commands.spawn_empty().id(),
+                            inter_id: commands.spawn_empty().id(),
+                        },
+                    })
+                    .collect(),
+            })
+            .collect();
 
-        // Populate vectors with entities.
-        for arm_index in 0..number_of_arms {
-            arms[arm_index] = commands.spawn_empty().id();
-            for lane_index in 0..number_of_lanes {
-                entries[arm_index][lane_index] = commands.spawn_empty().id();
-                entry_deflections[arm_index][lane_index] = commands.spawn_empty().id();
-                exits[arm_index][lane_index] = commands.spawn_empty().id();
-                exit_deflections[arm_index][lane_index] = commands.spawn_empty().id();
-                circulating_sectors[arm_index][lane_index].intra =
-                    commands.spawn_empty().id();
-                circulating_sectors[arm_index][lane_index].inter =
-                    commands.spawn_empty().id();
-            }
-        }
-
-        RoundaboutTopology {
-            arms,
-            entries,
-            entry_deflections,
-            exits,
-            exit_deflections,
-            circulating_sectors,
-        }
+        RoundaboutTopology { arm_topologies }
     }
 
-    fn get_arm_at(&self, arm_index: usize) -> Entity {
-        self.arms[arm_index]
+    fn get_arm_id_at(&self, arm_index: usize) -> Entity {
+        self.arm_topologies[arm_index].id
     }
 
-    /// Get the entities for the current iteration of assembly.
-    fn get_entities_for(
+    fn get_ids_for(
         &self,
         arm_index: usize,
         lane_index: usize,
         next_arm_index: usize,
-    ) -> CurrentIterationEntities {
-        CurrentIterationEntities {
-            entry_line: self.entries[arm_index][lane_index],
-            entry_deflection: self.entry_deflections[arm_index][lane_index],
-            exit_line: self.exits[arm_index][lane_index],
-            exit_deflection: self.exit_deflections[arm_index][lane_index],
-            intra_arm_sector: self.circulating_sectors[arm_index][lane_index].intra,
-            inter_arm_sector: self.circulating_sectors[arm_index][lane_index].inter,
-            next_intra_arm_sector: self.circulating_sectors[next_arm_index][lane_index].intra,
-            next_exit_deflection: self.exit_deflections[next_arm_index][lane_index],
+    ) -> CurrentIterationIds {
+        let arm_lane_topology = &self.arm_topologies[arm_index].arm_lane_topologies[lane_index];
+        let next_arm_lane_topology = &self.arm_topologies[next_arm_index].arm_lane_topologies[lane_index];
+        CurrentIterationIds {
+            entry_line: arm_lane_topology.entry_line_id,
+            entry_deflection: arm_lane_topology.entry_deflection_id,
+            exit_line: arm_lane_topology.exit_line_id,
+            exit_deflection: arm_lane_topology.exit_deflection_id,
+            intra_arm_sector: arm_lane_topology.circulating_sector.intra_id,
+            inter_arm_sector: arm_lane_topology.circulating_sector.inter_id,
+            next_exit_deflection: next_arm_lane_topology.exit_deflection_id,
+            next_intra_arm_sector: next_arm_lane_topology.circulating_sector.intra_id,
         }
     }
 }
 
-#[derive(Clone)]
-struct CirculatingSectors {
-    intra: Entity,
-    inter: Entity,
+/// Points to the entities of segments associated with an arm.
+///
+/// Includes the intra and inter sectors on the roundabout surrounding the entry lanes.
+struct ArmTopology {
+    /// The arm entity itself holding an `Arm` component.
+    id: Entity,
+    /// The index is the lane_index.
+    arm_lane_topologies: Vec<ArmLaneTopology>,
 }
 
-impl CirculatingSectors {
-    fn placeholders() -> Self {
-        CirculatingSectors { intra: Entity::PLACEHOLDER, inter: Entity::PLACEHOLDER }
-    }
+/// Points to the entities of segments associated with a single lane of an arm.
+struct ArmLaneTopology {
+    entry_line_id: Entity,
+    entry_deflection_id: Entity,
+    exit_line_id: Entity,
+    exit_deflection_id: Entity,
+    circulating_sector: CirculatingSector,
 }
 
-struct CurrentIterationEntities {
+/// Points to the entities of segments associated with a sector of the circle.
+struct CirculatingSector {
+    /// Between Arm N's exit and Arm N's entry.
+    intra_id: Entity,
+    /// Between Arm N's entry and Arm N + 1's exit.
+    inter_id: Entity,
+}
+
+struct CurrentIterationIds {
     entry_line: Entity,
     entry_deflection: Entity,
     exit_line: Entity,
     exit_deflection: Entity,
     intra_arm_sector: Entity,
     inter_arm_sector: Entity,
-    next_intra_arm_sector: Entity,
     next_exit_deflection: Entity,
+    next_intra_arm_sector: Entity,
 }

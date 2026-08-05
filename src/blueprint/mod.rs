@@ -1,3 +1,5 @@
+use bevy::math::FloatOrd;
+
 use crate::*;
 
 pub struct BlueprintPlugin;
@@ -30,8 +32,11 @@ pub struct IntersectionBlueprint {
 }
 
 impl IntersectionBlueprint {
+    /// Attempts to create a blueprint.
+    ///
+    /// Sorts arms into reverse angle order for correct creation.
     pub fn try_new(
-        arms: Vec<ArmBlueprint>,
+        mut arms: Vec<ArmBlueprint>,
         number_of_lanes: usize,
         speed_limit: Speed,
         deflection_radius: f32,
@@ -52,6 +57,9 @@ impl IntersectionBlueprint {
                 "deflection_radius must be positive, found {deflection_radius}"
             ));
         }
+
+        arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
+
         Ok(IntersectionBlueprint {
             arms,
             number_of_lanes,
