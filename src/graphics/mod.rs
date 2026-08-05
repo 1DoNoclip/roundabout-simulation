@@ -4,9 +4,9 @@ pub struct GraphicsPlugin;
 
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.init_resource::<SegmentInspectorState>().register_type::<HighlightSegment>().add_systems(
             Update,
-            (draw_layout, draw_vehicles, draw_selected_segment).chain(),
+            (draw_layout, draw_vehicles, cycle_segment_gizmos).chain(),
         );
     }
 }
@@ -30,7 +30,45 @@ pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Naviga
 }
 
 // Temporary.
-pub fn draw_selected_segment(mut gizmos: &mut Gizmos, segments: Query<(Entity, &Segment)>) {}
+pub fn draw_selected_segment(
+    mut gizmos: Gizmos,
+    highlighted_segments: Query<&Segment, With<HighlightSegment>>,
+) {
+    const HIGHLIGHT_COLORS: GizmoColors = GizmoColors::srgb_u8([255, 255, 255], [255, 255, 255]);
+
+    for segment in highlighted_segments {
+        draw_segment(&mut gizmos, segment, Some(HIGHLIGHT_COLORS));
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct SegmentInspectorState {
+    pub selected_index: usize,
+}
+
+pub fn cycle_segment_gizmos(
+    mut gizmos: Gizmos,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<SegmentInspectorState>,
+    segments: Query<&Segment>,
+) {
+    const HIGHLIGHT_COLORS: GizmoColors = GizmoColors::srgb_u8([0, 0, 255], [0, 0, 255]);
+
+    let segment_list = segments.iter().collect::<Vec<_>>();
+    if segment_list.is_empty() {
+        return;
+    }
+
+    // Press Tab to cycle through segments.
+    if keyboard.just_pressed(KeyCode::Tab) {
+        state.selected_index = (state.selected_index + 1) % segment_list.len();
+    }
+
+    // Render the currently selected segment in green.
+    if let Some(segment) = segment_list.get(state.selected_index) {
+        draw_segment(&mut gizmos, segment, Some(HIGHLIGHT_COLORS));
+    }
+}
 
 fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<GizmoColors>) {
     const NUMBER_OF_SAMPLES: usize = 100;
@@ -54,6 +92,10 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
     );
 }
 
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct HighlightSegment;
+
 struct GizmoColors {
     /// The color of the segment.
     segment: Color,
@@ -62,7 +104,7 @@ struct GizmoColors {
 }
 
 impl GizmoColors {
-    fn srgb_u8(segment: [u8; 3], point: [u8; 3]) -> Self {
+    const fn srgb_u8(segment: [u8; 3], point: [u8; 3]) -> Self {
         GizmoColors {
             segment: Color::srgb_u8(segment[0], segment[1], segment[2]),
             point: Color::srgb_u8(point[0], point[1], point[2]),
