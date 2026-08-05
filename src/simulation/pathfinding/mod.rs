@@ -19,6 +19,7 @@ pub fn calculate_route(
     start_arm_index: usize,
     end_arm_index: usize,
 ) -> Option<Vec<Entity>> {
+    None
 }
 
 pub fn select_destination_arm(

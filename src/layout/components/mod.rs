@@ -114,8 +114,14 @@ impl Default for Segment {
 pub enum Connection {
     /// A merge onto the roundabout, requiring a yield.
     Merge { next_segment_id: Entity },
-    /// An exit from the roundabout.
-    Diverge { exit_arm_index: usize, exit_segment_id: Entity, circulating_segment_id: Entity },
+    /// An exit from the roundabout while a lane still circulates.
+    Diverge {
+        exit_arm_index: usize,
+        exit_segment_id: Entity,
+        circulating_segment_id: Entity,
+    },
+    /// A direct connection from one segment to another.
+    Direct { next_segment_id: Entity },
     /// This connection exits the map.
     EndPoint { end_point_id: Entity },
 }

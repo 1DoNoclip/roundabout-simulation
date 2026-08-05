@@ -61,17 +61,11 @@ impl GizmoColors {
     /// Uses a segment's connection type to determine the color of the segment and the end of the segment.
     fn get_colors(connection: &Connection) -> GizmoColors {
         match connection {
-            Connection::NextSegments {
-                requires_yield: true,
-                ..
-            } => {
+            Connection::Merge { .. } => {
                 // Yellow / dark yellow.
                 GizmoColors::srgb_u8([200, 200, 46], [149, 149, 34])
             }
-            Connection::NextSegments {
-                requires_yield: false,
-                ..
-            } => {
+            Connection::Direct { .. } | Connection::Diverge { .. } => {
                 // White / grey.
                 GizmoColors::srgb_u8([203, 203, 203], [142, 142, 142])
             }

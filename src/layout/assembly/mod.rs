@@ -93,9 +93,8 @@ pub fn assemble_roundabout(
                 Name::new(format!("EntryDeflection {unique_identifier}")),
                 Segment::new(
                     CubicBezier::new([entry_geometry.deflection_curve]),
-                    Connection::NextSegments {
-                        next_segment_ids: vec![entities.intra_arm_sector],
-                        requires_yield: true,
+                    Connection::Merge {
+                        next_segment_id: entities.intra_arm_sector,
                     },
                     speed_limit,
                 ),
@@ -105,9 +104,8 @@ pub fn assemble_roundabout(
                 Name::new(format!("EntryLine {unique_identifier}")),
                 Segment::new(
                     LinearSpline::new(entry_geometry.straight_line),
-                    Connection::NextSegments {
-                        next_segment_ids: vec![entities.entry_deflection],
-                        requires_yield: false,
+                    Connection::Direct {
+                        next_segment_id: entities.entry_deflection,
                     },
                     speed_limit,
                 ),
@@ -146,9 +144,8 @@ pub fn assemble_roundabout(
                 Name::new(format!("ExitDeflection {unique_identifier}")),
                 Segment::new(
                     CubicBezier::new([exit_geometry.deflection_curve]),
-                    Connection::NextSegments {
-                        next_segment_ids: vec![entities.exit_line],
-                        requires_yield: false,
+                    Connection::Direct {
+                        next_segment_id: entities.exit_line,
                     },
                     speed_limit,
                 ),
@@ -166,12 +163,10 @@ pub fn assemble_roundabout(
                 Name::new(format!("InterArmSector {unique_identifier}")),
                 Segment::new(
                     inter_arm_sector_geometry,
-                    Connection::NextSegments {
-                        next_segment_ids: vec![
-                            entities.exit_deflection,
-                            entities.next_intra_arm_sector,
-                        ],
-                        requires_yield: false,
+                    Connection::Diverge {
+                        exit_arm_index: arm_index,
+                        exit_segment_id: entities.exit_deflection,
+                        circulating_segment_id: entities.next_intra_arm_sector,
                     },
                     speed_limit,
                 ),
@@ -189,9 +184,8 @@ pub fn assemble_roundabout(
                 Name::new(format!("IntraArmSector {unique_identifier}")),
                 Segment::new(
                     intra_arm_sector_geometry,
-                    Connection::NextSegments {
-                        next_segment_ids: vec![entities.inter_arm_sector],
-                        requires_yield: false,
+                    Connection::Direct {
+                        next_segment_id: entities.inter_arm_sector,
                     },
                     speed_limit,
                 ),
