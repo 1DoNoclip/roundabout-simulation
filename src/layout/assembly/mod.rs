@@ -1,6 +1,6 @@
-use std::f32::consts::PI;
-
 use crate::*;
+use bevy::math::FloatOrd;
+use std::f32::consts::PI;
 
 pub struct AssemblyPlugin;
 
@@ -43,12 +43,16 @@ pub fn assemble_roundabout(
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
 
-    for (arm_index, arm_blueprint) in arm_blueprints.iter().enumerate() {
+    let mut sorted_arms = arm_blueprints.clone();
+    sorted_arms.sort_by_cached_key(|arm| std::cmp::Reverse(FloatOrd(arm.angle.as_radians())));
+    let sorted_arms = sorted_arms;
+    for (arm_index, arm_blueprint) in sorted_arms.iter().enumerate() {
         let next_arm_index = if arm_index == 0 {
             number_of_arms - 1
         } else {
             arm_index - 1
         };
+        let next_arm_angle = sorted_arms[next_arm_index].angle;
 
         let arm_id = roundabout_topology.get_arm_at(arm_index);
         // Add the Arm component.
@@ -58,11 +62,9 @@ pub fn assemble_roundabout(
                 arm_index,
                 arm_blueprint.angle,
                 arm_blueprint.max_vehicles_per_second,
-                calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
+                calculate_destination_weights(&sorted_arms, arm_index, &roundabout_topology),
             ),
         ));
-
-        let next_arm_angle = arm_blueprints[next_arm_index].angle;
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.
         let speed_limit = match arm_blueprint.speed_limit_override {

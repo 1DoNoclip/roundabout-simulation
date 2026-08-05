@@ -74,13 +74,13 @@ pub fn spawn_vehicles(
             // In future, this will be gotten from the zone system.
             let lane_index = 0;
 
-            let end_point_id = end_points
-                .iter()
-                .find(|(_, end_point)| {
-                    end_point.arm == end_arm_id && end_point.lane_index == lane_index
-                })
-                .map(|(id, _)| id)
-                .expect("expected to find one EndPoint entity with matching lane_index");
+            // let end_point_id = end_points
+            //     .iter()
+            //     .find(|(_, end_point)| {
+            //         end_point.arm == end_arm_id && end_point.lane_index == lane_index
+            //     })
+            //     .map(|(id, _)| id)
+            //     .expect("expected to find one EndPoint entity with matching lane_index");
 
             let spawn_point = spawn_points
                 .iter()

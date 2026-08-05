@@ -5,7 +5,6 @@ pub struct GraphicsPlugin;
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SegmentInspectorState>()
-            .register_type::<HighlightSegment>()
             .register_type::<SegmentInspectorState>()
             .add_systems(
                 Update,
@@ -30,25 +29,6 @@ pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Naviga
             Color::linear_rgb(255.0, 100.0, 0.0),
         );
     }
-}
-
-// Temporary.
-pub fn draw_selected_segment(
-    mut gizmos: Gizmos,
-    highlighted_segments: Query<&Segment, With<HighlightSegment>>,
-) {
-    const HIGHLIGHT_COLORS: GizmoColors = GizmoColors::srgb_u8([255, 255, 255], [255, 255, 255]);
-
-    for segment in highlighted_segments {
-        draw_segment(&mut gizmos, segment, Some(HIGHLIGHT_COLORS));
-    }
-}
-
-// The default value for Option is None.
-#[derive(Default, Reflect, Resource)]
-#[reflect(Resource)]
-pub struct SegmentInspectorState {
-    pub selected_index: Option<usize>,
 }
 
 pub fn cycle_segment_gizmos(
@@ -105,9 +85,12 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
     );
 }
 
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
-pub struct HighlightSegment;
+// The default value for Option is None.
+#[derive(Default, Reflect, Resource)]
+#[reflect(Resource)]
+pub struct SegmentInspectorState {
+    pub selected_index: Option<usize>,
+}
 
 struct GizmoColors {
     /// The color of the segment.
