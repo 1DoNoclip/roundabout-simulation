@@ -21,7 +21,10 @@ pub fn calculate_route(
 
     // Check if the start segment immediately connects to the target end point.
     if let Ok(start_segment) = segments.get(start_segment_id) {
-        if let Connection::EndPoint { end_point_id: end_point } = &start_segment.connection {
+        if let Connection::EndPoint {
+            end_point_id: end_point,
+        } = &start_segment.connection
+        {
             if *end_point == target_end_point_id {
                 return Some(vec![start_segment_id]);
             }
@@ -43,14 +46,18 @@ pub fn calculate_route(
     'search: while let Some(current_segment_id) = queue.pop_front() {
         if let Ok(segment) = segments.get(current_segment_id) {
             match &segment.connection {
-                Connection::NextSegments { next_segment_ids, .. } => {
+                Connection::NextSegments {
+                    next_segment_ids, ..
+                } => {
                     for next_segment_id in next_segment_ids {
                         if !visited.contains(next_segment_id) {
                             visited.insert(*next_segment_id);
                             came_from.insert(*next_segment_id, current_segment_id);
 
                             if let Ok(next_segment) = segments.get(*next_segment_id) {
-                                if let Connection::EndPoint { end_point_id } = next_segment.connection {
+                                if let Connection::EndPoint { end_point_id } =
+                                    next_segment.connection
+                                {
                                     if end_point_id == target_end_point_id {
                                         final_segment = Some(*next_segment_id);
                                         break 'search;

@@ -1,5 +1,5 @@
 use crate::{simulation::select_destination_arm, *};
-use rand::{RngExt, SeedableRng, rng, rngs::StdRng, seq::IteratorRandom};
+use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
 
 pub struct VehiclePlugin;
 
@@ -49,7 +49,7 @@ pub fn spawn_vehicles(
     mut spawner_rng: Local<SpawnerRng>,
     time: Res<Time>,
     arms: Query<(Entity, &Arm)>,
-    spawn_points: Query<&SpawnPoint>,
+    spawn_points: Query<(Entity, &SpawnPoint)>,
     end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
 ) {
@@ -65,11 +65,28 @@ pub fn spawn_vehicles(
         // of spawn rates.
         let frame_probability = spawn_arm.max_vehicles_per_second * delta_seconds;
         if frame_probability > spawner_rng.random::<f32>() {
-            let end_arm_id = select_destination_arm(&mut spawner_rng, &spawn_arm.destination_weights);
-            let (_, end_arm) = arms.get(end_arm_id).expect("entity does not have an Arm component");
+            let end_arm_id =
+                select_destination_arm(&mut spawner_rng, &spawn_arm.destination_weights);
+            let end_point_id = end_points
+                .iter()
+                .find(|(_, end_point)| end_point.arm == end_arm_id && end_point.lane_index == 0)
+                .map(|(id, _)| id)
+                .expect("expected to find one EndPoint entity with lane_index = 0");
+
+            let spawn_point = spawn_points
+                .iter()
+                .find(|(_, spawn_point)| {
+                    spawn_point.arm == spawn_arm_id && spawn_point.lane_index == 0
+                })
+                .map(|(_, spawn_point)| spawn_point)
+                .expect("expected to find one SpawnPoint entity with lane_index = 0");
+            let start_segment_id = spawn_point.segment;
+            let start_segment = segments
+                .get(start_segment_id)
+                .expect("expected to find a Segment component");
 
             // Pathfinding.
-            let route = calculate_route(starting_segment_id, end_point.0, &segments)
+            let route = calculate_route(start_segment_id, end_point_id, &segments)
                 .expect("failed to pathfind to EndPoint");
 
             // Spawning.
@@ -87,7 +104,7 @@ pub fn spawn_vehicles(
                     progress: 0.0,
                 },
                 // make visible
-                Transform::from_translation(start_position),
+                Transform::from_translation((start_segment.evaluator)(0.0)),
                 Visibility::default(),
             ));
         }

@@ -137,9 +137,7 @@ pub fn assemble_roundabout(
                 Name::new(format!("ExitLine {unique_identifier}")),
                 Segment::new(
                     LinearSpline::new(exit_geometry.straight_line),
-                    Connection::EndPoint {
-                        end_point_id,
-                    },
+                    Connection::EndPoint { end_point_id },
                     speed_limit,
                 ),
             ));

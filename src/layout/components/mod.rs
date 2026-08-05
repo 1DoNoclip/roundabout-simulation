@@ -87,7 +87,9 @@ impl Segment {
     }
 
     pub fn to_end<C: SegmentCurve>(curve: C, end_point: Entity, speed_limit: Speed) -> Self {
-        let connection = Connection::EndPoint { end_point_id: end_point };
+        let connection = Connection::EndPoint {
+            end_point_id: end_point,
+        };
         Segment::new(curve, connection, speed_limit)
     }
 
