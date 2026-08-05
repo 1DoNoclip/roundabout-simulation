@@ -112,18 +112,18 @@ impl Default for Segment {
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
 #[derive(Debug, Reflect)]
 pub enum Connection {
-    /// A merge onto the roundabout, requiring a yield.
-    Merge { next_segment_id: Entity },
+    /// A direct connection from one segment to another.
+    Direct { next_segment_id: Entity },
     /// An exit from the roundabout while a lane still circulates.
     Diverge {
         exit_arm_index: usize,
         exit_segment_id: Entity,
         circulating_segment_id: Entity,
     },
-    /// A direct connection from one segment to another.
-    Direct { next_segment_id: Entity },
     /// This connection exits the map.
     EndPoint { end_point_id: Entity },
+    /// A merge onto the roundabout, requiring a yield.
+    Merge { next_segment_id: Entity },
 }
 
 /// Where vehicles spawn from.

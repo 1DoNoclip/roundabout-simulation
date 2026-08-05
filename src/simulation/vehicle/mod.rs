@@ -26,7 +26,7 @@ pub struct Navigator {
     /// The route for the vehicle to follow.
     pub route: Vec<Entity>,
     /// An index of route to identify the current segment.
-    pub current_segment: usize,
+    pub current_segment_index: usize,
     /// A segment progress between 0 and 1.
     pub progress: f32,
 }
@@ -95,9 +95,14 @@ pub fn spawn_vehicles(
                 .expect("expected to find a Segment component");
 
             // Pathfinding.
-            let route =
-                calculate_route(&segments, &arms, lane_index, spawn_arm.index, end_arm.index)
-                    .expect("failed to pathfind from SpawnPoint to EndPoint");
+            let route = calculate_route(
+                &arms,
+                &end_points,
+                &segments,
+                spawn_point,
+                end_arm.index,
+            )
+            .expect("failed to pathfind from SpawnPoint to EndPoint");
 
             // Spawning.
             commands.spawn((
@@ -110,7 +115,7 @@ pub fn spawn_vehicles(
                 },
                 Navigator {
                     route,
-                    current_segment: 0,
+                    current_segment_index: 0,
                     progress: 0.0,
                 },
                 // make visible
@@ -131,19 +136,19 @@ pub fn move_vehicles(
     let delta_seconds = time.delta_secs();
 
     for (entity, mut kinematics, mut navigator, mut transform) in vehicles {
-        if navigator.current_segment >= navigator.route.len() {
+        if navigator.current_segment_index >= navigator.route.len() {
             continue;
         }
 
-        let segment_id = navigator.route[navigator.current_segment];
+        let segment_id = navigator.route[navigator.current_segment_index];
 
         if let Ok(segment) = segments.get(segment_id) {
             let delta_progress = (*kinematics.speed * delta_seconds) / segment.length;
             navigator.progress += delta_progress;
 
             if navigator.progress >= 1.0 {
-                if navigator.current_segment + 1 < navigator.route.len() {
-                    navigator.current_segment += 1;
+                if navigator.current_segment_index + 1 < navigator.route.len() {
+                    navigator.current_segment_index += 1;
                     navigator.progress = 0.0;
                 } else {
                     // Reached the end point (add stats in future)
