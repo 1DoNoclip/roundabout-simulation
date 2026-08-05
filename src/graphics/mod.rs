@@ -4,8 +4,17 @@ pub struct GraphicsPlugin;
 
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (draw_layout, draw_vehicles).chain());
+        app.add_systems(
+            Update,
+            (draw_layout, draw_vehicles, draw_selected_segment).chain(),
+        );
     }
+}
+
+pub fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
+    segments
+        .iter()
+        .for_each(|segment| draw_segment(&mut gizmos, segment, None));
 }
 
 pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
@@ -20,27 +29,29 @@ pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Naviga
     }
 }
 
-pub fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
+// Temporary.
+pub fn draw_selected_segment(mut gizmos: &mut Gizmos, segments: Query<(Entity, &Segment)>) {}
+
+fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<GizmoColors>) {
     const NUMBER_OF_SAMPLES: usize = 100;
 
-    for segment in segments {
-        let gizmo_colors = GizmoColors::get_colors(&segment.connection);
+    let gizmo_colors =
+        color_override.unwrap_or_else(|| GizmoColors::get_colors(&segment.connection));
 
-        let mut previous_point = (segment.evaluator)(0.0);
-        for step in 1..=NUMBER_OF_SAMPLES {
-            let time = step as f32 / NUMBER_OF_SAMPLES as f32;
-            let current_point = (segment.evaluator)(time);
-            gizmos.line(previous_point, current_point, gizmo_colors.segment);
-            previous_point = current_point;
-        }
-
-        // Small sphere marker at the segment end point.
-        gizmos.sphere(
-            Isometry3d::from_translation(previous_point),
-            0.75,
-            gizmo_colors.point,
-        );
+    let mut previous_point = (segment.evaluator)(0.0);
+    for step in 1..=NUMBER_OF_SAMPLES {
+        let time = step as f32 / NUMBER_OF_SAMPLES as f32;
+        let current_point = (segment.evaluator)(time);
+        gizmos.line(previous_point, current_point, gizmo_colors.segment);
+        previous_point = current_point;
     }
+
+    // Small sphere marker at the segment end point.
+    gizmos.sphere(
+        Isometry3d::from_translation(previous_point),
+        0.75,
+        gizmo_colors.point,
+    );
 }
 
 struct GizmoColors {
@@ -65,14 +76,13 @@ impl GizmoColors {
                 // Yellow / dark yellow.
                 GizmoColors::srgb_u8([200, 200, 46], [149, 149, 34])
             }
-            Connection::Direct { .. } => {//| Connection::Diverge { .. } => {
+            Connection::Direct { .. } => {
+                //| Connection::Diverge { .. } => {
                 // White / grey.
                 GizmoColors::srgb_u8([203, 203, 203], [142, 142, 142])
             }
             // Temporary.
-            Connection::Diverge { .. } => {
-                GizmoColors::srgb_u8([100, 100, 100], [100, 100, 100])
-            }
+            Connection::Diverge { .. } => GizmoColors::srgb_u8([100, 100, 100], [100, 100, 100]),
             Connection::EndPoint { .. } => {
                 // red / dark.
                 GizmoColors::srgb_u8([200, 20, 32], [161, 16, 25])
