@@ -109,10 +109,10 @@ impl LaneGeometry {
 
 /// Decides where on the circle the sector lies.
 pub enum SectorType {
-    /// Between Arm N's exit and Arm N's entry.
-    InterArm { next_arm_angle: Rot2 },
     /// Between Arm N's entry and Arm (N + 1)'s exit.
     IntraArm,
+    /// Between Arm N's exit and Arm N's entry.
+    InterArm { next_arm_angle: Rot2 },
 }
 
 /// Defines a singular sector on the circulating part of the roundabout.
@@ -139,13 +139,13 @@ impl SectorGeometry {
 
         let (start_angle, raw_end_angle) = match sector_type {
             SectorType::IntraArm => {
-                let start = arm_angle.as_radians() - angular_displacement;
-                let end = arm_angle.as_radians() + angular_displacement;
+                let start = arm_angle.as_radians() + angular_displacement;
+                let end = arm_angle.as_radians() - angular_displacement;
                 (start, end)
             }
             SectorType::InterArm { next_arm_angle } => {
-                let start = arm_angle.as_radians() + angular_displacement;
-                let end = next_arm_angle.as_radians() - angular_displacement;
+                let start = arm_angle.as_radians() - angular_displacement;
+                let end = next_arm_angle.as_radians() + angular_displacement;
                 (start, end)
             }
         };

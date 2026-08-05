@@ -148,27 +148,6 @@ pub fn assemble_roundabout(
                 ),
             ));
 
-            let inter_arm_sector_geometry = SectorGeometry::generate(
-                SectorType::InterArm { next_arm_angle },
-                arm_blueprint.angle,
-                lane_index,
-                inner_radius,
-                deflection_radius,
-            );
-
-            commands.entity(entities.inter_arm_sector).insert((
-                Name::new(format!("InterArmSector {unique_identifier}")),
-                Segment::new(
-                    inter_arm_sector_geometry,
-                    Connection::Diverge {
-                        exit_arm_index: arm_index,
-                        exit_segment_id: entities.exit_deflection,
-                        circulating_segment_id: entities.next_intra_arm_sector,
-                    },
-                    speed_limit,
-                ),
-            ));
-
             let intra_arm_sector_geometry = SectorGeometry::generate(
                 SectorType::IntraArm,
                 arm_blueprint.angle,
@@ -183,6 +162,27 @@ pub fn assemble_roundabout(
                     intra_arm_sector_geometry,
                     Connection::Direct {
                         next_segment_id: entities.inter_arm_sector,
+                    },
+                    speed_limit,
+                ),
+            ));
+
+            let inter_arm_sector_geometry = SectorGeometry::generate(
+                SectorType::InterArm { next_arm_angle },
+                arm_blueprint.angle,
+                lane_index,
+                inner_radius,
+                deflection_radius,
+            );
+
+            commands.entity(entities.inter_arm_sector).insert((
+                Name::new(format!("InterArmSector {unique_identifier}")),
+                Segment::new(
+                    inter_arm_sector_geometry,
+                    Connection::Diverge {
+                        exit_arm_index: next_arm_index,
+                        exit_segment_id: entities.next_exit_deflection,
+                        circulating_segment_id: entities.next_intra_arm_sector,
                     },
                     speed_limit,
                 ),
@@ -316,13 +316,14 @@ impl RoundaboutTopology {
             entry_line: self.entries[arm_index][lane_index],
             entry_deflection: self.entry_deflections[arm_index][lane_index],
             exit_line: self.exits[arm_index][lane_index],
-            exit_deflection: self.exit_deflections[next_arm_index][lane_index],
+            exit_deflection: self.exit_deflections[arm_index][lane_index],
             intra_arm_sector: self.circulating_sectors[arm_index][lane_index]
                 [INTRA_ARM_SECTOR_INDEX],
             inter_arm_sector: self.circulating_sectors[arm_index][lane_index]
                 [INTER_ARM_SECTOR_INDEX],
             next_intra_arm_sector: self.circulating_sectors[next_arm_index][lane_index]
                 [INTRA_ARM_SECTOR_INDEX],
+            next_exit_deflection: self.exit_deflections[next_arm_index][lane_index],
         }
     }
 }
@@ -335,4 +336,5 @@ struct CurrentIterationEntities {
     intra_arm_sector: Entity,
     inter_arm_sector: Entity,
     next_intra_arm_sector: Entity,
+    next_exit_deflection: Entity,
 }
