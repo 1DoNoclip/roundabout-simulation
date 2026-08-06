@@ -14,6 +14,36 @@ impl Plugin for VehiclePlugin {
     }
 }
 
+#[derive(Bundle)]
+struct VehicleBundle {
+    name: Name,
+    kinematics: Kinematics,
+    navigator: Navigator,
+    transform: Transform,
+}
+
+impl VehicleBundle {
+    fn try_new(
+        segments: &Query<&Segment>,
+        speed: Speed,
+        target_speed: Speed,
+        max_acceleration: Acceleration,
+        max_deceleration: Acceleration,
+        route: Vec<Entity>,
+    ) -> Result<Self, &'static str> {
+        let navigator = Navigator::try_new(route)?;
+        let start_segment = segments
+            .get(navigator.current_segment_id())
+            .expect("expected to find a Segment component");
+        Ok(VehicleBundle {
+            name: Name::new("Vehicle"),
+            kinematics: Kinematics::new(speed, target_speed, max_acceleration, max_deceleration),
+            navigator,
+            transform: Transform::from_translation(start_segment.sample_clamped(0.0)),
+        })
+    }
+}
+
 /// Used in spawn_vehicles.
 #[derive(Deref, DerefMut)]
 pub(crate) struct SpawnerRng(StdRng);
@@ -72,29 +102,23 @@ pub(crate) fn spawn_vehicles(
                 })
                 .map(|(_, spawn_point)| spawn_point)
                 .expect("expected to find one SpawnPoint entity with matching lane_index");
-            let start_segment_id = spawn_point.segment();
-            let start_segment = segments
-                .get(start_segment_id)
-                .expect("expected to find a Segment component");
 
             // Pathfinding.
             let route =
                 calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
                     .expect("failed to pathfind from SpawnPoint to EndPoint");
 
-            // Spawning.
-            commands.spawn((
-                Name::new("Vehicle"),
-                Kinematics::new(
+            commands.spawn(
+                VehicleBundle::try_new(
+                    &segments,
                     Speed::from_miles_per_hour(5.0).expect("failed to create"),
                     Speed::from_miles_per_hour(60.0).expect("failed to create"),
                     Acceleration::new(3.0),
                     Acceleration::new(-8.0),
-                ),
-                Navigator::try_new(route).expect("failed to create"),
-                // Make visible.
-                Transform::from_translation(start_segment.sample_clamped(0.0)),
-            ));
+                    route,
+                )
+                .expect("failed to spawn VehicleBundle"),
+            );
         }
     }
 }
