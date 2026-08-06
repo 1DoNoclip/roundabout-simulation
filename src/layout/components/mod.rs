@@ -2,15 +2,15 @@
 
 use crate::*;
 
-pub(crate) mod speed;
+pub(crate) mod kinematics;
 
-pub(crate) use speed::*;
+pub(crate) use kinematics::*;
 
 pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SpeedPlugin)
+        app.add_plugins(KinematicsPlugin)
             .register_type::<Arm>()
             .register_type::<Connection>()
             .register_type::<EndPoint>()

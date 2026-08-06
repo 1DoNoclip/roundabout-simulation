@@ -1,6 +1,5 @@
-use bevy::math::FloatOrd;
-
 use crate::*;
+use bevy::math::FloatOrd;
 
 pub(crate) struct BlueprintPlugin;
 

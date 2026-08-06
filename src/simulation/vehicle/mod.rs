@@ -17,9 +17,9 @@ pub(crate) struct Kinematics {
     pub speed: Speed,
     /// Target speed that the driver would aim for on an empty road.
     target_speed: Speed,
-    max_acceleration: f32,
+    max_acceleration: Acceleration,
     /// The maximum deceleration possible by braking.
-    max_deceleration: f32,
+    max_deceleration: Acceleration,
 }
 
 /// Decides how the vehicle navigates the map.
@@ -107,8 +107,8 @@ pub(crate) fn spawn_vehicles(
                 Kinematics {
                     speed: Speed::from_miles_per_hour(5.0).expect("failed to create"),
                     target_speed: Speed::from_miles_per_hour(60.0).expect("failed to create"),
-                    max_acceleration: 3.0,
-                    max_deceleration: 8.0,
+                    max_acceleration: Acceleration::new(3.0),
+                    max_deceleration: Acceleration::new(-8.0),
                 },
                 Navigator {
                     route,
@@ -156,12 +156,12 @@ pub(super) fn move_vehicles(
                 transform.translation = segment.sample_clamped(navigator.progress);
             }
 
+            // let Kinematics { speed, target_speed, max_acceleration, .. } = &mut *kinematics;
             // Increases speed due to acceleration.
             if *kinematics.speed < *kinematics.target_speed {
-                *kinematics.speed += kinematics.max_acceleration * delta_seconds;
-                if *kinematics.speed > *kinematics.target_speed {
-                    *kinematics.speed = *kinematics.target_speed;
-                }
+                *kinematics.speed = (*kinematics.speed
+                    + *kinematics.max_acceleration * delta_seconds)
+                    .min(*kinematics.target_speed);
             }
         }
     }

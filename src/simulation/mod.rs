@@ -4,7 +4,7 @@ pub(crate) mod pathfinding;
 pub(crate) mod statistics;
 pub(crate) mod vehicle;
 
-pub use pathfinding::*;
+pub(crate) use pathfinding::*;
 pub(crate) use statistics::*;
 pub(crate) use vehicle::*;
 

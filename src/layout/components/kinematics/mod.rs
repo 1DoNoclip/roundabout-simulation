@@ -1,17 +1,31 @@
-use std::ops::{Deref, DerefMut};
+//! Contains `Speed` and `Acceleration` components.
 
 use crate::*;
 
-pub(super) struct SpeedPlugin;
+pub(super) struct KinematicsPlugin;
 
-impl Plugin for SpeedPlugin {
+impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Speed>();
+        app.register_type::<Acceleration>().register_type::<Speed>();
+    }
+}
+
+/// An acceleration, can be used for acceleration and deceleration (with negative).
+#[derive(Clone, Copy, Debug, Deref, DerefMut, Reflect)]
+pub(crate) struct Acceleration {
+    metres_per_second_squared: f32,
+}
+
+impl Acceleration {
+    pub const fn new(metres_per_second_squared: f32) -> Self {
+        Acceleration {
+            metres_per_second_squared,
+        }
     }
 }
 
 /// A speed, can be used for vehicle speed and speed limit.
-#[derive(Clone, Copy, Debug, Reflect)]
+#[derive(Clone, Copy, Debug, Deref, DerefMut, Reflect)]
 pub(crate) struct Speed {
     metres_per_second: f32,
 }
@@ -30,20 +44,6 @@ impl Speed {
     pub fn from_miles_per_hour(miles_per_hour: f32) -> Result<Self, String> {
         let metres_per_second = miles_per_hour * 0.44704;
         Speed::new(metres_per_second)
-    }
-}
-
-impl Deref for Speed {
-    type Target = f32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.metres_per_second
-    }
-}
-
-impl DerefMut for Speed {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.metres_per_second
     }
 }
 
