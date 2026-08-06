@@ -5,12 +5,12 @@ pub mod components;
 pub mod curve;
 pub mod geometry;
 
-pub use assembly::*;
+use assembly::*;
 pub use components::*;
 pub use curve::*;
 pub use geometry::*;
 
-pub struct LayoutPlugin;
+pub(crate) struct LayoutPlugin;
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {

@@ -4,6 +4,12 @@ use rand::{
     rngs::StdRng,
 };
 
+pub(super) struct PathfindingPlugin;
+
+impl Plugin for PathfindingPlugin {
+    fn build(&self, _app: &mut App) {}
+}
+
 /// Computes the route for a vehicle to follow.
 ///
 /// Assumes that the `lane_index` is always constant throughout the route.

@@ -2,7 +2,7 @@
 
 use crate::*;
 
-pub struct GeometryPlugin;
+pub(super) struct GeometryPlugin;
 
 impl Plugin for GeometryPlugin {
     fn build(&self, _app: &mut App) {}

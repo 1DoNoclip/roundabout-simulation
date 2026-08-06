@@ -9,12 +9,6 @@ fn main() {
             WorldInspectorPlugin::default(),
         ))
         // Domain plugins.
-        .add_plugins((
-            AppSetupPlugin,
-            BlueprintPlugin,
-            GraphicsPlugin,
-            LayoutPlugin,
-            SimulationPlugin,
-        ))
+        .add_plugins((AppSetupPlugin,))
         .run();
 }

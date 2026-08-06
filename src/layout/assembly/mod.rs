@@ -3,7 +3,7 @@
 use crate::*;
 use std::f32::consts::PI;
 
-pub struct AssemblyPlugin;
+pub(super) struct AssemblyPlugin;
 
 impl Plugin for AssemblyPlugin {
     fn build(&self, _app: &mut App) {}

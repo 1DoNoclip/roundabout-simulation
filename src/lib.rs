@@ -15,8 +15,14 @@ pub struct AppSetupPlugin;
 
 impl Plugin for AppSetupPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (setup_world, setup_roundabout_layout))
-            .add_systems(Update, play_pause_time);
+        app.add_plugins((
+            BlueprintPlugin,
+            GraphicsPlugin,
+            LayoutPlugin,
+            SimulationPlugin,
+        ))
+        .add_systems(Startup, (setup_world, setup_roundabout_layout))
+        .add_systems(Update, play_pause_time);
     }
 }
 

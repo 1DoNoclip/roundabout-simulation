@@ -8,11 +8,11 @@ pub use pathfinding::*;
 pub use statistics::*;
 pub use vehicle::*;
 
-pub struct SimulationPlugin;
+pub(crate) struct SimulationPlugin;
 
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((StatisticsPlugin, VehiclePlugin))
+        app.add_plugins((PathfindingPlugin, StatisticsPlugin, VehiclePlugin))
             .add_systems(FixedUpdate, (spawn_vehicles, move_vehicles));
     }
 }

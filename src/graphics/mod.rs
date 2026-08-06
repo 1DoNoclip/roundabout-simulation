@@ -1,6 +1,6 @@
 use crate::*;
 
-pub struct GraphicsPlugin;
+pub(crate) struct GraphicsPlugin;
 
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {

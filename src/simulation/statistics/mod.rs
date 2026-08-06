@@ -1,6 +1,6 @@
 use crate::*;
 
-pub struct StatisticsPlugin;
+pub(super) struct StatisticsPlugin;
 
 impl Plugin for StatisticsPlugin {
     fn build(&self, app: &mut App) {

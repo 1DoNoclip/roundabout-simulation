@@ -1,7 +1,7 @@
 use crate::{simulation::select_destination_arm, *};
 use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
 
-pub struct VehiclePlugin;
+pub(super) struct VehiclePlugin;
 
 impl Plugin for VehiclePlugin {
     fn build(&self, app: &mut App) {

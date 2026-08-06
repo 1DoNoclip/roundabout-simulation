@@ -6,7 +6,7 @@ pub mod speed;
 
 pub use speed::*;
 
-pub struct ComponentsPlugin;
+pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {

@@ -2,7 +2,7 @@
 
 use crate::*;
 
-pub struct CurvePlugin;
+pub(super) struct CurvePlugin;
 
 impl Plugin for CurvePlugin {
     fn build(&self, _app: &mut App) {}
@@ -29,10 +29,7 @@ mod tests {
 
     #[test]
     fn linear_length() {
-        let points = [
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(3.0, 4.0, 0.0),
-        ];
+        let points = [Vec3::new(0.0, 0.0, 0.0), Vec3::new(3.0, 4.0, 0.0)];
         let curve = StraightLinePoints(points);
 
         let calculated_length = curve.length();

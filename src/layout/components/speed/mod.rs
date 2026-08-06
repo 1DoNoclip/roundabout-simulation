@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::*;
 
-pub struct SpeedPlugin;
+pub(super) struct SpeedPlugin;
 
 impl Plugin for SpeedPlugin {
     fn build(&self, app: &mut App) {

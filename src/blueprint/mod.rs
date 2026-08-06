@@ -2,7 +2,7 @@ use bevy::math::FloatOrd;
 
 use crate::*;
 
-pub struct BlueprintPlugin;
+pub(crate) struct BlueprintPlugin;
 
 impl Plugin for BlueprintPlugin {
     fn build(&self, app: &mut App) {
