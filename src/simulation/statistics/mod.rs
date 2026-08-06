@@ -10,9 +10,10 @@ impl Plugin for StatisticsPlugin {
 
 /// A collection of statistics to be used later when analysing the results.
 #[derive(Default, Reflect, Resource)]
+#[reflect(Resource)]
 pub(crate) struct Statistics {
     /// The number of vehicles which have fully traversed the junction and have now despawned.
-    total_vehicles_passed: usize,
+    total_vehicles_passed: u32,
 }
 
 impl Statistics {
