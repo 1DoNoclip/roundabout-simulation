@@ -2,9 +2,9 @@
 
 use crate::*;
 
-pub mod speed;
+pub(crate) mod speed;
 
-pub use speed::*;
+pub(crate) use speed::*;
 
 pub(super) struct ComponentsPlugin;
 
@@ -19,27 +19,27 @@ impl Plugin for ComponentsPlugin {
     }
 }
 
-pub type DestinationWeights = EntityHashMap<u32>;
+pub(crate) type DestinationWeights = EntityHashMap<u32>;
 
 #[derive(Component, Debug, Reflect)]
 #[reflect(Component)]
 /// A marker for spawned road `Segment`s and other components to assign themselves to.
 ///
 /// E.g., a `SpawnPoint` and `EndPoint` point to an `Arm` entity.
-pub struct Arm {
+pub(crate) struct Arm {
     /// The unique index of this arm.
-    pub index: usize,
+    index: usize,
     /// The angle of the arm to the roundabout.
-    pub angle: Rot2,
+    angle: Rot2,
     /// The maximum vehicles spawned per second. The actual spawn rate may
     /// be less due to lack of space in the network to spawn another vehicle.
-    pub max_vehicles_per_second: f32,
+    max_vehicles_per_second: f32,
     /// The desirability of each destination from this spawn point.
-    pub destination_weights: DestinationWeights,
+    destination_weights: DestinationWeights,
 }
 
 impl Arm {
-    pub fn new(
+    pub const fn new(
         index: usize,
         angle: Rot2,
         max_vehicles_per_second: f32,
@@ -52,12 +52,24 @@ impl Arm {
             destination_weights,
         }
     }
+
+    pub const fn index(&self) -> usize {
+        self.index
+    }
+
+    pub const fn max_vehicles_per_second(&self) -> f32 {
+        self.max_vehicles_per_second
+    }
+
+    pub const fn destination_weights(&self) -> &DestinationWeights {
+        &self.destination_weights
+    }
 }
 
 /// A road segment between connections.
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
-pub struct Segment {
+pub(crate) struct Segment {
     /// The shape of the curve, where the f32 is the progress along the
     /// curve (between 0.0 and 1.0) and Vec3 is the result position.
     #[reflect(ignore)]
@@ -88,18 +100,7 @@ impl Segment {
         }
     }
 
-    pub fn to_end<C: SegmentCurve>(curve: C, end_point: Entity, speed_limit: Speed) -> Self {
-        let connection = Connection::EndPoint {
-            end_point_id: end_point,
-        };
-        Segment::new(curve, connection, speed_limit)
-    }
-
     pub fn sample_clamped(&self, time: f32) -> Vec3 {
-        (self.evaluator)(time)
-    }
-
-    pub fn evaluate(&self, time: f32) -> Vec3 {
         (self.evaluator)(time)
     }
 
@@ -109,10 +110,6 @@ impl Segment {
 
     pub const fn length(&self) -> f32 {
         self.length
-    }
-
-    pub const fn speed_limt(&self) -> Speed {
-        self.speed_limit
     }
 }
 
@@ -129,7 +126,7 @@ impl Default for Segment {
 
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
 #[derive(Debug, Reflect)]
-pub enum Connection {
+pub(crate) enum Connection {
     /// A direct connection from one segment to another.
     Direct { next_segment_id: Entity },
     /// An exit from the roundabout while a lane still circulates.
@@ -146,7 +143,7 @@ pub enum Connection {
 
 /// Where vehicles spawn from.
 #[derive(Component, Debug, Reflect)]
-pub struct SpawnPoint {
+pub(crate) struct SpawnPoint {
     /// The arm that this `SpawnPoint`'s road lies on.
     arm: Entity,
     /// The index of the lane this `SpawnPoint` connects to.
@@ -196,8 +193,4 @@ impl EndPoint {
     pub const fn arm(&self) -> Entity {
         self.arm
     }
-
-    // pub const fn lane_index(&self) -> usize {
-    //     self.lane_index
-    // }
 }

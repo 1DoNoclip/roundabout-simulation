@@ -13,13 +13,13 @@ impl Plugin for GraphicsPlugin {
     }
 }
 
-pub fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
+fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
     segments
         .iter()
         .for_each(|segment| draw_segment(&mut gizmos, segment, None));
 }
 
-pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
+fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
     for transform in vehicles.iter() {
         // Draws a bright cyan circle with a 1.0 pixel radius
         // at the vehicle's current coordinates.
@@ -31,7 +31,7 @@ pub fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Naviga
     }
 }
 
-pub fn cycle_segment_gizmos(
+fn cycle_segment_gizmos(
     mut gizmos: Gizmos,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<SegmentInspectorState>,
@@ -69,10 +69,10 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
     let gizmo_colors =
         color_override.unwrap_or_else(|| GizmoColors::get_colors(segment.connection()));
 
-    let mut previous_point = segment.evaluate(0.0);
+    let mut previous_point = segment.sample_clamped(0.0);
     for step in 1..=NUMBER_OF_SAMPLES {
         let time = step as f32 / NUMBER_OF_SAMPLES as f32;
-        let current_point = segment.evaluate(time);
+        let current_point = segment.sample_clamped(time);
         gizmos.line(previous_point, current_point, gizmo_colors.segment);
         previous_point = current_point;
     }
@@ -88,7 +88,7 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
 // The default value for Option is None.
 #[derive(Default, Reflect, Resource)]
 #[reflect(Resource)]
-pub struct SegmentInspectorState {
+struct SegmentInspectorState {
     pub selected_index: Option<usize>,
 }
 
@@ -108,7 +108,7 @@ impl GizmoColors {
     }
 
     /// Uses a segment's connection type to determine the color of the segment and the end of the segment.
-    fn get_colors(connection: &Connection) -> GizmoColors {
+    const fn get_colors(connection: &Connection) -> GizmoColors {
         match connection {
             Connection::Merge { .. } => {
                 // Yellow / dark yellow.
@@ -119,10 +119,12 @@ impl GizmoColors {
                 // White / grey.
                 GizmoColors::srgb_u8([203, 203, 203], [142, 142, 142])
             }
-            // Temporary.
-            Connection::Diverge { .. } => GizmoColors::srgb_u8([100, 100, 100], [100, 100, 100]),
+            Connection::Diverge { .. } => {
+                // Grey / grey.
+                GizmoColors::srgb_u8([100, 100, 100], [100, 100, 100])
+            }
             Connection::EndPoint { .. } => {
-                // red / dark.
+                // Red / dark.
                 GizmoColors::srgb_u8([200, 20, 32], [161, 16, 25])
             }
         }

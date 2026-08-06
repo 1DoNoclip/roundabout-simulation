@@ -12,28 +12,30 @@ impl Plugin for VehiclePlugin {
 
 /// The motion characteristics for the vehicle.
 #[derive(Component, Reflect)]
-pub struct Kinematics {
+pub(crate) struct Kinematics {
+    /// The current speed of the vehicle.
     pub speed: Speed,
     /// Target speed that the driver would aim for on an empty road.
-    pub target_speed: Speed,
-    pub max_acceleration: f32,
-    pub max_deceleration: f32,
+    target_speed: Speed,
+    max_acceleration: f32,
+    /// The maximum deceleration possible by braking.
+    max_deceleration: f32,
 }
 
 /// Decides how the vehicle navigates the map.
 #[derive(Component, Reflect)]
-pub struct Navigator {
+pub(crate) struct Navigator {
     /// The route for the vehicle to follow.
-    pub route: Vec<Entity>,
+    route: Vec<Entity>,
     /// An index of route to identify the current segment.
-    pub current_segment_index: usize,
+    current_segment_index: usize,
     /// A segment progress between 0 and 1.
-    pub progress: f32,
+    progress: f32,
 }
 
 /// Used in spawn_vehicles.
 #[derive(Deref, DerefMut)]
-pub struct SpawnerRng(StdRng);
+pub(crate) struct SpawnerRng(StdRng);
 
 // Local requires Default to initialize the struct.
 impl Default for SpawnerRng {
@@ -63,10 +65,10 @@ pub(crate) fn spawn_vehicles(
         // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
         // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
         // of spawn rates.
-        let frame_probability = spawn_arm.max_vehicles_per_second * delta_seconds;
+        let frame_probability = spawn_arm.max_vehicles_per_second() * delta_seconds;
         if frame_probability > spawner_rng.random::<f32>() {
             let end_arm_id =
-                select_destination_arm(&mut spawner_rng, &spawn_arm.destination_weights);
+                select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
             let (_, end_arm) = arms
                 .get(end_arm_id)
                 .expect("expected to find an Arm entity with the matching Arm entity");
@@ -95,8 +97,9 @@ pub(crate) fn spawn_vehicles(
                 .expect("expected to find a Segment component");
 
             // Pathfinding.
-            let route = calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index)
-                .expect("failed to pathfind from SpawnPoint to EndPoint");
+            let route =
+                calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
+                    .expect("failed to pathfind from SpawnPoint to EndPoint");
 
             // Spawning.
             commands.spawn((
@@ -113,14 +116,14 @@ pub(crate) fn spawn_vehicles(
                     progress: 0.0,
                 },
                 // make visible
-                Transform::from_translation(start_segment.evaluate(0.0)),
+                Transform::from_translation(start_segment.sample_clamped(0.0)),
                 Visibility::default(),
             ));
         }
     }
 }
 
-pub fn move_vehicles(
+pub(super) fn move_vehicles(
     mut commands: Commands,
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
@@ -146,7 +149,7 @@ pub fn move_vehicles(
                     navigator.progress = 0.0;
                 } else {
                     // Reached the end point (add stats in future)
-                    statistics.total_vehicles_passed += 1;
+                    statistics.increment_total_vehicles_passed();
                     commands.entity(entity).despawn();
                 }
             } else {

@@ -15,7 +15,7 @@ Entry: 05/08/2026
 
 Todo:
 * [ ] Upload missing progress videos to OneDrive (2026/08/05, ...).
-* [ ] Complete encapsulation and conversion of pub to pub(crate).
+* [ ] Complete encapsulation and conversion of to pub(crate).
 * [ ] Move tests/ into lib.rs's tests as these are not testing a public API.
 * [ ] Implement zone system by copying existing implementation in assembly::calculate_destination_weights.
 * [ ] Use zone system to determine lane choice.

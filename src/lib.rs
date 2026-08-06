@@ -6,10 +6,10 @@ pub mod graphics;
 pub mod layout;
 pub mod simulation;
 
-pub use blueprint::*;
-pub use graphics::*;
-pub use layout::*;
-pub use simulation::*;
+use blueprint::*;
+use graphics::*;
+use layout::*;
+use simulation::*;
 
 pub struct AppSetupPlugin;
 
@@ -71,4 +71,41 @@ fn setup_roundabout_layout(mut commands: Commands) {
     );
 
     commands.insert_resource(RoundaboutCircleBlueprint::try_new(25.0).expect("failed to create"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn assemble_roundabout_spawns_correct_topology() {
+        use crate::assembly::assemble_roundabout;
+
+        let mut app = App::new();
+
+        app.insert_resource(
+            IntersectionBlueprint::try_new(
+                vec![
+                    ArmBlueprint::from_degrees(0.0, None, 0.5),
+                    ArmBlueprint::from_degrees(120.0, None, 0.5),
+                    ArmBlueprint::from_degrees(240.0, None, 0.5),
+                ],
+                2,
+                Speed::from_miles_per_hour(30.0).expect("failed to create"),
+                15.0,
+            )
+            .expect("failed to create"),
+        );
+        app.insert_resource(RoundaboutCircleBlueprint::try_new(20.0).expect("failed to create"));
+
+        app.add_systems(Update, assemble_roundabout);
+
+        // First update enqueues the commands.
+        app.update();
+        // Flush forces Bevy to apply all queued commands to the World immediately.
+        app.world_mut().flush();
+
+        let mut query = app.world_mut().query::<&Segment>();
+        assert!(query.iter(app.world()).count() > 0);
+    }
 }

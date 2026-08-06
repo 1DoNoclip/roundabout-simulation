@@ -1,12 +1,12 @@
 use crate::*;
 
-pub mod pathfinding;
-pub mod statistics;
-pub mod vehicle;
+pub(crate) mod pathfinding;
+pub(crate) mod statistics;
+pub(crate) mod vehicle;
 
 pub use pathfinding::*;
-pub use statistics::*;
-pub use vehicle::*;
+pub(crate) use statistics::*;
+pub(crate) use vehicle::*;
 
 pub(crate) struct SimulationPlugin;
 

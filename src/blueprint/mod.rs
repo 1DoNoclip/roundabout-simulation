@@ -15,7 +15,7 @@ impl Plugin for BlueprintPlugin {
 /// Represents global intersection data.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
-pub struct IntersectionBlueprint {
+pub(crate) struct IntersectionBlueprint {
     /// Length between 3 -> 6.
     /// Max 2 lanes allowed when there are 3 arms.
     ///
@@ -94,7 +94,7 @@ impl IntersectionBlueprint {
 /// Represents the circular part of the roundabout.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
-pub struct RoundaboutCircleBlueprint {
+pub(crate) struct RoundaboutCircleBlueprint {
     /// Radius of the inner roundabout circle in metres.
     /// The distance between the centre and the centre of the inner circulating lane.
     radius: f32,
@@ -115,7 +115,7 @@ impl RoundaboutCircleBlueprint {
 
 /// Represent a singular arm to the roundabout.
 #[derive(Clone, Component, Copy, Reflect)]
-pub struct ArmBlueprint {
+pub(crate) struct ArmBlueprint {
     /// The angle of the arm to the roundabout.
     angle: Rot2,
     /// Maximum speed for vehicles to travel at.

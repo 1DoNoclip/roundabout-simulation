@@ -62,7 +62,7 @@ pub(crate) fn calculate_route(
                 let (_, arm) = arms
                     .get(end_point.arm())
                     .map_err(|error| format!("failed to get Arm from Arm entity: {error}"))?;
-                if arm.index == end_arm_index {
+                if arm.index() == end_arm_index {
                     break;
                 } else {
                     return Err("EndPoint did not match the wanted EndPoint".to_owned());

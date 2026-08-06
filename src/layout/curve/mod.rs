@@ -9,17 +9,17 @@ impl Plugin for CurvePlugin {
 }
 
 /// A curve type used for segment evaluators.
-pub trait SegmentCurve: CurveLength + IntoEvaluator + Send + Sync + 'static {}
+pub(crate) trait SegmentCurve: CurveLength + IntoEvaluator + Send + Sync + 'static {}
 // Blanket implementation.
 impl<T> SegmentCurve for T where T: CurveLength + IntoEvaluator + Send + Sync + 'static {}
 
 /// The ability to get a length of a curve.
-pub trait CurveLength {
+pub(crate) trait CurveLength {
     fn length(&self) -> f32;
 }
 
 /// The ability to convert a curve into an evaluator function.
-pub trait IntoEvaluator {
+pub(crate) trait IntoEvaluator {
     fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>;
 }
 

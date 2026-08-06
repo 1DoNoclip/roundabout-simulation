@@ -12,7 +12,7 @@ impl Plugin for SpeedPlugin {
 
 /// A speed, can be used for vehicle speed and speed limit.
 #[derive(Clone, Copy, Debug, Reflect)]
-pub struct Speed {
+pub(crate) struct Speed {
     metres_per_second: f32,
 }
 

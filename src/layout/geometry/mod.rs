@@ -9,11 +9,11 @@ impl Plugin for GeometryPlugin {
 }
 
 /// The width of a singular lane of roads and roundabout in metres.
-pub const LANE_WIDTH: f32 = 3.5;
+pub(crate) const LANE_WIDTH: f32 = 3.5;
 
 /// Defines the geometry of a singular lane that approaches or exits the roundabout.
 /// At least one entry and one exit `LaneGeometry` is required to make up an arm.
-pub struct LaneGeometry {
+pub(crate) struct LaneGeometry {
     /// Straight 100m line road as `[start, end]`.
     straight_line_points: StraightLinePoints,
     /// 4-point `CubicBezier` curve control points as `[start, ..., end]`.
@@ -207,7 +207,7 @@ impl IntoEvaluator for DeflectionCurvePoints {
 }
 
 /// Defines a singular sector on the circulating part of the roundabout.
-pub struct SectorGeometry {
+pub(crate) struct SectorGeometry {
     /// The radius of the sector.
     radius: f32,
     /// The angle where the sector begins.
