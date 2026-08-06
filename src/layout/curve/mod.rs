@@ -1,3 +1,5 @@
+//! Contains the trait implementations to convert Bevy splines into Segments.
+
 use crate::*;
 use bevy::math::cubic_splines::LinearSpline;
 

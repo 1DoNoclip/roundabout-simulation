@@ -1,3 +1,5 @@
+//! Contains the components used in the roundabout layout, such as segments, connections and end points.
+
 use crate::*;
 
 pub mod speed;

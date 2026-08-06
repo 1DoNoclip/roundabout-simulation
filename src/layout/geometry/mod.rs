@@ -1,3 +1,5 @@
+//! Calculates the instructions for where to place components to assemble the roundabout layout.
+
 use crate::*;
 
 pub struct GeometryPlugin;
@@ -9,11 +11,6 @@ impl Plugin for GeometryPlugin {
 /// The width of a singular lane of roads and roundabout in metres.
 pub const LANE_WIDTH: f32 = 3.5;
 
-pub enum LaneType {
-    Entry,
-    Exit,
-}
-
 /// Defines the geometry of a singular lane that approaches or exits the roundabout.
 /// At least one entry and one exit `LaneGeometry` is required to make up an arm.
 pub struct LaneGeometry {
@@ -24,7 +21,37 @@ pub struct LaneGeometry {
 }
 
 impl LaneGeometry {
-    pub fn generate(
+    pub fn generate_entry(
+        arm_angle: Rot2,
+        lane_index: usize,
+        roundabout_radius: f32,
+        deflection_radius: f32,
+    ) -> Self {
+        LaneGeometry::generate(
+            LaneType::Entry,
+            arm_angle,
+            lane_index,
+            roundabout_radius,
+            deflection_radius,
+        )
+    }
+
+    pub fn generate_exit(
+        arm_angle: Rot2,
+        lane_index: usize,
+        roundabout_radius: f32,
+        deflection_radius: f32,
+    ) -> Self {
+        LaneGeometry::generate(
+            LaneType::Exit,
+            arm_angle,
+            lane_index,
+            roundabout_radius,
+            deflection_radius,
+        )
+    }
+
+    fn generate(
         geometry_type: LaneType,
         arm_angle: Rot2,
         lane_index: usize,
@@ -107,12 +134,9 @@ impl LaneGeometry {
     }
 }
 
-/// Decides where on the circle the sector lies.
-pub enum SectorType {
-    /// Between Arm N's entry and Arm (N + 1)'s exit.
-    IntraArm,
-    /// Between Arm N's exit and Arm N's entry.
-    InterArm { next_arm_angle: Rot2 },
+enum LaneType {
+    Entry,
+    Exit,
 }
 
 /// Defines a singular sector on the circulating part of the roundabout.
@@ -126,7 +150,38 @@ pub struct SectorGeometry {
 }
 
 impl SectorGeometry {
-    pub fn generate(
+    pub fn generate_intra_arm(
+        arm_angle: Rot2,
+        lane_index: usize,
+        roundabout_radius: f32,
+        deflection_radius: f32,
+    ) -> Self {
+        SectorGeometry::generate(
+            SectorType::IntraArm,
+            arm_angle,
+            lane_index,
+            roundabout_radius,
+            deflection_radius,
+        )
+    }
+
+    pub fn generate_inter_arm(
+        arm_angle: Rot2,
+        next_arm_angle: Rot2,
+        lane_index: usize,
+        roundabout_radius: f32,
+        deflection_radius: f32,
+    ) -> Self {
+        SectorGeometry::generate(
+            SectorType::InterArm { next_arm_angle },
+            arm_angle,
+            lane_index,
+            roundabout_radius,
+            deflection_radius,
+        )
+    }
+
+    fn generate(
         sector_type: SectorType,
         arm_angle: Rot2,
         lane_index: usize,
@@ -175,4 +230,12 @@ impl IntoEvaluator for SectorGeometry {
             Vec3::new(self.radius * angle.cos(), self.radius * angle.sin(), 0.0)
         })
     }
+}
+
+/// Decides where on the circle the sector lies.
+enum SectorType {
+    /// Between Arm N's entry and Arm (N + 1)'s exit.
+    IntraArm,
+    /// Between Arm N's exit and Arm N's entry.
+    InterArm { next_arm_angle: Rot2 },
 }

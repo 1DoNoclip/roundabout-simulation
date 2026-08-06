@@ -1,3 +1,5 @@
+//! Contains the instructions from assembling a roundabout layout from blueprints.
+
 use crate::*;
 use std::f32::consts::PI;
 
@@ -63,8 +65,7 @@ pub(crate) fn assemble_roundabout(
             let unique_identifier = format!("[{arm_index}, {lane_index}]");
             let ids = roundabout_topology.get_ids_for(arm_index, lane_index, next_arm_index);
 
-            let entry_geometry = LaneGeometry::generate(
-                LaneType::Entry,
+            let entry_geometry = LaneGeometry::generate_entry(
                 arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
@@ -98,8 +99,7 @@ pub(crate) fn assemble_roundabout(
                 SpawnPoint::new(arm_id, lane_index, ids.entry_line),
             ));
 
-            let exit_geometry = LaneGeometry::generate(
-                LaneType::Exit,
+            let exit_geometry = LaneGeometry::generate_exit(
                 arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
@@ -133,8 +133,7 @@ pub(crate) fn assemble_roundabout(
                 ),
             ));
 
-            let intra_arm_sector_geometry = SectorGeometry::generate(
-                SectorType::IntraArm,
+            let intra_arm_sector_geometry = SectorGeometry::generate_intra_arm(
                 arm_blueprint.angle(),
                 lane_index,
                 inner_radius,
@@ -152,9 +151,9 @@ pub(crate) fn assemble_roundabout(
                 ),
             ));
 
-            let inter_arm_sector_geometry = SectorGeometry::generate(
-                SectorType::InterArm { next_arm_angle },
+            let inter_arm_sector_geometry = SectorGeometry::generate_inter_arm(
                 arm_blueprint.angle(),
+                next_arm_angle,
                 lane_index,
                 inner_radius,
                 deflection_radius,
