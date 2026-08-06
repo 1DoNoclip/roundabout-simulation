@@ -1,6 +1,10 @@
 use crate::{simulation::select_destination_arm, *};
 use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
 
+pub(crate) mod components;
+
+pub(crate) use components::*;
+
 pub(super) struct VehiclePlugin;
 
 impl Plugin for VehiclePlugin {
@@ -8,29 +12,6 @@ impl Plugin for VehiclePlugin {
         app.register_type::<Kinematics>()
             .register_type::<Navigator>();
     }
-}
-
-/// The motion characteristics for the vehicle.
-#[derive(Component, Reflect)]
-pub(crate) struct Kinematics {
-    /// The current speed of the vehicle.
-    pub speed: Speed,
-    /// Target speed that the driver would aim for on an empty road.
-    target_speed: Speed,
-    max_acceleration: Acceleration,
-    /// The maximum deceleration possible by braking.
-    max_deceleration: Acceleration,
-}
-
-/// Decides how the vehicle navigates the map.
-#[derive(Component, Reflect)]
-pub(crate) struct Navigator {
-    /// The route for the vehicle to follow.
-    route: Vec<Entity>,
-    /// An index of route to identify the current segment.
-    current_segment_index: usize,
-    /// A segment progress between 0 and 1.
-    progress: f32,
 }
 
 /// Used in spawn_vehicles.
@@ -104,20 +85,15 @@ pub(crate) fn spawn_vehicles(
             // Spawning.
             commands.spawn((
                 Name::new("Vehicle"),
-                Kinematics {
-                    speed: Speed::from_miles_per_hour(5.0).expect("failed to create"),
-                    target_speed: Speed::from_miles_per_hour(60.0).expect("failed to create"),
-                    max_acceleration: Acceleration::new(3.0),
-                    max_deceleration: Acceleration::new(-8.0),
-                },
-                Navigator {
-                    route,
-                    current_segment_index: 0,
-                    progress: 0.0,
-                },
-                // make visible
+                Kinematics::new(
+                    Speed::from_miles_per_hour(5.0).expect("failed to create"),
+                    Speed::from_miles_per_hour(60.0).expect("failed to create"),
+                    Acceleration::new(3.0),
+                    Acceleration::new(-8.0),
+                ),
+                Navigator::try_new(route).expect("failed to create"),
+                // Make visible.
                 Transform::from_translation(start_segment.sample_clamped(0.0)),
-                Visibility::default(),
             ));
         }
     }
@@ -133,35 +109,29 @@ pub(super) fn move_vehicles(
     let delta_seconds = time.delta_secs();
 
     for (entity, mut kinematics, mut navigator, mut transform) in vehicles {
-        if navigator.current_segment_index >= navigator.route.len() {
-            continue;
-        }
-
-        let segment_id = navigator.route[navigator.current_segment_index];
+        let segment_id = navigator.current_segment_id();
 
         if let Ok(segment) = segments.get(segment_id) {
             let delta_progress = (*kinematics.speed * delta_seconds) / segment.length();
-            navigator.progress += delta_progress;
-
-            if navigator.progress >= 1.0 {
-                if navigator.current_segment_index + 1 < navigator.route.len() {
-                    navigator.current_segment_index += 1;
-                    navigator.progress = 0.0;
-                } else {
-                    // Reached the end point (add stats in future)
-                    statistics.increment_total_vehicles_passed();
-                    commands.entity(entity).despawn();
+            match navigator.add_progress(delta_progress) {
+                Ok(_) => transform.translation = segment.sample_clamped(navigator.progress()),
+                Err(_) => {
+                    match navigator.increment_current_segment_index() {
+                        Ok(_) => navigator.reset_progress(),
+                        Err(_) => {
+                            // Reached the end point (add stats in future)
+                            statistics.increment_total_vehicles_passed();
+                            commands.entity(entity).despawn();
+                        }
+                    }
                 }
-            } else {
-                transform.translation = segment.sample_clamped(navigator.progress);
             }
 
-            // let Kinematics { speed, target_speed, max_acceleration, .. } = &mut *kinematics;
             // Increases speed due to acceleration.
-            if *kinematics.speed < *kinematics.target_speed {
+            if *kinematics.speed < *kinematics.target_speed() {
                 *kinematics.speed = (*kinematics.speed
-                    + *kinematics.max_acceleration * delta_seconds)
-                    .min(*kinematics.target_speed);
+                    + *kinematics.max_acceleration() * delta_seconds)
+                    .min(*kinematics.target_speed());
             }
         }
     }
