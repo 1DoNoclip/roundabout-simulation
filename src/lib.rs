@@ -1,16 +1,18 @@
-pub use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
-pub use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
+use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
 
-pub mod blueprint;
-pub mod graphics;
-pub mod layout;
-pub mod simulation;
+mod blueprint;
+mod graphics;
+mod layout;
+mod simulation;
 
 use blueprint::*;
 use graphics::*;
 use layout::*;
 use simulation::*;
 
+/// Sets up the roundabout simulation.
+///
+/// Add this plugin to the application to use the simulation.
 pub struct AppSetupPlugin;
 
 impl Plugin for AppSetupPlugin {
