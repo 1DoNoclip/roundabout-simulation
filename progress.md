@@ -21,7 +21,7 @@ Todo:
 * ~~[ ] Use zone system to determine lane choice.~~
 
 Entry: 06/08/2026
-* Work on improving the code to make it easier to add features in the future. This included editing structures so that they are easier to understand and use.
+* Work on improving the code to make it easier to add features in the future. This included editing structures so that they are easier to understand and use and creating a VehicleBundle instead of spawning all the components of a vehicle manually.
 
 Todo:
 * [ ] Upload missing progress videos to OneDrive (2026/08/05, ...).
