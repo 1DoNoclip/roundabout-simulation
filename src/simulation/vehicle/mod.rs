@@ -147,7 +147,6 @@ pub fn move_vehicles(
                 } else {
                     // Reached the end point (add stats in future)
                     statistics.total_vehicles_passed += 1;
-                    info!("Despawning vehicle");
                     commands.entity(entity).despawn();
                 }
             } else {

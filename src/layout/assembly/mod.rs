@@ -71,11 +71,12 @@ pub(crate) fn assemble_roundabout(
                 inner_radius,
                 deflection_radius,
             );
+            let (entry_line_points, entry_deflection_points) = entry_geometry.into_curves();
 
             commands.entity(ids.entry_deflection).insert((
                 Name::new(format!("EntryDeflection {unique_identifier}")),
                 Segment::new(
-                    CubicBezier::new([entry_geometry.deflection_curve]),
+                    entry_deflection_points,
                     Connection::Merge {
                         next_segment_id: ids.inter_arm_sector,
                     },
@@ -86,7 +87,7 @@ pub(crate) fn assemble_roundabout(
             commands.entity(ids.entry_line).insert((
                 Name::new(format!("EntryLine {unique_identifier}")),
                 Segment::new(
-                    LinearSpline::new(entry_geometry.straight_line),
+                    entry_line_points,
                     Connection::Direct {
                         next_segment_id: ids.entry_deflection,
                     },
@@ -105,6 +106,7 @@ pub(crate) fn assemble_roundabout(
                 inner_radius,
                 deflection_radius,
             );
+            let (exit_line_points, exit_deflection_points) = exit_geometry.into_curves();
 
             let end_point_id = commands
                 .spawn((
@@ -116,7 +118,7 @@ pub(crate) fn assemble_roundabout(
             commands.entity(ids.exit_line).insert((
                 Name::new(format!("ExitLine {unique_identifier}")),
                 Segment::new(
-                    LinearSpline::new(exit_geometry.straight_line),
+                    exit_line_points,
                     Connection::EndPoint { end_point_id },
                     speed_limit,
                 ),
@@ -125,7 +127,7 @@ pub(crate) fn assemble_roundabout(
             commands.entity(ids.exit_deflection).insert((
                 Name::new(format!("ExitDeflection {unique_identifier}")),
                 Segment::new(
-                    CubicBezier::new([exit_geometry.deflection_curve]),
+                    exit_deflection_points,
                     Connection::Direct {
                         next_segment_id: ids.exit_line,
                     },
@@ -183,13 +185,13 @@ fn clear_existing_layout(
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
 ) {
-    info!("Despawning all vehicles");
+    info!("Despawning all existing vehicles.");
     for vehicle in existing_vehicles {
         commands.entity(vehicle).despawn();
     }
 
     // Despawn old segments before assembling new layout.
-    info!("Despawning all segments, spawn points and end points");
+    info!("Despawning all existing segments, spawn points and end points.");
     for entity in existing_segments
         .iter()
         .chain(existing_spawns.iter())

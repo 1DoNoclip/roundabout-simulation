@@ -15,9 +15,9 @@ pub const LANE_WIDTH: f32 = 3.5;
 /// At least one entry and one exit `LaneGeometry` is required to make up an arm.
 pub struct LaneGeometry {
     /// Straight 100m line road as `[start, end]`.
-    pub straight_line: [Vec3; 2],
+    straight_line_points: StraightLinePoints,
     /// 4-point `CubicBezier` curve control points as `[start, ..., end]`.
-    pub deflection_curve: [Vec3; 4],
+    deflection_curve_points: DeflectionCurvePoints,
 }
 
 impl LaneGeometry {
@@ -49,6 +49,10 @@ impl LaneGeometry {
             roundabout_radius,
             deflection_radius,
         )
+    }
+
+    pub(crate) fn into_curves(self) -> (StraightLinePoints, DeflectionCurvePoints) {
+        (self.straight_line_points, self.deflection_curve_points)
     }
 
     fn generate(
@@ -96,8 +100,13 @@ impl LaneGeometry {
                 let p2 = deflection_end - (clockwise_tangent * handle_length);
 
                 LaneGeometry {
-                    straight_line: [spawn_point_start, deflection_start],
-                    deflection_curve: [deflection_start, p1, p2, deflection_end],
+                    straight_line_points: StraightLinePoints([spawn_point_start, deflection_start]),
+                    deflection_curve_points: DeflectionCurvePoints([
+                        deflection_start,
+                        p1,
+                        p2,
+                        deflection_end,
+                    ]),
                 }
             }
             LaneType::Exit => {
@@ -126,8 +135,13 @@ impl LaneGeometry {
                 let p2 = deflection_end - (arm_vector * handle_length);
 
                 LaneGeometry {
-                    straight_line: [deflection_end, end_point_end],
-                    deflection_curve: [deflection_start, p1, p2, deflection_end],
+                    straight_line_points: StraightLinePoints([deflection_end, end_point_end]),
+                    deflection_curve_points: DeflectionCurvePoints([
+                        deflection_start,
+                        p1,
+                        p2,
+                        deflection_end,
+                    ]),
                 }
             }
         }
@@ -137,6 +151,59 @@ impl LaneGeometry {
 enum LaneType {
     Entry,
     Exit,
+}
+
+pub(crate) struct StraightLinePoints(pub(crate) [Vec3; 2]);
+
+impl CurveLength for StraightLinePoints {
+    fn length(&self) -> f32 {
+        self.0
+            .windows(2)
+            .map(|pair| pair[0].distance(pair[1]))
+            .sum()
+    }
+}
+
+impl IntoEvaluator for StraightLinePoints {
+    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
+        let linear_spline = LinearSpline::new(self.0);
+        let curve = linear_spline
+            .to_curve()
+            .expect("failed to convert LinearSpline into CubicCurve");
+        Box::new(move |time| curve.sample_clamped(time))
+    }
+}
+
+pub(crate) struct DeflectionCurvePoints(pub(crate) [Vec3; 4]);
+
+impl CurveLength for DeflectionCurvePoints {
+    fn length(&self) -> f32 {
+        const TOTAL_SAMPLES: usize = 1_000;
+
+        let cubic_bezier = CubicBezier::new([self.0]);
+        match cubic_bezier.to_curve() {
+            Ok(curve) => curve
+                .iter_positions(TOTAL_SAMPLES)
+                .collect::<Vec<_>>()
+                .windows(2)
+                .map(|pair| pair[0].distance(pair[1]))
+                .sum(),
+            Err(error) => {
+                eprintln!("failed to convert CubicBezier into CubicCurve: {error}");
+                0.0
+            }
+        }
+    }
+}
+
+impl IntoEvaluator for DeflectionCurvePoints {
+    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
+        let cubic_bezier = CubicBezier::new([self.0]);
+        let curve = cubic_bezier
+            .to_curve()
+            .expect("failed to convert CubicBezier into CubicCurve");
+        Box::new(move |time| curve.sample_clamped(time))
+    }
 }
 
 /// Defines a singular sector on the circulating part of the roundabout.
