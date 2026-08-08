@@ -142,6 +142,10 @@ impl CircleBlueprint {
             return Err(format!(
                 "deflection_radius must be positive, found {deflection_radius}"
             ));
+        } else if deflection_radius > radius {
+            return Err(format!(
+                "deflection_radius ({deflection_radius}) cannot exceed radius ({radius})"
+            ));
         } else {
             Ok(CircleBlueprint {
                 radius,
