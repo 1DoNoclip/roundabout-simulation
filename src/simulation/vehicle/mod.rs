@@ -1,15 +1,18 @@
-use crate::{simulation::select_destination_arm, *};
+use crate::*;
 use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
 
 pub(crate) mod components;
+mod pathfinding;
 
 pub(crate) use components::*;
+use pathfinding::*;
 
 pub(super) struct VehiclePlugin;
 
 impl Plugin for VehiclePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Kinematics>()
+        app.add_plugins(PathfindingPlugin)
+            .register_type::<Kinematics>()
             .register_type::<Navigator>();
     }
 }

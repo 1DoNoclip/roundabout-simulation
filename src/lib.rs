@@ -56,18 +56,17 @@ fn setup_world(mut commands: Commands) {
 
 fn setup_roundabout_layout(mut commands: Commands) {
     let arm_blueprints = vec![
-        ArmBlueprint::from_degrees(0.0, None, 5.0),
-        ArmBlueprint::from_degrees(-45.0, None, 5.0),
-        ArmBlueprint::from_degrees(-90.0, None, 5.0),
-        ArmBlueprint::from_degrees(-180.0, None, 5.0),
-        ArmBlueprint::from_degrees(-270.0, None, 5.0),
+        ArmBlueprint::from_degrees(0.0, None, 2.5),
+        ArmBlueprint::from_degrees(-90.0, None, 2.5),
+        ArmBlueprint::from_degrees(-180.0, None, 2.5),
+        ArmBlueprint::from_degrees(-270.0, None, 2.5),
     ];
-    let circle_blueprint = CircleBlueprint::try_new(50.0, 12.5).expect("failed to create");
+    let circle_blueprint = CircleBlueprint::try_new(50.0, 25.0).expect("failed to create");
     commands.insert_resource(
         RoundaboutBlueprint::try_new(
             arm_blueprints,
             circle_blueprint,
-            3,
+            2,
             Speed::from_miles_per_hour(30.0).expect("failed to create"),
         )
         .expect("failed to create"),
