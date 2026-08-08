@@ -1,5 +1,14 @@
 use crate::*;
 
+pub(super) struct ComponentsPlugin;
+
+impl Plugin for ComponentsPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<Kinematics>()
+            .register_type::<Navigator>();
+    }
+}
+
 /// The motion characteristics for the vehicle.
 #[derive(Component, Reflect)]
 pub(crate) struct Kinematics {

@@ -11,9 +11,7 @@ pub(super) struct VehiclePlugin;
 
 impl Plugin for VehiclePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(PathfindingPlugin)
-            .register_type::<Kinematics>()
-            .register_type::<Navigator>();
+        app.add_plugins((ComponentsPlugin, PathfindingPlugin));
     }
 }
 
