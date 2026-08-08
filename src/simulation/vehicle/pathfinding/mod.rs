@@ -94,7 +94,7 @@ pub(super) fn select_destination_arm(
     arms[selected_index]
 }
 
-pub(super) const fn select_lane_index(
+pub(super) fn select_lane_index(
     entry_arm: &Arm,
     exit_arm: &Arm,
     number_of_arms: usize,
@@ -115,9 +115,11 @@ pub(super) const fn select_lane_index(
         exit_rank
     };
 
-    let rank_progress = (rank - 1) as f32 / (max_rank - 1) as f32;
+    let raw_progress = (rank - 1) as f32 / (max_rank - 1) as f32;
+    // Adds quadratic bias (which delays using more inner lanes until later ranks).
+    let biased_progress = raw_progress.powf(2.0);
 
-    let inner_offset = (rank_progress * (number_of_lanes - 1) as f32).ceil() as usize;
+    let inner_offset = (biased_progress * (number_of_lanes - 1) as f32).round() as usize;
 
     (number_of_lanes - 1) - inner_offset
 }
