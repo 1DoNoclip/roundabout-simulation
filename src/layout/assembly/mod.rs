@@ -13,12 +13,11 @@ impl Plugin for AssemblyPlugin {
 /// Removes the existing layout and vehicles before spawning the new layout.
 pub(crate) fn assemble_roundabout(
     mut commands: Commands,
+    roundabout_blueprint: Res<RoundaboutBlueprint>,
     existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
     existing_segments: Query<Entity, With<Segment>>,
-    existing_spawns: Query<Entity, With<SpawnPoint>>,
-    existing_ends: Query<Entity, With<EndPoint>>,
-    intersection_blueprint: Res<IntersectionBlueprint>,
-    roundabout_circle_blueprint: Res<RoundaboutCircleBlueprint>,
+    existing_spawn_points: Query<Entity, With<SpawnPoint>>,
+    existing_end_points: Query<Entity, With<EndPoint>>,
 ) {
     info!("Assembling roundabout from blueprints.");
 
@@ -26,16 +25,19 @@ pub(crate) fn assemble_roundabout(
         &mut commands,
         existing_vehicles,
         existing_segments,
-        existing_spawns,
-        existing_ends,
+        existing_spawn_points,
+        existing_end_points,
     );
 
-    let number_of_lanes = intersection_blueprint.number_of_lanes();
-    let inner_radius = roundabout_circle_blueprint.radius();
-    let deflection_radius = intersection_blueprint.deflection_radius();
-    let speed_limit = intersection_blueprint.speed_limit();
-    let arm_blueprints = &intersection_blueprint.arm_blueprints();
+    let arm_blueprints = roundabout_blueprint.arm_blueprints();
     let number_of_arms = arm_blueprints.len();
+
+    let circle_blueprint = roundabout_blueprint.circle_blueprint();
+    let inner_radius = circle_blueprint.radius();
+    let deflection_radius = circle_blueprint.deflection_radius();
+
+    let number_of_lanes = roundabout_blueprint.number_of_lanes();
+    let speed_limit = roundabout_blueprint.speed_limit();
 
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);

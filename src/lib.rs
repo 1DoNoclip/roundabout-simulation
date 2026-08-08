@@ -55,24 +55,24 @@ fn setup_world(mut commands: Commands) {
 }
 
 fn setup_roundabout_layout(mut commands: Commands) {
+    let arm_blueprints = vec![
+        // ArmBlueprint::from_degrees(60.0, None, 0.25),
+        ArmBlueprint::from_degrees(0.0, None, 1.5),
+        // ArmBlueprint::from_degrees(-60.0, None, 1.0),
+        ArmBlueprint::from_degrees(-120.0, None, 2.0),
+        // ArmBlueprint::from_degrees(-180.0, None, 4.0),
+        ArmBlueprint::from_degrees(-240.0, None, 2.5),
+    ];
+    let circle_blueprint = CircleBlueprint::try_new(25.0, 12.5).expect("failed to create");
     commands.insert_resource(
-        IntersectionBlueprint::try_new(
-            vec![
-                // ArmBlueprint::from_degrees(60.0, None, 0.25),
-                ArmBlueprint::from_degrees(0.0, None, 1.5),
-                // ArmBlueprint::from_degrees(-60.0, None, 1.0),
-                ArmBlueprint::from_degrees(-120.0, None, 2.0),
-                // ArmBlueprint::from_degrees(-180.0, None, 4.0),
-                ArmBlueprint::from_degrees(-240.0, None, 2.5),
-            ],
+        RoundaboutBlueprint::try_new(
+            arm_blueprints,
+            circle_blueprint,
             2,
             Speed::from_miles_per_hour(30.0).expect("failed to create"),
-            12.5,
         )
         .expect("failed to create"),
     );
-
-    commands.insert_resource(RoundaboutCircleBlueprint::try_new(25.0).expect("failed to create"));
 }
 
 #[cfg(test)]
@@ -85,20 +85,22 @@ mod tests {
 
         let mut app = App::new();
 
+        let arm_blueprints = vec![
+            ArmBlueprint::from_degrees(0.0, None, 0.5),
+            ArmBlueprint::from_degrees(120.0, None, 0.5),
+            ArmBlueprint::from_degrees(240.0, None, 0.5),
+        ];
+        let circle_blueprint = CircleBlueprint::try_new(20.0, 15.0).expect("failed to create");
+
         app.insert_resource(
-            IntersectionBlueprint::try_new(
-                vec![
-                    ArmBlueprint::from_degrees(0.0, None, 0.5),
-                    ArmBlueprint::from_degrees(120.0, None, 0.5),
-                    ArmBlueprint::from_degrees(240.0, None, 0.5),
-                ],
+            RoundaboutBlueprint::try_new(
+                arm_blueprints,
+                circle_blueprint,
                 2,
                 Speed::from_miles_per_hour(30.0).expect("failed to create"),
-                15.0,
             )
             .expect("failed to create"),
         );
-        app.insert_resource(RoundaboutCircleBlueprint::try_new(20.0).expect("failed to create"));
 
         app.add_systems(Update, assemble_roundabout);
 
