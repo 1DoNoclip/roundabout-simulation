@@ -31,6 +31,7 @@ Todo:
 
 Entry: 08/08/2026
 * Add lane selection system, allowing vehicles to use different lanes based on their exit. Note: I did not implement the zone system, instead I compare the arm index difference, not the arm angle difference. This ensures maximum lane utilisation (e.g., if the 2 other exits are below 180 degrees, this system ensures that the right lane is used for the 2nd exit).
+* Add CLI (command line interface) arguments support. One flag (--paused / -p) allows me to run with the simulation paused initially.
 
 Todo:
 * [ ] Upload missing progress videos to OneDrive (2026/08/05, ...).
