@@ -61,6 +61,7 @@ pub(crate) fn spawn_vehicles(
     // It is handed to us each time Bevy calls this system.
     mut spawner_rng: Local<SpawnerRng>,
     time: Res<Time>,
+    roundabout_blueprint: Res<RoundaboutBlueprint>,
     arms: Query<(Entity, &Arm)>,
     spawn_points: Query<(Entity, &SpawnPoint)>,
     end_points: Query<(Entity, &EndPoint)>,
@@ -85,15 +86,12 @@ pub(crate) fn spawn_vehicles(
                 .expect("expected to find an Arm entity with the matching Arm entity");
 
             // In future, this will be gotten from the zone system.
-            let lane_index = 0;
-
-            // let end_point_id = end_points
-            //     .iter()
-            //     .find(|(_, end_point)| {
-            //         end_point.arm == end_arm_id && end_point.lane_index == lane_index
-            //     })
-            //     .map(|(id, _)| id)
-            //     .expect("expected to find one EndPoint entity with matching lane_index");
+            let lane_index = select_lane_index(
+                spawn_arm,
+                end_arm,
+                roundabout_blueprint.arm_blueprints().len(),
+                roundabout_blueprint.number_of_lanes(),
+            );
 
             let spawn_point = spawn_points
                 .iter()
@@ -160,6 +158,53 @@ pub(super) fn move_vehicles(
         }
     }
 }
+
+const fn select_lane_index(
+    entry_arm: &Arm,
+    exit_arm: &Arm,
+    number_of_arms: usize,
+    number_of_lanes: usize,
+) -> usize {
+    // Single-lane roundabouts always use lane 0.
+    if number_of_lanes == 1 {
+        return 0;
+    }
+
+    let exit_rank = get_exit_rank(entry_arm, exit_arm, number_of_arms);
+    // U-turns always use innermost lane.
+    if exit_rank == 0 {
+        return 0;
+    }
+
+    let max_rank = (number_of_arms - 1) as f32;
+    let rank_step = (exit_rank - 1) as f32;
+    let total_lanes = (number_of_lanes - 1) as f32;
+    // Linearly map the ratio and round to the nearest lane index
+    let outer_to_inner_ratio = (rank_step * total_lanes / max_rank).round() as usize;
+
+    (number_of_lanes - 1) - outer_to_inner_ratio
+}
+
+/// Returns a 1-based exit rank for a vehicle travelling from `entry_arm` to `exit_arm`.
+const fn get_exit_rank(entry_arm: &Arm, exit_arm: &Arm, number_of_arms: usize) -> usize {
+    (exit_arm.index() + number_of_arms - entry_arm.index()) % number_of_arms
+}
+
+// fn select_lane_index(
+//     roundabout_blueprint: &Res<RoundaboutBlueprint>,
+//     arms: &Query<(Entity, &Arm)>,
+//     spawn_arm: &Arm,
+//     end_arm: &Arm,
+// ) -> usize {
+//     let angle_difference = clockwise_angle_difference(spawn_arm.angle(), end_arm.angle());
+//     info!("{angle_difference}");
+//     0
+// }
+
+// /// Returns the clockwise angle difference from `from` to `to` in radians.
+// fn clockwise_angle_difference(from: Rot2, to: Rot2) -> f32 {
+//     (from.as_radians() - to.as_radians()).rem_euclid(std::f32::consts::TAU)
+// }
 
 #[cfg(test)]
 mod tests {
