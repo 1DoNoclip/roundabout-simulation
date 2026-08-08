@@ -16,7 +16,7 @@ impl Plugin for PathfindingPlugin {
 ///
 /// Returns `Some(Vec<Entity>)`, a vector of `Segment` entities if a route is found from start to end.
 /// Returns `None` if a route is not found.
-pub(crate) fn calculate_route(
+pub(super) fn calculate_route(
     arms: &Query<(Entity, &Arm)>,
     end_points: &Query<(Entity, &EndPoint)>,
     segments: &Query<&Segment>,
@@ -77,7 +77,7 @@ pub(crate) fn calculate_route(
     Ok(route)
 }
 
-pub fn select_destination_arm(
+pub(super) fn select_destination_arm(
     mut spawner_rng: &mut StdRng,
     destination_weights: &DestinationWeights,
 ) -> Entity {
@@ -92,4 +92,37 @@ pub fn select_destination_arm(
         .expect("failed to create WeightedIndex, ensure that not every weight is zero");
     let selected_index = distribution.sample(&mut spawner_rng);
     arms[selected_index]
+}
+
+pub(super) const fn select_lane_index(
+    entry_arm: &Arm,
+    exit_arm: &Arm,
+    number_of_arms: usize,
+    number_of_lanes: usize,
+) -> usize {
+    // Single-lane roundabouts always use lane 0.
+    if number_of_lanes <= 1 {
+        return 0;
+    }
+
+    let exit_rank = get_exit_rank(entry_arm, exit_arm, number_of_arms);
+    let max_rank = number_of_arms - 1;
+
+    // Clamp exit_rank so U-turns share highest rank with final exit.
+    let rank = if exit_rank == 0 || exit_rank > max_rank {
+        max_rank
+    } else {
+        exit_rank
+    };
+
+    let rank_progress = (rank - 1) as f32 / (max_rank - 1) as f32;
+
+    let inner_offset = (rank_progress * (number_of_lanes - 1) as f32).ceil() as usize;
+
+    (number_of_lanes - 1) - inner_offset
+}
+
+/// Returns a 1-based exit rank for a vehicle travelling from `entry_arm` to `exit_arm`.
+const fn get_exit_rank(entry_arm: &Arm, exit_arm: &Arm, number_of_arms: usize) -> usize {
+    (exit_arm.index() + number_of_arms - entry_arm.index()) % number_of_arms
 }

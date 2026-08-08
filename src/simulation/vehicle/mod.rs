@@ -56,7 +56,7 @@ impl Default for SpawnerRng {
     }
 }
 
-pub(crate) fn spawn_vehicles(
+pub(super) fn spawn_vehicles(
     mut commands: Commands,
     // A unique instance of SpawnerRng is created for this system (Local).
     // It is handed to us each time Bevy calls this system.
@@ -158,39 +158,6 @@ pub(super) fn move_vehicles(
             }
         }
     }
-}
-
-const fn select_lane_index(
-    entry_arm: &Arm,
-    exit_arm: &Arm,
-    number_of_arms: usize,
-    number_of_lanes: usize,
-) -> usize {
-    // Single-lane roundabouts always use lane 0.
-    if number_of_lanes <= 1 {
-        return 0;
-    }
-
-    let exit_rank = get_exit_rank(entry_arm, exit_arm, number_of_arms);
-    let max_rank = number_of_arms - 1;
-
-    // Clamp exit_rank so U-turns share highest rank with final exit.
-    let rank = if exit_rank == 0 || exit_rank > max_rank {
-        max_rank
-    } else {
-        exit_rank
-    };
-
-    let rank_progress = (rank - 1) as f32 / (max_rank - 1) as f32;
-
-    let inner_offset = (rank_progress * (number_of_lanes - 1) as f32).ceil() as usize;
-
-    (number_of_lanes - 1) - inner_offset
-}
-
-/// Returns a 1-based exit rank for a vehicle travelling from `entry_arm` to `exit_arm`.
-const fn get_exit_rank(entry_arm: &Arm, exit_arm: &Arm, number_of_arms: usize) -> usize {
-    (exit_arm.index() + number_of_arms - entry_arm.index()) % number_of_arms
 }
 
 #[cfg(test)]
