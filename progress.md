@@ -24,6 +24,13 @@ Entry: 06/08/2026
 * Work on improving the code to make it easier to add features in the future. This included editing structures so that they are easier to understand and use and creating a VehicleBundle instead of spawning all the components of a vehicle manually.
 
 Todo:
+* ~~[ ] Upload missing progress videos to OneDrive (2026/08/05, ...).~~
+* ~~[ ] Implement zone system by copying existing implementation in assembly::calculate_destination_weights.~~
+  status: implemented a different system instead
+* ~~[ ] Use zone system to determine lane choice.~~
+
+Entry: 08/08/2026
+* Add lane selection system, allowing vehicles to use different lanes based on their exit. Note: I did not implement the zone system, instead I compare the arm index difference, not the arm angle difference. This ensures maximum lane utilisation (e.g., if the 2 other exits are below 180 degrees, this system ensures that the right lane is used for the 2nd exit).
+
+Todo:
 * [ ] Upload missing progress videos to OneDrive (2026/08/05, ...).
-* [ ] Implement zone system by copying existing implementation in assembly::calculate_destination_weights.
-* [ ] Use zone system to determine lane choice.
