@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
+use clap::Parser;
 
 mod blueprint;
 mod graphics;
@@ -23,8 +24,71 @@ impl Plugin for AppSetupPlugin {
             LayoutPlugin,
             SimulationPlugin,
         ))
-        .add_systems(Startup, (setup_world, setup_roundabout_layout))
-        .add_systems(Update, play_pause_time);
+        .insert_resource(CliArgs::parse())
+        .add_systems(
+            Startup,
+            (setup_roundabout_layout, setup_world, setup_simulation_time),
+        )
+        .add_systems(
+            Update,
+            (
+                handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
+                play_pause_time,
+            ),
+        );
+    }
+}
+
+#[derive(Parser, Debug, Resource)]
+#[command(author, version, about)]
+struct CliArgs {
+    // Can use -p or --paused.
+    // Automatically parses into false.
+    /// Start the simulation paused.
+    #[arg(short, long, default_value_t = false)]
+    paused: bool,
+
+    // Use --run-after=<SECONDS>.
+    // Automatically parses into None.
+    /// Initially pauses and delays playing the simulation by N real-world seconds.
+    #[arg(long, value_name = "SECONDS")]
+    run_after: Option<f32>,
+}
+
+#[derive(Resource)]
+struct StartupDelayTimer(Timer);
+
+fn setup_simulation_time(
+    mut commands: Commands,
+    args: Res<CliArgs>,
+    mut virtual_time: ResMut<Time<Virtual>>,
+) {
+    if let Some(delay_seconds) = args.run_after {
+        virtual_time.pause();
+        let timer = Timer::from_seconds(delay_seconds, TimerMode::Once);
+        info!(
+            "Simulation paused. Will start automatically after {} seconds.",
+            timer.duration().as_secs_f32()
+        );
+        commands.insert_resource(StartupDelayTimer(timer));
+    } else if args.paused {
+        virtual_time.pause();
+        info!("Simulation started in paused state.");
+    }
+}
+
+fn handle_delayed_start(
+    mut commands: Commands,
+    real_time: Res<Time<Real>>,
+    mut virtual_time: ResMut<Time<Virtual>>,
+    mut delay_timer: ResMut<StartupDelayTimer>,
+) {
+    delay_timer.0.tick(real_time.delta());
+
+    if delay_timer.0.just_finished() {
+        virtual_time.unpause();
+        info!("Delayed start complete. Simulation unpaused.");
+        commands.remove_resource::<StartupDelayTimer>();
     }
 }
 
@@ -36,8 +100,10 @@ fn play_pause_time(
     if keyboard_input.just_pressed(KeyCode::Space) {
         if virtual_time.is_paused() {
             virtual_time.unpause();
+            info!("Simulation unpaused.");
         } else {
             virtual_time.pause();
+            info!("Simulation paused.");
         }
     }
 }
