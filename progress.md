@@ -34,4 +34,5 @@ Entry: 08/08/2026
 * Add CLI (command line interface) arguments support. One flag (--paused / -p) allows me to run with the simulation paused initially.
 
 Todo:
+* [ ] Replace existing OneDrive videos with Kdenlive exported versions.
 * [ ] Upload missing progress videos to OneDrive (2026/08/05, ...).
