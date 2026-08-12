@@ -1,11 +1,12 @@
 use crate::*;
-use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
+use rand::{SeedableRng, rng, rngs::StdRng};
 
 pub(crate) mod components;
 mod pathfinding;
 
 pub(crate) use components::*;
 use pathfinding::*;
+use rand_distr::{Distribution, Poisson};
 
 pub(super) struct VehiclePlugin;
 
@@ -71,53 +72,63 @@ pub(super) fn spawn_vehicles(
     let delta_seconds = time.delta_secs();
 
     for (spawn_arm_id, spawn_arm) in arms {
-        // Temporary: Replace spawning probability with Poisson Process.
-        // The current implementation has an issue where if there is a lag spike,
-        // the spawn probability will exceed 100%, however only 1 vehicle is spawned.
-        // This means the extra value above 100% is lost, resulting in incorrect spawn rates.
         // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
         // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
         // of spawn rates.
-        let frame_probability = spawn_arm.max_vehicles_per_second() * delta_seconds;
-        if frame_probability > spawner_rng.random::<f32>() {
-            let end_arm_id =
-                select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
-            let (_, end_arm) = arms
-                .get(end_arm_id)
-                .expect("expected to find an Arm entity with the matching Arm entity");
 
-            // In future, this will be gotten from the zone system.
-            let lane_index = select_lane_index(
-                spawn_arm,
-                end_arm,
-                roundabout_blueprint.arm_blueprints().len(),
-                roundabout_blueprint.number_of_lanes(),
-            );
+        // Calculate expected number of new vehicles during this frame.
+        let lambda = spawn_arm.max_vehicles_per_second() * delta_seconds;
+        if lambda > 0.0 {
+            if let Ok(poisson) = Poisson::new(lambda) {
+                let number_to_spawn = poisson.sample(&mut spawner_rng) as u32;
 
-            let spawn_point = spawn_points
-                .iter()
-                .find(|(_, spawn_point)| {
-                    spawn_point.arm() == spawn_arm_id && spawn_point.lane_index() == lane_index
-                })
-                .map(|(_, spawn_point)| spawn_point)
-                .expect("expected to find one SpawnPoint entity with matching lane_index");
+                for _ in 0..number_to_spawn {
+                    let end_arm_id =
+                        select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
+                    let (_, end_arm) = arms
+                        .get(end_arm_id)
+                        .expect("expected to find an Arm entity with the matching Arm entity");
 
-            // Pathfinding.
-            let route =
-                calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
+                    // In future, this will be gotten from the zone system.
+                    let lane_index = select_lane_index(
+                        spawn_arm,
+                        end_arm,
+                        roundabout_blueprint.arm_blueprints().len(),
+                        roundabout_blueprint.number_of_lanes(),
+                    );
+
+                    let spawn_point = spawn_points
+                        .iter()
+                        .find(|(_, spawn_point)| {
+                            spawn_point.arm() == spawn_arm_id
+                                && spawn_point.lane_index() == lane_index
+                        })
+                        .map(|(_, spawn_point)| spawn_point)
+                        .expect("expected to find one SpawnPoint entity with matching lane_index");
+
+                    // Pathfinding.
+                    let route = calculate_route(
+                        &arms,
+                        &end_points,
+                        &segments,
+                        spawn_point,
+                        end_arm.index(),
+                    )
                     .expect("failed to pathfind from SpawnPoint to EndPoint");
 
-            commands.spawn(
-                VehicleBundle::try_new(
-                    &segments,
-                    Speed::from_miles_per_hour(5.0).expect("failed to create"),
-                    Speed::from_miles_per_hour(60.0).expect("failed to create"),
-                    Acceleration::new(3.0),
-                    Acceleration::new(-8.0),
-                    route,
-                )
-                .expect("failed to spawn VehicleBundle"),
-            );
+                    commands.spawn(
+                        VehicleBundle::try_new(
+                            &segments,
+                            Speed::from_miles_per_hour(5.0).expect("failed to create"),
+                            Speed::from_miles_per_hour(60.0).expect("failed to create"),
+                            Acceleration::new(3.0),
+                            Acceleration::new(-8.0),
+                            route,
+                        )
+                        .expect("failed to spawn VehicleBundle"),
+                    );
+                }
+            }
         }
     }
 }
