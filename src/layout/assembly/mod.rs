@@ -46,15 +46,12 @@ pub(crate) fn assemble_roundabout(
         let next_arm_angle = arm_blueprints[next_arm_index].angle();
 
         let arm_id = roundabout_topology.get_arm_id_at(arm_index);
-        // Add the Arm component.
-        commands.entity(arm_id).insert((
-            Name::new(format!("Arm [{arm_index}]")),
-            Arm::new(
-                arm_index,
-                arm_blueprint.angle(),
-                arm_blueprint.max_vehicles_per_second(),
-                calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
-            ),
+        // Add the ArmBundle.
+        commands.entity(arm_id).insert(ArmBundle::new(
+            arm_index,
+            arm_blueprint.angle(),
+            arm_blueprint.max_vehicles_per_second(),
+            calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
         ));
 
         // If the arm has a speed limit override, use that instead of the intersection default speed limit.

@@ -19,6 +19,28 @@ impl Plugin for ComponentsPlugin {
     }
 }
 
+#[derive(Bundle)]
+pub(crate) struct ArmBundle {
+    name: Name,
+    arm: Arm,
+    vehicle_spawn_queue: VehicleSpawnQueue,
+}
+
+impl ArmBundle {
+    pub fn new(
+        index: usize,
+        angle: Rot2,
+        max_vehicles_per_second: f32,
+        destination_weights: DestinationWeights,
+    ) -> Self {
+        ArmBundle {
+            name: Name::new(format!("Arm: [{index}]")),
+            arm: Arm::new(index, angle, max_vehicles_per_second, destination_weights),
+            vehicle_spawn_queue: VehicleSpawnQueue::new(),
+        }
+    }
+}
+
 pub(crate) type DestinationWeights = EntityHashMap<u32>;
 
 #[derive(Component, Debug, Reflect)]
