@@ -35,7 +35,11 @@ impl VehicleBundle {
     ) -> Result<Self, &'static str> {
         let navigator = Navigator::try_new(route)?;
         let start_segment = segments
-            .get(navigator.current_segment_id())
+            .get(
+                navigator
+                    .current_segment_id()
+                    .expect("expected .current_segment_id() to be Some"),
+            )
             .expect("expected to find a Segment component");
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
@@ -121,11 +125,11 @@ pub(super) fn spawn_vehicles(
                 .expect("expected Segment component for this Entity");
 
             let is_blocked_existing = existing_vehicles.iter().any(|(navigator, transform)| {
-                navigator.current_segment_id() == entry_segment_id
+                navigator.current_segment_id() == Some(entry_segment_id)
                     && transform
                         .translation
                         .distance_squared(entry_segment.start_position())
-                        < 5.0 * 5.0
+                        < 25.0
             });
             let is_blocked_this_frame = frame_spawned_segments.contains(&entry_segment_id);
             if is_blocked_existing || is_blocked_this_frame {
@@ -170,7 +174,9 @@ pub(super) fn move_vehicles(
     let delta_seconds = time.delta_secs();
 
     for (entity, mut kinematics, mut navigator, mut transform) in vehicles {
-        let segment_id = navigator.current_segment_id();
+        let segment_id = navigator
+            .current_segment_id()
+            .expect("expected .current_segment_id() to be Some");
 
         if let Ok(segment) = segments.get(segment_id) {
             let delta_progress = (*kinematics.speed * delta_seconds) / segment.length();

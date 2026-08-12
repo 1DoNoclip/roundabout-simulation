@@ -87,11 +87,8 @@ impl Navigator {
     /// Returns `Some<Entity>` if the current segment is valid.
     ///
     /// Returns `None` if the current segment index is out of bounds (due to reaching end of route).
-    pub fn current_segment_id(&self) -> Entity {
-        *self
-            .route
-            .get(self.current_segment_index)
-            .expect("self.current_segment_index is out of range of route")
+    pub fn current_segment_id(&self) -> Option<Entity> {
+        self.route.get(self.current_segment_index).copied()
     }
 
     pub const fn add_progress(&mut self, delta_progress: f32) -> Result<(), ()> {

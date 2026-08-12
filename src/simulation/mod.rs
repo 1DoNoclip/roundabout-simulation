@@ -13,12 +13,17 @@ pub(crate) struct SimulationPlugin;
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((StatisticsPlugin, VehiclePlugin))
-            .add_systems(FixedUpdate, (
-                // spawn_vehicles runs after move_vehicles as move_vehicles will despawn vehicles.
-                // This can cause the .current_segment_id() to panic when a vehicle despawns in move_vehicles
-                // (as the current_segment_index becomes route.len()) while spawn_vehicles is calling .current_segment_id().
-                move_vehicles, spawn_vehicles
-                ).chain());
+            .add_systems(
+                FixedUpdate,
+                (
+                    // spawn_vehicles runs after move_vehicles as move_vehicles will despawn vehicles.
+                    // This can cause the .current_segment_id() to panic when a vehicle despawns in move_vehicles
+                    // (as the current_segment_index becomes route.len()) while spawn_vehicles is calling .current_segment_id().
+                    move_vehicles,
+                    spawn_vehicles,
+                )
+                    .chain(),
+            );
     }
 }
 
