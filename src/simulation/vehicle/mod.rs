@@ -61,6 +61,7 @@ impl Default for SpawnerRng {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn spawn_vehicles(
     mut commands: Commands,
     // A unique instance of SpawnerRng is created for this system (Local).
@@ -85,21 +86,22 @@ pub(super) fn spawn_vehicles(
 
         // Calculate expected number of new vehicles during this frame.
         let lambda = spawn_arm.max_vehicles_per_second() * delta_seconds;
-        if lambda > 0.0 {
-            if let Ok(poisson) = Poisson::new(lambda) {
-                let number_to_spawn = poisson.sample(&mut spawner_rng) as u32;
-                for _ in 0..number_to_spawn {
-                    let end_arm_id =
-                        select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
-                    spawn_queue.push_back(end_arm_id);
-                }
+        if lambda > 0.0
+            && let Ok(poisson) = Poisson::new(lambda)
+        {
+            let number_to_spawn = poisson.sample(&mut spawner_rng) as u32;
+            spawn_queue.reserve(number_to_spawn as usize);
+            for _ in 0..number_to_spawn {
+                let end_arm_id =
+                    select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
+                spawn_queue.push_back(end_arm_id);
             }
         }
 
         let mut drained_indices = Vec::new();
         let mut frame_spawned_segments = Vec::new();
 
-        for (index, &end_arm_id) in spawn_queue.pending_destinations().iter().enumerate() {
+        for (index, &end_arm_id) in spawn_queue.iter().enumerate() {
             let end_arm = target_arms
                 .get(end_arm_id)
                 .expect("expected to find a matching target Arm entity");
@@ -210,7 +212,7 @@ fn spawn_vehicle(
 
     commands.spawn(
         VehicleBundle::try_new(
-            &segments,
+            segments,
             Speed::from_miles_per_hour(5.0).expect("failed to create"),
             Speed::from_miles_per_hour(60.0).expect("failed to create"),
             Acceleration::new(3.0),

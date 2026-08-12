@@ -43,13 +43,13 @@ impl RoundaboutBlueprint {
     ) -> Result<Self, String> {
         let arms_length = arm_blueprints.len();
         if !(3..=6).contains(&arms_length) {
-            return Err(format!(
+            Err(format!(
                 "length of arm_blueprints must be between 3 and 6 inclusive, found {arms_length}"
-            ));
+            ))
         } else if !(1..=3).contains(&number_of_lanes) {
-            return Err(format!(
+            Err(format!(
                 "number_of_lanes must be between 1 and 3 inclusive, found {number_of_lanes}"
-            ));
+            ))
         } else {
             // Assembly expects the arm blueprints to be sorted in reverse angular order.
             arm_blueprints
@@ -137,15 +137,15 @@ pub(crate) struct CircleBlueprint {
 impl CircleBlueprint {
     pub fn try_new(radius: f32, deflection_radius: f32) -> Result<Self, String> {
         if radius <= 0.0 || radius.is_nan() {
-            return Err(format!("radius must be positive, found {radius}"));
+            Err(format!("radius must be positive, found {radius}"))
         } else if deflection_radius <= 0.0 || deflection_radius.is_nan() {
-            return Err(format!(
+            Err(format!(
                 "deflection_radius must be positive, found {deflection_radius}"
-            ));
+            ))
         } else if deflection_radius > radius {
-            return Err(format!(
+            Err(format!(
                 "deflection_radius ({deflection_radius}) cannot exceed radius ({radius})"
-            ));
+            ))
         } else {
             Ok(CircleBlueprint {
                 radius,

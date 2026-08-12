@@ -27,7 +27,7 @@ impl Plugin for SimulationPlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub(crate) struct VehicleSpawnQueue {
     /// Holds destination arms of vehicles waiting to spawn.
     pending_destinations: VecDeque<Entity>,
@@ -38,18 +38,5 @@ impl VehicleSpawnQueue {
         VehicleSpawnQueue {
             pending_destinations: VecDeque::new(),
         }
-    }
-
-    /// Pushes an end_arm_id onto the queue.
-    pub fn push_back(&mut self, end_arm_id: Entity) {
-        self.pending_destinations.push_back(end_arm_id);
-    }
-
-    pub fn remove(&mut self, index: usize) -> Option<Entity> {
-        self.pending_destinations.remove(index)
-    }
-
-    pub const fn pending_destinations(&self) -> &VecDeque<Entity> {
-        &self.pending_destinations
     }
 }
