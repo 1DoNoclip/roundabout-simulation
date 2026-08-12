@@ -64,9 +64,9 @@ pub(super) fn spawn_vehicles(
     mut spawner_rng: Local<SpawnerRng>,
     time: Res<Time>,
     roundabout_blueprint: Res<RoundaboutBlueprint>,
-    mut spawners: Query<(Entity, &Arm, &mut VehicleSpawnQueue)>,
-    arms: Query<(Entity, &Arm)>,
-    arms_read: Query<&Arm>,
+    mut spawning_arms: Query<(Entity, &Arm, &mut VehicleSpawnQueue)>,
+    arms: Query<&Arm>,
+    target_arms: Query<&Arm>,
     spawn_points: Query<(Entity, &SpawnPoint)>,
     end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
@@ -74,7 +74,7 @@ pub(super) fn spawn_vehicles(
 ) {
     let delta_seconds = time.delta_secs();
 
-    for (spawn_arm_id, spawn_arm, mut spawn_queue) in &mut spawners {
+    for (spawn_arm_id, spawn_arm, mut spawn_queue) in &mut spawning_arms {
         // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
         // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
         // of spawn rates.
@@ -92,10 +92,11 @@ pub(super) fn spawn_vehicles(
             }
         }
 
-        // Attempt to drain queued vehicles if there is enough space.
-        let mut drained_count = 0;
-        for &end_arm_id in spawn_queue.pending_destinations() {
-            let end_arm = arms_read
+        let mut drained_indices = Vec::new();
+        let mut frame_spawned_segments = Vec::new();
+
+        for (index, &end_arm_id) in spawn_queue.pending_destinations().iter().enumerate() {
+            let end_arm = target_arms
                 .get(end_arm_id)
                 .expect("expected to find a matching target Arm entity");
 
@@ -119,15 +120,17 @@ pub(super) fn spawn_vehicles(
                 .get(entry_segment_id)
                 .expect("expected Segment component for this Entity");
 
-            let is_blocked = existing_vehicles.iter().any(|(navigator, transform)| {
+            let is_blocked_existing = existing_vehicles.iter().any(|(navigator, transform)| {
                 navigator.current_segment_id() == entry_segment_id
                     && transform
                         .translation
-                        .distance(entry_segment.start_position())
-                        < 5.0
+                        .distance_squared(entry_segment.start_position())
+                        < 5.0 * 5.0
             });
-            if is_blocked {
+            let is_blocked_this_frame = frame_spawned_segments.contains(&entry_segment_id);
+            if is_blocked_existing || is_blocked_this_frame {
                 // We cannot spawn another vehicle in this lane at this moment.
+                // Continue to allow vehicles in other unblocked lanes to spawn.
                 continue;
             }
 
@@ -147,10 +150,13 @@ pub(super) fn spawn_vehicles(
                 .expect("failed to spawn VehicleBundle"),
             );
 
-            drained_count += 1;
+            drained_indices.push(index);
+            frame_spawned_segments.push(entry_segment_id);
         }
 
-        spawn_queue.drain(drained_count);
+        for index in drained_indices.into_iter().rev() {
+            spawn_queue.remove(index);
+        }
     }
 }
 

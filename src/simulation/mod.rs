@@ -13,7 +13,12 @@ pub(crate) struct SimulationPlugin;
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((StatisticsPlugin, VehiclePlugin))
-            .add_systems(FixedUpdate, (spawn_vehicles, move_vehicles));
+            .add_systems(FixedUpdate, (
+                // spawn_vehicles runs after move_vehicles as move_vehicles will despawn vehicles.
+                // This can cause the .current_segment_id() to panic when a vehicle despawns in move_vehicles
+                // (as the current_segment_index becomes route.len()) while spawn_vehicles is calling .current_segment_id().
+                move_vehicles, spawn_vehicles
+                ).chain());
     }
 }
 
@@ -35,8 +40,8 @@ impl VehicleSpawnQueue {
         self.pending_destinations.push_back(end_arm_id);
     }
 
-    pub fn drain(&mut self, count: usize) {
-        self.pending_destinations.drain(0..count);
+    pub fn remove(&mut self, index: usize) -> Option<Entity> {
+        self.pending_destinations.remove(index)
     }
 
     pub const fn pending_destinations(&self) -> &VecDeque<Entity> {

@@ -17,7 +17,7 @@ impl Plugin for PathfindingPlugin {
 /// Returns `Some(Vec<Entity>)`, a vector of `Segment` entities if a route is found from start to end.
 /// Returns `None` if a route is not found.
 pub(super) fn calculate_route(
-    arms: &Query<(Entity, &Arm)>,
+    arms: &Query<&Arm>,
     end_points: &Query<(Entity, &EndPoint)>,
     segments: &Query<&Segment>,
     spawn_point: &SpawnPoint,
@@ -59,7 +59,7 @@ pub(super) fn calculate_route(
                 let (_, end_point) = end_points.get(end_point_id).map_err(|error| {
                     format!("failed to get EndPoint from EndPoint entity: {error}")
                 })?;
-                let (_, arm) = arms
+                let arm = arms
                     .get(end_point.arm())
                     .map_err(|error| format!("failed to get Arm from Arm entity: {error}"))?;
                 if arm.index() == end_arm_index {
