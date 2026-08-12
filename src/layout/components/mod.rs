@@ -97,13 +97,17 @@ pub(crate) struct Segment {
     #[reflect(ignore)]
     evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
 
+    /// While the start position can be calculated automatically with `self.sample_clamped(0.0)`,
+    /// this is ran multiple times per second when spawning vehicles and always gives the same result.
+    start_position: Vec3,
+
     /// The next segments / end point that this segment connects to.
     connection: Connection,
 
-    /// While length can be calculated automatically with curve.length()
+    /// While length can be calculated automatically with `self.length()`,
     /// this is computationally expensive so it is only run once and cached.
     ///
-    /// Performing curve.length() each frame for each segment is a
+    /// Performing `self.length()` each frame for each segment is a
     /// huge waste of resources when the length does not change after creation.
     length: f32,
 
@@ -114,8 +118,11 @@ pub(crate) struct Segment {
 impl Segment {
     pub fn new<C: SegmentCurve>(curve: C, connection: Connection, speed_limit: Speed) -> Self {
         let length = curve.length();
+        let evaluator = curve.into_evaluator();
+        let start_position = evaluator(0.0);
         Segment {
-            evaluator: curve.into_evaluator(),
+            evaluator,
+            start_position,
             connection,
             length,
             speed_limit,
@@ -124,6 +131,10 @@ impl Segment {
 
     pub fn sample_clamped(&self, time: f32) -> Vec3 {
         (self.evaluator)(time)
+    }
+
+    pub const fn start_position(&self) -> Vec3 {
+        self.start_position
     }
 
     pub const fn connection(&self) -> &Connection {

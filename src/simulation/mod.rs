@@ -30,6 +30,15 @@ impl VehicleSpawnQueue {
         }
     }
 
+    /// Pushes an end_arm_id onto the queue.
+    pub fn push_back(&mut self, end_arm_id: Entity) {
+        self.pending_destinations.push_back(end_arm_id);
+    }
+
+    pub fn drain(&mut self, count: usize) {
+        self.pending_destinations.drain(0..count);
+    }
+
     pub const fn pending_destinations(&self) -> &VecDeque<Entity> {
         &self.pending_destinations
     }

@@ -64,14 +64,17 @@ pub(super) fn spawn_vehicles(
     mut spawner_rng: Local<SpawnerRng>,
     time: Res<Time>,
     roundabout_blueprint: Res<RoundaboutBlueprint>,
+    mut spawners: Query<(Entity, &Arm, &mut VehicleSpawnQueue)>,
     arms: Query<(Entity, &Arm)>,
+    arms_read: Query<&Arm>,
     spawn_points: Query<(Entity, &SpawnPoint)>,
     end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
+    existing_vehicles: Query<(&Navigator, &Transform), With<Kinematics>>,
 ) {
     let delta_seconds = time.delta_secs();
 
-    for (spawn_arm_id, spawn_arm) in arms {
+    for (spawn_arm_id, spawn_arm, mut spawn_queue) in &mut spawners {
         // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
         // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
         // of spawn rates.
@@ -81,55 +84,73 @@ pub(super) fn spawn_vehicles(
         if lambda > 0.0 {
             if let Ok(poisson) = Poisson::new(lambda) {
                 let number_to_spawn = poisson.sample(&mut spawner_rng) as u32;
-
                 for _ in 0..number_to_spawn {
                     let end_arm_id =
                         select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
-                    let (_, end_arm) = arms
-                        .get(end_arm_id)
-                        .expect("expected to find an Arm entity with the matching Arm entity");
-
-                    // In future, this will be gotten from the zone system.
-                    let lane_index = select_lane_index(
-                        spawn_arm,
-                        end_arm,
-                        roundabout_blueprint.arm_blueprints().len(),
-                        roundabout_blueprint.number_of_lanes(),
-                    );
-
-                    let spawn_point = spawn_points
-                        .iter()
-                        .find(|(_, spawn_point)| {
-                            spawn_point.arm() == spawn_arm_id
-                                && spawn_point.lane_index() == lane_index
-                        })
-                        .map(|(_, spawn_point)| spawn_point)
-                        .expect("expected to find one SpawnPoint entity with matching lane_index");
-
-                    // Pathfinding.
-                    let route = calculate_route(
-                        &arms,
-                        &end_points,
-                        &segments,
-                        spawn_point,
-                        end_arm.index(),
-                    )
-                    .expect("failed to pathfind from SpawnPoint to EndPoint");
-
-                    commands.spawn(
-                        VehicleBundle::try_new(
-                            &segments,
-                            Speed::from_miles_per_hour(5.0).expect("failed to create"),
-                            Speed::from_miles_per_hour(60.0).expect("failed to create"),
-                            Acceleration::new(3.0),
-                            Acceleration::new(-8.0),
-                            route,
-                        )
-                        .expect("failed to spawn VehicleBundle"),
-                    );
+                    spawn_queue.push_back(end_arm_id);
                 }
             }
         }
+
+        // Attempt to drain queued vehicles if there is enough space.
+        let mut drained_count = 0;
+        for &end_arm_id in spawn_queue.pending_destinations() {
+            let end_arm = arms_read
+                .get(end_arm_id)
+                .expect("expected to find a matching target Arm entity");
+
+            let lane_index = select_lane_index(
+                spawn_arm,
+                end_arm,
+                roundabout_blueprint.arm_blueprints().len(),
+                roundabout_blueprint.number_of_lanes(),
+            );
+
+            let spawn_point = spawn_points
+                .iter()
+                .find(|(_, spawn_point)| {
+                    spawn_point.arm() == spawn_arm_id && spawn_point.lane_index() == lane_index
+                })
+                .map(|(_, spawn_point)| spawn_point)
+                .expect("expected to find a matching SpawnPoint with lane_index");
+
+            let entry_segment_id = spawn_point.segment();
+            let entry_segment = segments
+                .get(entry_segment_id)
+                .expect("expected Segment component for this Entity");
+
+            let is_blocked = existing_vehicles.iter().any(|(navigator, transform)| {
+                navigator.current_segment_id() == entry_segment_id
+                    && transform
+                        .translation
+                        .distance(entry_segment.start_position())
+                        < 5.0
+            });
+            if is_blocked {
+                // We cannot spawn another vehicle in this lane at this moment.
+                continue;
+            }
+
+            let route =
+                calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
+                    .expect("failed to pathfind from SpawnPoint to EndPoint");
+
+            commands.spawn(
+                VehicleBundle::try_new(
+                    &segments,
+                    Speed::from_miles_per_hour(5.0).expect("failed to create"),
+                    Speed::from_miles_per_hour(60.0).expect("failed to create"),
+                    Acceleration::new(3.0),
+                    Acceleration::new(-8.0),
+                    route,
+                )
+                .expect("failed to spawn VehicleBundle"),
+            );
+
+            drained_count += 1;
+        }
+
+        spawn_queue.drain(drained_count);
     }
 }
 
