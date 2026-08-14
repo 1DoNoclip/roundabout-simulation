@@ -1,5 +1,6 @@
 use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
 use clap::Parser;
+use std::time::Duration;
 
 mod blueprint;
 mod graphics;

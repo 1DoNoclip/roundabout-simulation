@@ -4,8 +4,63 @@ pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Kinematics>()
+        app.register_type::<IdmDriver>()
+            .register_type::<Kinematics>()
             .register_type::<Navigator>();
+    }
+}
+
+/// The IDM values for the vehicle.
+#[derive(Component, Reflect)]
+pub(crate) struct IdmDriver {
+    desired_speed: Speed,
+    comfortable_acceleration: Acceleration,
+    comfortable_deceleration: Acceleration,
+    minimum_gap: Distance,
+    time_headway: Duration,
+    exponent: f32,
+}
+
+impl IdmDriver {
+    /// ### Arguments
+    /// * `current_speed` - Speed of this vehicle.
+    /// * `lead_vehicle` - (distance to lead, speed of lead).
+    pub fn calculate_acceleration(
+        &self,
+        current_speed: Speed,
+        lead_vehicle: Option<(Distance, Speed)>,
+    ) -> Acceleration {
+        let v = *current_speed;
+        let v_0 = *self.desired_speed;
+        // Free road acceleration term.
+        let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
+        let intersection_term = if let Some((s, v_lead)) = lead_vehicle {
+            let delta_v = v - *v_lead;
+            let s_star = *self.minimum_gap
+                + (v * self.time_headway.as_secs_f32())
+                + (v * delta_v)
+                    / (2.0 * *self.comfortable_acceleration * *self.comfortable_deceleration)
+                        .sqrt();
+
+            s_star / s.max(0.1).powi(2)
+        } else {
+            0.0
+        };
+
+        Acceleration::new(*self.comfortable_acceleration * (free_road_term - intersection_term))
+    }
+}
+
+impl Default for IdmDriver {
+    fn default() -> Self {
+        IdmDriver {
+            desired_speed: Speed::from_miles_per_hour(30.0).expect("failed to create"),
+            comfortable_acceleration: Acceleration::new(2.5),
+            comfortable_deceleration: Acceleration::new(-2.0),
+            minimum_gap: Distance::new(2.0).expect("failed to create"),
+            time_headway: Duration::from_secs_f32(1.5),
+            exponent: 4.0,
+        }
     }
 }
 
