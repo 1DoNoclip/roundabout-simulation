@@ -2,9 +2,11 @@ use crate::*;
 use rand::{SeedableRng, rng, rngs::StdRng};
 
 pub(crate) mod components;
+pub(crate) mod kinematics;
 mod pathfinding;
 
 pub(crate) use components::*;
+pub(crate) use kinematics::*;
 use pathfinding::*;
 use rand_distr::{Distribution, Poisson};
 
@@ -12,7 +14,7 @@ pub(super) struct VehiclePlugin;
 
 impl Plugin for VehiclePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((ComponentsPlugin, PathfindingPlugin));
+        app.add_plugins((ComponentsPlugin, KinematicsPlugin, PathfindingPlugin));
     }
 }
 

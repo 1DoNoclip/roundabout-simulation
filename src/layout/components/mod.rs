@@ -2,16 +2,11 @@
 
 use crate::*;
 
-pub(crate) mod kinematics;
-
-pub(crate) use kinematics::*;
-
 pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(KinematicsPlugin)
-            .register_type::<Arm>()
+        app.register_type::<Arm>()
             .register_type::<Connection>()
             .register_type::<EndPoint>()
             .register_type::<Segment>()

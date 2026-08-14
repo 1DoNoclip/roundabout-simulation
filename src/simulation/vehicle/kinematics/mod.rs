@@ -1,4 +1,4 @@
-//! Contains `Speed` and `Acceleration` components.
+//! Contains `Speed`, `Distance` and `Acceleration` types.
 
 use crate::*;
 
