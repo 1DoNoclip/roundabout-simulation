@@ -34,7 +34,7 @@ impl Plugin for AppSetupPlugin {
             Update,
             (
                 handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
-                play_pause_time,
+                set_time_speed,
             ),
         );
     }
@@ -93,18 +93,33 @@ fn handle_delayed_start(
     }
 }
 
-// Temporary play/pause functionality before adding proper user input and UI.
-fn play_pause_time(
+/// Use the number keys to set time speed.
+///
+/// 0 => paused, 1 => 0.25, 4 => 1.0, 9 => 50.0.
+fn set_time_speed(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        if virtual_time.is_paused() {
+    use KeyCode::*;
+    if keyboard_input.just_pressed(Digit0) {
+        virtual_time.pause();
+        return;
+    }
+    let digits = [
+        Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7, Digit8, Digit9,
+    ];
+    for (index, digit) in digits.into_iter().enumerate() {
+        if keyboard_input.just_pressed(digit) {
+            let key_number = index + 1;
+            let speed = if key_number <= 4 {
+                key_number as f32 * 0.25
+            } else {
+                (key_number - 4) as f32 * 10.0
+            };
+            virtual_time.set_relative_speed(speed);
             virtual_time.unpause();
-            info!("Simulation unpaused.");
-        } else {
-            virtual_time.pause();
-            info!("Simulation paused.");
+            info!("Set speed to {speed:.2}x");
+            break;
         }
     }
 }
