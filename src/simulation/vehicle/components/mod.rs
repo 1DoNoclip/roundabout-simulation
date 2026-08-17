@@ -173,6 +173,10 @@ impl Navigator {
         self.progress = 0.0;
     }
 
+    pub fn route(&self) -> &[Entity] {
+        &self.route
+    }
+
     pub const fn progress(&self) -> f32 {
         self.progress
     }
