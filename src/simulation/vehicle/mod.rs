@@ -225,6 +225,14 @@ fn spawn_vehicle(
     );
 }
 
+fn find_lead_vehicle(
+    route: &[Entity],
+    segments: &Query<&Segment>,
+    vehicles: &Query<(Entity, &mut Kinematics, &mut Navigator, &mut Transform)>,
+) -> Option<Entity> {
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

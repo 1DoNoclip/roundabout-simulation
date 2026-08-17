@@ -28,13 +28,15 @@ impl IdmDriver {
     pub fn calculate_acceleration(
         &self,
         current_speed: Speed,
-        lead_vehicle: Option<(Distance, Speed)>,
+        lead_vehicle_info: Option<LeadVehicleInfo>,
     ) -> Acceleration {
         let v = *current_speed;
         let v_0 = *self.desired_speed;
         // Free road acceleration term.
         let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
-        let intersection_term = if let Some((s, v_lead)) = lead_vehicle {
+        let intersection_term = if let Some(lead_vehicle_info) = lead_vehicle_info {
+            let s = lead_vehicle_info.distance;
+            let v_lead = lead_vehicle_info.speed;
             let delta_v = v - *v_lead;
             let s_star = *self.minimum_gap
                 + (v * self.time_headway.as_secs_f32())
@@ -62,6 +64,14 @@ impl Default for IdmDriver {
             exponent: 4.0,
         }
     }
+}
+
+/// Information about the vehicle in front of this vehicle.
+pub(crate) struct LeadVehicleInfo {
+    /// Distance between rear bumper of lead to front bumper of this vehicle.
+    pub distance: Distance,
+    /// The speed of the vehicle in front.
+    pub speed: Speed,
 }
 
 /// The motion characteristics for the vehicle.
@@ -146,6 +156,9 @@ impl Navigator {
         self.route.get(self.current_segment_index).copied()
     }
 
+    /// Returns `Ok(())` if `self.progress` < 1.0.
+    ///
+    /// Returns `Err(())` if `self.progress` >= 1.0 (the vehicle moves to the next segment).
     pub const fn add_progress(&mut self, delta_progress: f32) -> Result<(), ()> {
         self.progress += delta_progress;
         if self.progress >= 1.0 {
@@ -155,6 +168,7 @@ impl Navigator {
         }
     }
 
+    /// Sets `self.progress` to 0.0.
     pub const fn reset_progress(&mut self) {
         self.progress = 0.0;
     }
