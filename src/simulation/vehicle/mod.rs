@@ -238,6 +238,7 @@ fn find_lead_vehicle(
     let (_, _, this_navigator) = vehicles
         .get(this_vehicle_id)
         .map_err(|error| error.to_string())?;
+
     let this_route = this_navigator.route();
     let Some(this_current_segment_id) = this_navigator.current_segment_id() else {
         return Err("this vehicle has reached the end of its route".to_owned());
@@ -258,74 +259,86 @@ fn find_lead_vehicle(
         ));
     };
 
-    let mut vehicles_on_route: Vec<(usize, Entity)> = Vec::new();
+    // (route_index, progress, vehicle_entity_id)
+    let mut best_lead_vehicle: Option<(usize, f32, Entity)> = None;
     for (vehicle_id, _, navigator) in vehicles {
-        if vehicle_id != this_vehicle_id
-            && let Some(current_segment_id) = navigator.current_segment_id()
-            // index = the index of this vehicle in existing_route.
-            && let Some(index) = existing_route.iter().position(|&segment_id| current_segment_id == segment_id)
-        {
-            // If on the same segment, exclude vehicles with less progress than this vehicle.
-            if current_segment_id == this_current_segment_id {
-                if navigator.progress() > this_progress {
-                    vehicles_on_route.push((index, vehicle_id));
+        if vehicle_id == this_vehicle_id {
+            continue;
+        }
+
+        // If the vehicle is still on the map.
+        if let Some(current_segment_id) = navigator.current_segment_id() {
+            // If the vehicle is on the route of `this_vehicle`.
+            if let Some(index) = existing_route
+                .iter()
+                .position(|&segment_id| current_segment_id == segment_id)
+            {
+                let progress = navigator.progress();
+
+                // If they are on the same segment, but the vehicle's progress is less than
+                // `this_vehicle`'s progress, then skip as we are only looking ahead.
+                if index == 0 && progress <= this_progress {
+                    continue;
                 }
-            } else {
-                vehicles_on_route.push((index, vehicle_id));
+
+                // Tuples implement comparison (compares .0 first then .1 after).
+                let candidate_rank = (index, progress);
+
+                if let Some((best_index, best_progress, _)) = best_lead_vehicle {
+                    // If this candidate is better than the current best, then replace it.
+                    if candidate_rank < (best_index, best_progress) {
+                        best_lead_vehicle = Some((index, progress, vehicle_id));
+                    }
+                } else {
+                    // If there is no current best, then this vehicle must (currently) be the best.
+                    best_lead_vehicle = Some((index, progress, vehicle_id));
+                }
             }
         }
     }
-    vehicles_on_route.sort_by_key(|&(key, _)| key);
-    let &(lead_index, lead_vehicle_id) = vehicles_on_route
-        .iter()
-        .min_by(|&a, &b| {
-            // Get the progresses, or use INFINITY if failed to get navigator component.
-            let a_progress = vehicles
-                .get(a.1)
-                .map(|(_, _, navigator)| navigator.progress())
-                .unwrap_or(f32::INFINITY);
-            let b_progress = vehicles
-                .get(b.1)
-                .map(|(_, _, navigator)| navigator.progress())
-                .unwrap_or(f32::INFINITY);
 
-            let route_cmp = a.0.cmp(&b.0);
-            if route_cmp == std::cmp::Ordering::Equal {
-                // If they are on the same segment, compare their progresses.
-                a_progress.total_cmp(&b_progress)
-            } else {
-                // If they are on separate segments, compare the segment indexes.
-                route_cmp
-            }
-        })
-        .ok_or_else(|| "failed to find a lead vehicle".to_owned())?;
-    let (_, lead_kinematics, lead_navigator) = vehicles
+    let (lead_index, lead_progress, lead_vehicle_id) =
+        best_lead_vehicle.ok_or("failed to find a lead vehicle")?;
+
+    let total_distance = Distance::try_new(if lead_index == 0 {
+        let segment_length = segments
+            .get(existing_route[0])
+            .map_err(|_| "expected to get segment component")?
+            .length();
+        (lead_progress - this_progress) * segment_length
+    } else {
+        let mut total_distance = 0.0;
+
+        let first_segment_length = segments
+            .get(existing_route[0])
+            .map_err(|_| "expected to get segment component")?
+            .length();
+        total_distance += (1.0 - this_progress) * first_segment_length;
+
+        for index in 1..lead_index {
+            let segment_length = segments
+                .get(existing_route[index])
+                .map_err(|_| "expected to get segment component")?
+                .length();
+            total_distance += segment_length;
+        }
+
+        let last_segment_length = segments
+            .get(existing_route[lead_index])
+            .map_err(|_| "expected to get segment component")?
+            .length();
+        total_distance += lead_progress * last_segment_length;
+
+        total_distance
+    })?;
+
+    let (_, lead_kinematics, _) = vehicles
         .get(lead_vehicle_id)
         .expect("expected to find vehicle components");
-    let lead_progress = lead_navigator.progress();
-    let route_lengths = &existing_route[..lead_index]
-        .iter()
-        .map(|&segment_id| {
-            segments
-                .get(segment_id)
-                .expect("expected to get segment component for segment entity")
-                .length()
-        })
-        .collect::<Vec<_>>();
-    let distance = Distance::try_new(match lead_index {
-        0 => (lead_progress - this_progress) * route_lengths[0],
-        1 => (1.0 - this_progress) * route_lengths[0] + lead_progress * route_lengths[1],
-        _ => {
-            (1.0 - this_progress) * route_lengths[0]
-                + route_lengths[1..lead_index].iter().sum::<f32>()
-                + lead_progress * route_lengths[lead_index]
-        }
-    })?;
-    let lead_speed = lead_kinematics.speed;
 
     Ok(LeadVehicleInfo {
-        distance,
-        speed: lead_speed,
+        distance: total_distance,
+        speed: lead_kinematics.speed,
     })
 }
 
