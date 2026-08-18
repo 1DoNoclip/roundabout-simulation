@@ -176,58 +176,18 @@ pub(super) fn move_vehicles(
 ) {
     let delta_seconds = time.delta_secs();
 
-    let mut accelerations = Vec::new();
-
     // Collect driver and kinematic values to release borrow on vehicle_params (so it can be used in the loop).
     let vehicle_drivers = vehicle_params
         .p1()
         .iter()
-        .map(|(id, idm_driver, kinematics, _)| {
-            (
-                id,
-                *kinematics.speed,
-                *kinematics.target_speed(),
-                *kinematics.max_acceleration(),
-                idm_driver.exponent(),
-                idm_driver.time_headway().as_secs_f32(),
-                *idm_driver.comfortable_acceleration(),
-            )
-        })
+        .map(|(id, idm_driver, kinematics, _)| (id, *idm_driver, *kinematics))
         .collect::<Vec<_>>();
 
-    for (
-        id,
-        current_speed,
-        target_speed,
-        max_acceleration,
-        exponent,
-        time_headway_seconds,
-        comfortable_acceleration,
-    ) in vehicle_drivers
-    {
-        // Free road acceleration term.
-        let free_road_acceleration =
-            max_acceleration * (1.0 - (current_speed / target_speed)).powf(exponent);
-
-        let interaction_acceleration =
-            if let Ok(lead_vehicle_info) = find_lead_vehicle(&segments, &vehicle_params.p0(), id) {
-                let delta_v = current_speed - *lead_vehicle_info.speed;
-
-                let dynamic_gap = (current_speed * delta_v)
-                    / (2.0 * (max_acceleration * comfortable_acceleration).sqrt());
-                let s_star = IdmDriver::MIN_STATIONARY_DISTANCE
-                    + (current_speed * time_headway_seconds)
-                    + dynamic_gap.max(0.0);
-
-                let gap = *lead_vehicle_info.distance;
-                -max_acceleration * (s_star / gap).powi(2)
-            } else {
-                0.0
-            };
-
-        let total_acceleration =
-            Acceleration::new(free_road_acceleration + interaction_acceleration);
-        accelerations.push((id, total_acceleration));
+    let mut accelerations = Vec::with_capacity(vehicle_drivers.len());
+    for (id, idm_driver, kinematics) in vehicle_drivers {
+        let lead_vehicle_info = find_lead_vehicle(&segments, &vehicle_params.p0(), id).ok();
+        let acceleration = idm_driver.calculate_acceleration(kinematics.speed, lead_vehicle_info);
+        accelerations.push((id, acceleration));
     }
 
     for (id, acceleration) in accelerations {

@@ -11,7 +11,7 @@ impl Plugin for ComponentsPlugin {
 }
 
 /// The IDM values for the vehicle.
-#[derive(Component, Reflect)]
+#[derive(Clone, Component, Copy, Reflect)]
 pub(crate) struct IdmDriver {
     desired_speed: Speed,
     comfortable_acceleration: Acceleration,
@@ -44,9 +44,8 @@ impl IdmDriver {
             let delta_v = v - v_lead;
 
             let dynamic_gap = (v * delta_v) / (2.0 * (a * b).sqrt());
-            let s_star = *self.minimum_gap +
-                (v * self.time_headway.as_secs_f32()) +
-                (dynamic_gap.max(0.0));
+            let s_star =
+                *self.minimum_gap + (v * self.time_headway.as_secs_f32()) + (dynamic_gap.max(0.0));
 
             (s_star / s.max(0.1)).powi(2)
         } else {
@@ -54,18 +53,6 @@ impl IdmDriver {
         };
 
         Acceleration::new(*self.comfortable_acceleration * (free_road_term - intersection_term))
-    }
-
-    pub const fn comfortable_acceleration(&self) -> Acceleration {
-        self.comfortable_acceleration
-    }
-
-    pub const fn time_headway(&self) -> Duration {
-        self.time_headway
-    }
-
-    pub const fn exponent(&self) -> f32 {
-        self.exponent
     }
 }
 
@@ -91,7 +78,7 @@ pub(crate) struct LeadVehicleInfo {
 }
 
 /// The motion characteristics for the vehicle.
-#[derive(Component, Reflect)]
+#[derive(Clone, Component, Copy, Reflect)]
 pub(crate) struct Kinematics {
     /// The current speed of the vehicle.
     pub speed: Speed,
@@ -115,14 +102,6 @@ impl Kinematics {
             max_acceleration,
             max_deceleration,
         }
-    }
-
-    pub const fn target_speed(&self) -> Speed {
-        self.target_speed
-    }
-
-    pub const fn max_acceleration(&self) -> Acceleration {
-        self.max_acceleration
     }
 }
 
