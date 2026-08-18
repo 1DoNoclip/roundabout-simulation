@@ -168,36 +168,98 @@ pub(super) fn move_vehicles(
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
-    vehicles: Query<(Entity, &IdmDriver, &mut Kinematics, &mut Navigator, &mut Transform)>,
+    mut vehicle_params: ParamSet<(
+        Query<(Entity, &Kinematics, &Navigator)>,
+        Query<(Entity, &IdmDriver, &Kinematics, &Navigator)>,
+        Query<(Entity, &mut Kinematics, &mut Navigator, &mut Transform)>,
+    )>,
 ) {
     let delta_seconds = time.delta_secs();
 
-    for (entity, _, mut kinematics, mut navigator, mut transform) in vehicles {
-        let segment_id = navigator
-            .current_segment_id()
-            .expect("expected .current_segment_id() to be Some");
+    let mut accelerations = Vec::new();
 
-        if let Ok(segment) = segments.get(segment_id) {
-            let delta_progress = (*kinematics.speed * delta_seconds) / segment.length();
-            match navigator.add_progress(delta_progress) {
-                Ok(_) => transform.translation = segment.sample_clamped(navigator.progress()),
-                Err(_) => {
-                    match navigator.increment_current_segment_index() {
-                        Ok(_) => navigator.reset_progress(),
-                        Err(_) => {
-                            // Reached the end point (add stats in future)
-                            statistics.increment_total_vehicles_passed();
-                            commands.entity(entity).despawn();
+    // Collect driver and kinematic values to release borrow on vehicle_params (so it can be used in the loop).
+    let vehicle_drivers = vehicle_params
+        .p1()
+        .iter()
+        .map(|(id, idm_driver, kinematics, _)| {
+            (
+                id,
+                *kinematics.speed,
+                *kinematics.target_speed(),
+                *kinematics.max_acceleration(),
+                idm_driver.exponent(),
+                idm_driver.time_headway().as_secs_f32(),
+                *idm_driver.comfortable_acceleration(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    for (
+        id,
+        current_speed,
+        target_speed,
+        max_acceleration,
+        exponent,
+        time_headway_seconds,
+        comfortable_acceleration,
+    ) in vehicle_drivers
+    {
+        // Free road acceleration term.
+        let free_road_acceleration =
+            max_acceleration * (1.0 - (current_speed / target_speed)).powf(exponent);
+
+        let interaction_acceleration =
+            if let Ok(lead_vehicle_info) = find_lead_vehicle(&segments, &vehicle_params.p0(), id) {
+                let delta_v = current_speed - *lead_vehicle_info.speed;
+
+                let dynamic_gap = (current_speed * delta_v)
+                    / (2.0 * (max_acceleration * comfortable_acceleration).sqrt());
+                let s_star = IdmDriver::MIN_STATIONARY_DISTANCE
+                    + (current_speed * time_headway_seconds)
+                    + dynamic_gap.max(0.0);
+
+                let gap = *lead_vehicle_info.distance;
+                -max_acceleration * (s_star / gap).powi(2)
+            } else {
+                0.0
+            };
+
+        let total_acceleration =
+            Acceleration::new(free_road_acceleration + interaction_acceleration);
+        accelerations.push((id, total_acceleration));
+    }
+
+    for (id, acceleration) in accelerations {
+        if let Ok((_, mut kinematics, mut navigator, mut transform)) =
+            vehicle_params.p2().get_mut(id)
+        {
+            *kinematics.speed = (*kinematics.speed + *acceleration * delta_seconds).max(0.0);
+
+            let current_segment_id = navigator
+                .current_segment_id()
+                .expect("expected .current_segment_id() to be Some");
+
+            if let Ok(segment) = segments.get(current_segment_id) {
+                let delta_progress = (*kinematics.speed * delta_seconds) / segment.length();
+                match navigator.add_progress(delta_progress) {
+                    Ok(_) => transform.translation = segment.sample_clamped(navigator.progress()),
+                    Err(overflow_progress) => match navigator.increment_current_segment_index() {
+                        Ok(_) => {
+                            navigator.reset_progress();
+                            if let Some(next_segment_id) = navigator.current_segment_id() {
+                                if let Ok(next_segment) = segments.get(next_segment_id) {
+                                    transform.translation =
+                                        next_segment.sample_clamped(navigator.progress());
+                                }
+                            }
                         }
-                    }
+                        Err(_) => {
+                            statistics.increment_total_vehicles_passed();
+                            commands.entity(id).despawn();
+                        }
+                    },
                 }
-            }
-
-            // Increases speed due to acceleration.
-            if *kinematics.speed < *kinematics.target_speed() {
-                *kinematics.speed = (*kinematics.speed
-                    + *kinematics.max_acceleration() * delta_seconds)
-                    .min(*kinematics.target_speed());
             }
         }
     }

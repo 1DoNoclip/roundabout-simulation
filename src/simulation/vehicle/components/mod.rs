@@ -32,24 +32,40 @@ impl IdmDriver {
     ) -> Acceleration {
         let v = *current_speed;
         let v_0 = *self.desired_speed;
+        let a = *self.comfortable_acceleration;
+        let b = *self.comfortable_deceleration;
+
         // Free road acceleration term.
         let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
-        let intersection_term = if let Some(lead_vehicle_info) = lead_vehicle_info {
-            let s = lead_vehicle_info.distance;
-            let v_lead = lead_vehicle_info.speed;
-            let delta_v = v - *v_lead;
-            let s_star = *self.minimum_gap
-                + (v * self.time_headway.as_secs_f32())
-                + (v * delta_v)
-                    / (2.0 * *self.comfortable_acceleration * *self.comfortable_deceleration)
-                        .sqrt();
 
-            s_star / s.max(0.1).powi(2)
+        let intersection_term = if let Some(lead_vehicle_info) = lead_vehicle_info {
+            let s = *lead_vehicle_info.distance;
+            let v_lead = *lead_vehicle_info.speed;
+            let delta_v = v - v_lead;
+
+            let dynamic_gap = (v * delta_v) / (2.0 * (a * b).sqrt());
+            let s_star = *self.minimum_gap +
+                (v * self.time_headway.as_secs_f32()) +
+                (dynamic_gap.max(0.0));
+
+            (s_star / s.max(0.1)).powi(2)
         } else {
             0.0
         };
 
         Acceleration::new(*self.comfortable_acceleration * (free_road_term - intersection_term))
+    }
+
+    pub const fn comfortable_acceleration(&self) -> Acceleration {
+        self.comfortable_acceleration
+    }
+
+    pub const fn time_headway(&self) -> Duration {
+        self.time_headway
+    }
+
+    pub const fn exponent(&self) -> f32 {
+        self.exponent
     }
 }
 
@@ -158,11 +174,12 @@ impl Navigator {
 
     /// Returns `Ok(())` if `self.progress` < 1.0.
     ///
-    /// Returns `Err(())` if `self.progress` >= 1.0 (the vehicle moves to the next segment).
-    pub const fn add_progress(&mut self, delta_progress: f32) -> Result<(), ()> {
+    /// Returns `Err(overflow_progress)` if `self.progress` >= 1.0 (the vehicle moves to the next segment).
+    /// `overflow_progress` is the progress (in the current segment) that the vehicle is now in the next segment.
+    pub const fn add_progress(&mut self, delta_progress: f32) -> Result<(), f32> {
         self.progress += delta_progress;
         if self.progress >= 1.0 {
-            Err(())
+            Err(self.progress - 1.0)
         } else {
             Ok(())
         }
