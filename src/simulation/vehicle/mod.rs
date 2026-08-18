@@ -21,6 +21,7 @@ impl Plugin for VehiclePlugin {
 #[derive(Bundle)]
 struct VehicleBundle {
     name: Name,
+    idm_driver: IdmDriver,
     kinematics: Kinematics,
     navigator: Navigator,
     transform: Transform,
@@ -45,6 +46,7 @@ impl VehicleBundle {
             .expect("expected to find a Segment component");
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
+            idm_driver: IdmDriver::default(),
             kinematics: Kinematics::new(speed, target_speed, max_acceleration, max_deceleration),
             navigator,
             transform: Transform::from_translation(start_segment.sample_clamped(0.0)),
@@ -166,11 +168,11 @@ pub(super) fn move_vehicles(
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
-    vehicles: Query<(Entity, &mut Kinematics, &mut Navigator, &mut Transform)>,
+    vehicles: Query<(Entity, &IdmDriver, &mut Kinematics, &mut Navigator, &mut Transform)>,
 ) {
     let delta_seconds = time.delta_secs();
 
-    for (entity, mut kinematics, mut navigator, mut transform) in vehicles {
+    for (entity, _, mut kinematics, mut navigator, mut transform) in vehicles {
         let segment_id = navigator
             .current_segment_id()
             .expect("expected .current_segment_id() to be Some");
