@@ -234,76 +234,99 @@ fn find_lead_vehicle(
     segments: &Query<&Segment>,
     vehicles: &Query<(Entity, &Kinematics, &Navigator)>,
     this_vehicle_id: Entity,
-) -> Option<LeadVehicleInfo> {
-    let (_, _, this_navigator) = vehicles.get(this_vehicle_id).ok()?;
+) -> Result<LeadVehicleInfo, String> {
+    let (_, _, this_navigator) = vehicles
+        .get(this_vehicle_id)
+        .map_err(|error| error.to_string())?;
     let this_route = this_navigator.route();
-    let this_current_segment_id = this_navigator.current_segment_id()?;
-    // The route from the current segment to the end.
-    let existing_route = if let Some(index) = this_route
+    let Some(this_current_segment_id) = this_navigator.current_segment_id() else {
+        return Err("this vehicle has reached the end of its route".to_owned());
+    };
+    let this_progress = this_navigator.progress();
+
+    // The route from the this's current segment to the end.
+    let existing_route = if let Some(current_segment_index) = this_route
         .iter()
         .position(|&segment_id| segment_id == this_current_segment_id)
     {
-        &this_route[index..]
+        // From current segment to end of route.
+        // We ignore segments that this vehicle has already travelled as we are looking ahead.
+        &this_route[current_segment_index..]
     } else {
-        return None;
+        return Err(format!(
+            "failed to find this_current_segment_id ({this_current_segment_id}) in this_route ({this_route:?})"
+        ));
     };
 
-    let this_progress = this_navigator.progress();
-    let mut accumulated_distance = 0.0;
-
-    for (index, &segment_id) in existing_route.iter().enumerate() {
-        let segment = segments.get(segment_id).expect("expected existing_route to hold valid segment entities");
-        let segment_length = segment.length();
-
-        let mut closest_vehicle_on_segment: Option<(Entity, Distance, Speed)> = None;
-        let mut min_progress = f32::MAX;
-
-        for (vehicle_id, kinematics, navigator) in vehicles {
-            if vehicle_id == this_vehicle_id { continue; }
-            else if navigator.current_segment_id() == Some(segment_id) {
-                let progress = navigator.progress();
-
-                if index == 0 && progress <= this_progress { continue; }
-                else if progress < min_progress {
-                    min_progress = progress;
-                    closest_vehicle_on_segment = Some((vehicle_id, progress, kinematics.speed));
+    let mut vehicles_on_route: Vec<(usize, Entity)> = Vec::new();
+    for (vehicle_id, _, navigator) in vehicles {
+        if vehicle_id != this_vehicle_id
+            && let Some(current_segment_id) = navigator.current_segment_id()
+            // index = the index of this vehicle in existing_route.
+            && let Some(index) = existing_route.iter().position(|&segment_id| current_segment_id == segment_id)
+        {
+            // If on the same segment, exclude vehicles with less progress than this vehicle.
+            if current_segment_id == this_current_segment_id {
+                if navigator.progress() > this_progress {
+                    vehicles_on_route.push((index, vehicle_id));
                 }
+            } else {
+                vehicles_on_route.push((index, vehicle_id));
             }
         }
     }
-    None
+    vehicles_on_route.sort_by_key(|&(key, _)| key);
+    let &(lead_index, lead_vehicle_id) = vehicles_on_route
+        .iter()
+        .min_by(|&a, &b| {
+            // Get the progresses, or use INFINITY if failed to get navigator component.
+            let a_progress = vehicles
+                .get(a.1)
+                .map(|(_, _, navigator)| navigator.progress())
+                .unwrap_or(f32::INFINITY);
+            let b_progress = vehicles
+                .get(b.1)
+                .map(|(_, _, navigator)| navigator.progress())
+                .unwrap_or(f32::INFINITY);
 
-    // let mut route_segments = Vec::with_capacity(existing_route.len());
-    // for index in 0..existing_route.len() {
-    //     let segment = segments
-    //         .get(existing_route[index])
-    //         .expect("expected route to hold valid segment entities");
-    //     route_segments.push(segment);
-    // }
-    // let route_segments = route_segments;
+            let route_cmp = a.0.cmp(&b.0);
+            if route_cmp == std::cmp::Ordering::Equal {
+                // If they are on the same segment, compare their progresses.
+                a_progress.total_cmp(&b_progress)
+            } else {
+                // If they are on separate segments, compare the segment indexes.
+                route_cmp
+            }
+        })
+        .ok_or_else(|| "failed to find a lead vehicle".to_owned())?;
+    let (_, lead_kinematics, lead_navigator) = vehicles
+        .get(lead_vehicle_id)
+        .expect("expected to find vehicle components");
+    let lead_progress = lead_navigator.progress();
+    let route_lengths = &existing_route[..lead_index]
+        .iter()
+        .map(|&segment_id| {
+            segments
+                .get(segment_id)
+                .expect("expected to get segment component for segment entity")
+                .length()
+        })
+        .collect::<Vec<_>>();
+    let distance = Distance::try_new(match lead_index {
+        0 => (lead_progress - this_progress) * route_lengths[0],
+        1 => (1.0 - this_progress) * route_lengths[0] + lead_progress * route_lengths[1],
+        _ => {
+            (1.0 - this_progress) * route_lengths[0]
+                + route_lengths[1..lead_index].iter().sum::<f32>()
+                + lead_progress * route_lengths[lead_index]
+        }
+    })?;
+    let lead_speed = lead_kinematics.speed;
 
-    // let mut route_vehicles = Vec::new();
-    // for (id, kinematics, navigator) in vehicles {
-    //     if let Some(current_segment_id) = navigator.current_segment_id()
-    //         && existing_route.contains(&current_segment_id)
-    //     {
-    //         if id == this_vehicle_id {
-    //             continue;
-    //         } else if current_segment_id == existing_route[0] {
-    //             if navigator.progress() > this_navigator.progress() {
-    //                 route_vehicles.push(id);
-    //             }
-    //         } else {
-    //             route_vehicles.push(id);
-    //         }
-    //     }
-    // }
-    // let route_vehicles = route_vehicles;
-
-    // if route_vehicles.len() == 0 {
-    //     None
-    // } else {
-    // }
+    Ok(LeadVehicleInfo {
+        distance,
+        speed: lead_speed,
+    })
 }
 
 #[cfg(test)]

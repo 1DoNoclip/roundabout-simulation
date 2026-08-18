@@ -59,7 +59,7 @@ impl Default for IdmDriver {
             desired_speed: Speed::from_miles_per_hour(30.0).expect("failed to create"),
             comfortable_acceleration: Acceleration::new(2.5),
             comfortable_deceleration: Acceleration::new(-2.0),
-            minimum_gap: Distance::new(2.0).expect("failed to create"),
+            minimum_gap: Distance::try_new(2.0).expect("failed to create"),
             time_headway: Duration::from_secs_f32(1.5),
             exponent: 4.0,
         }
