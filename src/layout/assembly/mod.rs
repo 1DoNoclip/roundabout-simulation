@@ -14,20 +14,10 @@ impl Plugin for AssemblyPlugin {
 pub(crate) fn assemble_roundabout(
     mut commands: Commands,
     roundabout_blueprint: Res<RoundaboutBlueprint>,
-    existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
-    existing_segments: Query<Entity, With<Segment>>,
-    existing_spawn_points: Query<Entity, With<SpawnPoint>>,
-    existing_end_points: Query<Entity, With<EndPoint>>,
 ) {
     info!("Assembling roundabout from blueprints.");
 
-    clear_existing_layout(
-        &mut commands,
-        existing_vehicles,
-        existing_segments,
-        existing_spawn_points,
-        existing_end_points,
-    );
+    commands.run_system_cached(clear_existing_layout);
 
     let arm_blueprints = roundabout_blueprint.arm_blueprints();
     let number_of_arms = arm_blueprints.len();
@@ -178,12 +168,12 @@ pub(crate) fn assemble_roundabout(
 
 /// Issues eviction notices to all entities part of the previous blueprint designs.
 fn clear_existing_layout(
-    commands: &mut Commands,
+    mut commands: Commands,
     existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
     existing_segments: Query<Entity, With<Segment>>,
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
-) {
+) -> () {
     info!("Despawning all existing vehicles.");
     for vehicle in existing_vehicles {
         commands.entity(vehicle).despawn();

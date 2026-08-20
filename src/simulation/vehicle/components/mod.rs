@@ -13,7 +13,8 @@ impl Plugin for ComponentsPlugin {
 /// The IDM values for the vehicle.
 #[derive(Clone, Component, Copy, Reflect)]
 pub(crate) struct IdmDriver {
-    desired_speed: Speed,
+    /// The desired speed of this vehicle out of the speed limit.
+    desired_speed_percentage: f32,
     comfortable_acceleration: Acceleration,
     comfortable_deceleration: Acceleration,
     /// The minimum distance a vehicle will leave when stopping behind another stationary vehicle.
@@ -36,13 +37,8 @@ impl IdmDriver {
         lead_vehicle_info: Option<LeadVehicleInfo>,
     ) -> Acceleration {
         let v = *current_speed;
-        // Vehicles will drive at their desired_speed,
-        // or the speed_limit whichever is less.
-        let v_0 = if *self.desired_speed > *speed_limit {
-            *speed_limit
-        } else {
-            *self.desired_speed
-        };
+        // Vehicles will drive at their desired_speed_percentage of the speed limit.
+        let v_0 = self.desired_speed_percentage * *speed_limit;
         let a = *self.comfortable_acceleration;
         let b = *self.comfortable_deceleration;
 
@@ -70,7 +66,7 @@ impl IdmDriver {
 impl Default for IdmDriver {
     fn default() -> Self {
         IdmDriver {
-            desired_speed: Speed::from_miles_per_hour(30.0).expect("failed to create"),
+            desired_speed_percentage: 0.95,
             comfortable_acceleration: Acceleration::new(2.5),
             comfortable_deceleration: Acceleration::new(-2.0),
             minimum_gap: Distance::try_new(2.0).expect("failed to create"),
