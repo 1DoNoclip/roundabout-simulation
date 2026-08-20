@@ -35,7 +35,7 @@ pub(in crate::simulation) fn move_vehicles(
         .map(|(id, idm_driver, kinematics, _)| (id, *idm_driver, *kinematics))
         .collect::<Vec<_>>();
 
-    let mut accelerations = Vec::with_capacity(vehicle_drivers.len());
+    // let mut accelerations = Vec::with_capacity(vehicle_drivers.len());
     for (id, idm_driver, kinematics) in vehicle_drivers {
         let lead_vehicle_info = find_lead_vehicle(&segments, &vehicle_params.p0(), id).ok();
         let acceleration = idm_driver.calculate_acceleration(
@@ -43,10 +43,7 @@ pub(in crate::simulation) fn move_vehicles(
             roundabout_blueprint.speed_limit(),
             lead_vehicle_info,
         );
-        accelerations.push((id, acceleration));
-    }
 
-    for (id, acceleration) in accelerations {
         if let Ok((_, mut kinematics, mut navigator, mut transform)) =
             vehicle_params.p2().get_mut(id)
         {
@@ -198,55 +195,50 @@ fn find_lead_vehicle(
     })
 }
 
-pub(in crate::simulation) fn calculate_time_to_arrival(
-    distance: Distance,
-    speed: Speed,
-    acceleration: Acceleration,
-) -> Duration {
-    // Dereference newtypes into primitives.
-    let (distance, speed, acceleration) = (*distance, *speed, *acceleration);
+fn should_yield_at_entry(
+    conflict_points: &RoundaboutConflictPoints,
+    number_of_lanes: usize,
+    circulating_vehicles: &[(Distance, &Kinematics)],
+    arm_index: usize,
+    entry_lane_index: usize,
+    entry_vehicle_kinematics: &Kinematics,
+    entry_vehicle_distance_to_line: Distance,
+    minimum_gap_acceptance: Duration,
+) -> bool {
+    for circulating_lane_index in 0..number_of_lanes {
+        if let Some(conflict_point) = conflict_points.get(ConflictPointIndex {
+            arm_index,
+            entry_lane_index,
+            circulating_lane_index,
+        }) {
+            // Entry vehicle's distance to conflict point.
+            let total_entry_distance = Distance::try_new(
+                *entry_vehicle_distance_to_line + *conflict_point.entry_distance_to_point,
+            )
+            .expect("expected to have a positive distance");
 
-    // Uses s = ut + (1/2)at^2
-    if acceleration.abs() > 0.01 {
-        // If accelerating / decelerating significantly, solve the quadratic equation.
-        // v^2 + 2as.
-        let discriminant = speed * speed + 2.0 * acceleration * distance;
-        if discriminant > 0.0 {
-            let time = (-speed + discriminant.sqrt()) / acceleration;
-            if time > 0.0 {
-                return Duration::from_secs_f32(time);
+            let entry_tta =
+                entry_vehicle_kinematics.calculate_time_to_arrival(total_entry_distance);
+
+            for &(circulating_distance, circulating_kinematics) in circulating_vehicles {
+                // Circulating vehicle's distance to conflict point.
+                let Ok(total_circulating_distance) = Distance::try_new(
+                    *conflict_point.circulating_distance_to_point - *circulating_distance,
+                ) else {
+                    continue;
+                };
+
+                let circulating_tta =
+                    circulating_kinematics.calculate_time_to_arrival(total_circulating_distance);
+
+                if (entry_tta - circulating_tta).as_secs_f32().abs()
+                    < minimum_gap_acceptance.as_secs_f32()
+                {
+                    return true;
+                }
             }
         }
     }
-    // Fallback to using constant speed time-to-arrival.
-    Duration::from_secs_f32(distance / speed)
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn new_valid_speed() {
-        let speed_limit = Speed::new(13.4);
-        assert!(speed_limit.is_ok())
-    }
-
-    #[test]
-    fn new_invalid_speed() {
-        let speed_limit = Speed::new(-13.4);
-        assert!(speed_limit.is_err())
-    }
-
-    #[test]
-    fn from_miles_per_hour_valid_speed() {
-        let speed_limit = Speed::from_miles_per_hour(30.0);
-        assert!(speed_limit.is_ok())
-    }
-
-    #[test]
-    fn from_miles_per_hour_invalid_speed() {
-        let speed_limit = Speed::from_miles_per_hour(-30.0);
-        assert!(speed_limit.is_err())
-    }
+    false
 }

@@ -92,8 +92,13 @@ pub(crate) struct Kinematics {
     pub speed: Speed,
     /// Target speed that the driver would aim for on an empty road.
     target_speed: Speed,
+    /// The current acceleration of the vehicle.
+    pub acceleration: Acceleration,
+    /// The maximum acceleration possible.
     max_acceleration: Acceleration,
     /// The maximum deceleration possible by braking.
+    ///
+    /// Use negative values as it is represented as an `Acceleration`.
     max_deceleration: Acceleration,
 }
 
@@ -107,9 +112,30 @@ impl Kinematics {
         Kinematics {
             speed,
             target_speed,
+            acceleration: Acceleration::new(0.0),
             max_acceleration,
             max_deceleration,
         }
+    }
+
+    pub fn calculate_time_to_arrival(&self, distance: Distance) -> Duration {
+        // Dereference newtypes into primitives.
+        let (distance, speed, acceleration) = (*distance, *self.speed, *self.acceleration);
+
+        // Uses s = ut + (1/2)at^2
+        if acceleration.abs() > 0.01 {
+            // If accelerating / decelerating significantly, solve the quadratic equation.
+            // v^2 + 2as.
+            let discriminant = speed * speed + 2.0 * acceleration * distance;
+            if discriminant > 0.0 {
+                let time = (-speed + discriminant.sqrt()) / acceleration;
+                if time > 0.0 {
+                    return Duration::from_secs_f32(time);
+                }
+            }
+        }
+        // Fallback to using constant speed time-to-arrival.
+        Duration::from_secs_f32(distance / speed)
     }
 }
 
