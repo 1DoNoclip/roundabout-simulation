@@ -166,6 +166,7 @@ pub(super) fn spawn_vehicles(
 pub(super) fn move_vehicles(
     mut commands: Commands,
     time: Res<Time>,
+    roundabout_blueprint: Res<RoundaboutBlueprint>,
     mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
     mut vehicle_params: ParamSet<(
@@ -186,7 +187,11 @@ pub(super) fn move_vehicles(
     let mut accelerations = Vec::with_capacity(vehicle_drivers.len());
     for (id, idm_driver, kinematics) in vehicle_drivers {
         let lead_vehicle_info = find_lead_vehicle(&segments, &vehicle_params.p0(), id).ok();
-        let acceleration = idm_driver.calculate_acceleration(kinematics.speed, lead_vehicle_info);
+        let acceleration = idm_driver.calculate_acceleration(
+            kinematics.speed,
+            roundabout_blueprint.speed_limit(),
+            lead_vehicle_info,
+        );
         accelerations.push((id, acceleration));
     }
 

@@ -16,8 +16,12 @@ pub(crate) struct IdmDriver {
     desired_speed: Speed,
     comfortable_acceleration: Acceleration,
     comfortable_deceleration: Acceleration,
+    /// The minimum distance a vehicle will leave when stopping behind another stationary vehicle.
     minimum_gap: Distance,
+    /// The time difference when following a vehicle.
     time_headway: Duration,
+    /// The minimum time gap the driver will enter the roundabout in.
+    critical_gap: Duration,
     exponent: f32,
 }
 
@@ -28,10 +32,17 @@ impl IdmDriver {
     pub fn calculate_acceleration(
         &self,
         current_speed: Speed,
+        speed_limit: Speed,
         lead_vehicle_info: Option<LeadVehicleInfo>,
     ) -> Acceleration {
         let v = *current_speed;
-        let v_0 = *self.desired_speed;
+        // Vehicles will drive at their desired_speed,
+        // or the speed_limit whichever is less.
+        let v_0 = if *self.desired_speed > *speed_limit {
+            *speed_limit
+        } else {
+            *self.desired_speed
+        };
         let a = *self.comfortable_acceleration;
         let b = *self.comfortable_deceleration;
 
@@ -64,6 +75,7 @@ impl Default for IdmDriver {
             comfortable_deceleration: Acceleration::new(-2.0),
             minimum_gap: Distance::try_new(2.0).expect("failed to create"),
             time_headway: Duration::from_secs_f32(1.5),
+            critical_gap: Duration::from_secs_f32(3.5),
             exponent: 4.0,
         }
     }
