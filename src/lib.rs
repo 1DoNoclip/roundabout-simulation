@@ -143,12 +143,12 @@ fn setup_roundabout_layout(mut commands: Commands) {
         ArmBlueprint::from_degrees(-180.0, None, 0.5),
         ArmBlueprint::from_degrees(-270.0, None, 0.5),
     ];
-    let circle_blueprint = CircleBlueprint::try_new(50.0, 10.0).expect("failed to create");
+    let circle_blueprint = CircleBlueprint::try_new(30.0, 12.5).expect("failed to create");
     commands.insert_resource(
         RoundaboutBlueprint::try_new(
             arm_blueprints,
             circle_blueprint,
-            2,
+            1,
             Speed::from_miles_per_hour(30.0).expect("failed to create"),
         )
         .expect("failed to create"),

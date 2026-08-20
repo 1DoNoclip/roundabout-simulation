@@ -66,6 +66,30 @@ impl Speed {
     }
 }
 
+pub(in crate::simulation) fn calculate_time_to_arrival(
+    distance: Distance,
+    speed: Speed,
+    acceleration: Acceleration,
+) -> Duration {
+    // Dereference newtypes into primitives.
+    let (distance, speed, acceleration) = (*distance, *speed, *acceleration);
+
+    // Uses s = ut + (1/2)at^2
+    if acceleration.abs() > 0.01 {
+        // If accelerating / decelerating significantly, solve the quadratic equation.
+        // v^2 + 2as.
+        let discriminant = speed * speed + 2.0 * acceleration * distance;
+        if discriminant > 0.0 {
+            let time = (-speed + discriminant.sqrt()) / acceleration;
+            if time > 0.0 {
+                return Duration::from_secs_f32(time);
+            }
+        }
+    }
+    // Fallback to using constant speed time-to-arrival.
+    Duration::from_secs_f32(distance / speed)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
