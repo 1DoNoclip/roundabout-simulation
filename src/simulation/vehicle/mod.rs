@@ -117,12 +117,11 @@ pub(super) fn spawn_vehicles(
                 roundabout_blueprint.number_of_lanes(),
             );
 
-            let spawn_point = spawn_points
+            let (spawn_point_id, spawn_point) = spawn_points
                 .iter()
                 .find(|(_, spawn_point)| {
                     spawn_point.arm() == spawn_arm_id && spawn_point.lane_index() == lane_index
                 })
-                .map(|(_, spawn_point)| spawn_point)
                 .expect("expected to find a matching SpawnPoint with lane_index");
 
             let entry_segment_id = spawn_point.segment();
@@ -144,14 +143,7 @@ pub(super) fn spawn_vehicles(
                 continue;
             }
 
-            spawn_vehicle(
-                &mut commands,
-                &arms,
-                &segments,
-                spawn_point,
-                &end_points,
-                end_arm,
-            );
+            commands.run_system_cached_with(spawn_vehicle, (spawn_point_id, end_arm_id));
 
             drained_indices.push(index);
             frame_spawned_segments.push(entry_segment_id);
@@ -231,19 +223,26 @@ pub(super) fn move_vehicles(
 }
 
 fn spawn_vehicle(
-    commands: &mut Commands,
-    arms: &Query<&Arm>,
-    segments: &Query<&Segment>,
-    spawn_point: &SpawnPoint,
-    end_points: &Query<(Entity, &EndPoint)>,
-    end_arm: &Arm,
+    In((spawn_point_id, end_arm_id)): In<(Entity, Entity)>,
+    mut commands: Commands,
+    arms: Query<&Arm>,
+    segments: Query<&Segment>,
+    spawn_points: Query<&SpawnPoint>,
+    end_points: Query<(Entity, &EndPoint)>,
 ) {
-    let route = calculate_route(arms, end_points, segments, spawn_point, end_arm.index())
+    let spawn_point = spawn_points
+        .get(spawn_point_id)
+        .expect("expected to get SpawnPoint from entity");
+    let end_arm = arms
+        .get(end_arm_id)
+        .expect("expected to get end Arm from entity");
+
+    let route = calculate_route(&arms, &end_points, &segments, &spawn_point, end_arm.index())
         .expect("failed to pathfind from SpawnPoint to EndPoint");
 
     commands.spawn(
         VehicleBundle::try_new(
-            segments,
+            &segments,
             Speed::from_miles_per_hour(5.0).expect("failed to create"),
             Speed::from_miles_per_hour(60.0).expect("failed to create"),
             Acceleration::new(3.0),
