@@ -195,17 +195,28 @@ fn find_lead_vehicle(
     })
 }
 
+/// Compares the time-to-arrival (TTA) of the entering and the circulating vehicles.
+///
+/// Decides whether the vehicle entering is required to yield at the line.
+///
+/// ### Arguments
+/// * `circulating_vehicles` - The `Distance` is the distance along Arm N-1's inter arm sector.
+/// * `arm_index` - The arm index that the entry vehicle is on and that the circulating vehicles can approach.
+/// * `entry_vehicle_distance_to_line` - The distance that the entry vehicle is to the start of the deflection curve / yield line.
+/// * `critical_gap` - The minimum amount of time the entry vehicle requires to enter between circulating traffic.
 fn should_yield_at_entry(
     conflict_points: &RoundaboutConflictPoints,
     number_of_lanes: usize,
-    circulating_vehicles: &[(Distance, &Kinematics)],
+    circulating_vehicles: &[(&Kinematics, Distance)],
     arm_index: usize,
     entry_lane_index: usize,
     entry_vehicle_kinematics: &Kinematics,
     entry_vehicle_distance_to_line: Distance,
-    minimum_gap_acceptance: Duration,
+    critical_gap: Duration,
 ) -> bool {
+    // Check each circulating lane that overlaps the entry vehicle's path.
     for circulating_lane_index in 0..number_of_lanes {
+        // If None, then these lanes do not overlap.
         if let Some(conflict_point) = conflict_points.get(ConflictPointIndex {
             arm_index,
             entry_lane_index,
@@ -220,7 +231,7 @@ fn should_yield_at_entry(
             let entry_tta =
                 entry_vehicle_kinematics.calculate_time_to_arrival(total_entry_distance);
 
-            for &(circulating_distance, circulating_kinematics) in circulating_vehicles {
+            for &(circulating_kinematics, circulating_distance) in circulating_vehicles {
                 // Circulating vehicle's distance to conflict point.
                 let Ok(total_circulating_distance) = Distance::try_new(
                     *conflict_point.circulating_distance_to_point - *circulating_distance,
@@ -232,7 +243,7 @@ fn should_yield_at_entry(
                     circulating_kinematics.calculate_time_to_arrival(total_circulating_distance);
 
                 if (entry_tta - circulating_tta).as_secs_f32().abs()
-                    < minimum_gap_acceptance.as_secs_f32()
+                    < critical_gap.as_secs_f32()
                 {
                     return true;
                 }

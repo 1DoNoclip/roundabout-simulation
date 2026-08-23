@@ -4,6 +4,8 @@ use crate::*;
 use bevy::platform::collections::HashMap;
 
 /// The points where lane `Segment`s cross over, but do not connect with a `Connection`.
+///
+/// This resource is essentially a cache of points to massively reduce the work required to get conflict points.
 #[derive(Resource, Default)]
 pub(crate) struct RoundaboutConflictPoints {
     points: HashMap<ConflictPointIndex, ConflictPoint>,
@@ -30,9 +32,24 @@ pub(crate) struct ConflictPoint {
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub(crate) struct ConflictPointIndex {
-    pub arm_index: usize,
+    arm_index: usize,
     /// The lane index of the entry lane.
-    pub entry_lane_index: usize,
+    entry_lane_index: usize,
     /// The lane index of the circulating lane.
-    pub circulating_lane_index: usize,
+    circulating_lane_index: usize,
+}
+
+impl ConflictPointIndex {
+    /// Attempts to create a new `Self`.
+    ///
+    /// Returns `Some(Self)` if `circulating_lane_index` > `entry_lane_index`.
+    ///
+    /// Returns `None` if there is not a valid conflict point.
+    pub const fn try_new(arm_index: usize, entry_lane_index: usize, circulating_lane_index: usize) -> Option<Self> {
+        if circulating_lane_index > entry_lane_index {
+            Some(ConflictPointIndex { arm_index, entry_lane_index, circulating_lane_index })
+        } else {
+            None
+        }
+    }
 }
