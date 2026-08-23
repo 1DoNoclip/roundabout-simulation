@@ -45,9 +45,17 @@ impl ConflictPointIndex {
     /// Returns `Some(Self)` if `circulating_lane_index` > `entry_lane_index`.
     ///
     /// Returns `None` if there is not a valid conflict point.
-    pub const fn try_new(arm_index: usize, entry_lane_index: usize, circulating_lane_index: usize) -> Option<Self> {
+    pub const fn try_new(
+        arm_index: usize,
+        entry_lane_index: usize,
+        circulating_lane_index: usize,
+    ) -> Option<Self> {
         if circulating_lane_index > entry_lane_index {
-            Some(ConflictPointIndex { arm_index, entry_lane_index, circulating_lane_index })
+            Some(ConflictPointIndex {
+                arm_index,
+                entry_lane_index,
+                circulating_lane_index,
+            })
         } else {
             None
         }

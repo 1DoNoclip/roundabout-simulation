@@ -2,11 +2,13 @@ use crate::*;
 
 pub(crate) mod assembly;
 pub(crate) mod components;
+pub(crate) mod conflict;
 pub(crate) mod curve;
 pub(crate) mod geometry;
 
 use assembly::*;
 pub(crate) use components::*;
+pub(crate) use conflict::*;
 pub(crate) use curve::*;
 pub(crate) use geometry::*;
 

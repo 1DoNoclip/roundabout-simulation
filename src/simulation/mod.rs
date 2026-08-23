@@ -1,11 +1,9 @@
 use crate::*;
 use std::collections::VecDeque;
 
-mod conflict;
 pub(crate) mod statistics;
 pub(crate) mod vehicle;
 
-pub(crate) use conflict::*;
 pub(crate) use statistics::*;
 pub(crate) use vehicle::*;
 

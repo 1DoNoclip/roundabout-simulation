@@ -242,9 +242,7 @@ fn should_yield_at_entry(
                 let circulating_tta =
                     circulating_kinematics.calculate_time_to_arrival(total_circulating_distance);
 
-                if (entry_tta - circulating_tta).as_secs_f32().abs()
-                    < critical_gap.as_secs_f32()
-                {
+                if (entry_tta - circulating_tta).as_secs_f32().abs() < critical_gap.as_secs_f32() {
                     return true;
                 }
             }
