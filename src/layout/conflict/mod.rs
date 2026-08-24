@@ -12,8 +12,8 @@ pub(crate) struct RoundaboutConflictPoints {
 }
 
 impl RoundaboutConflictPoints {
-    pub(crate) const fn new(points: HashMap<ConflictPointIndex, ConflictPoint>) -> Self {
-        RoundaboutConflictPoints { points }
+    pub(crate) const fn find(segments: Query<(Entity, &Segment)>) -> Self {
+
     }
 
     pub(crate) fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {

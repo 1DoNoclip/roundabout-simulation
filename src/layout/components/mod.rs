@@ -2,6 +2,8 @@
 
 use crate::*;
 
+pub(crate) mod segment_type;
+
 pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
