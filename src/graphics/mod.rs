@@ -58,7 +58,7 @@ fn cycle_segment_gizmos(
     mut state: ResMut<SegmentInspectorState>,
     segments: Query<&Segment>,
 ) {
-    const HIGHLIGHT_COLORS: GizmoColors = GizmoColors::srgb_u8([0, 0, 255], [0, 0, 255]);
+    const HIGHLIGHT_COLORS: GizmoColors = GizmoColors::srgb_u8([0, 255, 0], [0, 255, 0]);
 
     let segment_list = segments.iter().collect::<Vec<_>>();
     if segment_list.is_empty() {

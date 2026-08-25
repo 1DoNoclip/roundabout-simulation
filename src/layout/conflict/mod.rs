@@ -48,7 +48,7 @@ impl RoundaboutConflictPoints {
                 .expect("expected to find matching sector Segments on this Arm");
 
             for &sector_segment in same_arm_sectors {
-                let Some((conflict_point_index, merge)) = ConflictPointIndex::try_new(
+                let Some((conflict_point_index, is_merge)) = ConflictPointIndex::try_new(
                     arm_index,
                     entry_deflection_segment.lane_index(),
                     sector_segment.lane_index(),
@@ -56,7 +56,7 @@ impl RoundaboutConflictPoints {
                     continue;
                 };
                 if let Some(conflict_point) =
-                    ConflictPoint::try_new(entry_deflection_segment, sector_segment, merge)
+                    ConflictPoint::try_new(entry_deflection_segment, sector_segment, is_merge)
                 {
                     println!("{:#?}, {:#?}", conflict_point_index, conflict_point);
                     conflict_points.insert(conflict_point_index, conflict_point);
@@ -92,9 +92,9 @@ impl ConflictPoint {
     fn try_new(
         entry_deflection: &Segment,
         intra_arm_sector: &Segment,
-        merge: bool,
+        is_merge: bool,
     ) -> Option<Self> {
-        let (conflict_location, entry_deflection_progress, sector_progress) = if merge {
+        let (conflict_location, entry_deflection_progress, sector_progress) = if is_merge {
             (intra_arm_sector.sample_clamped(1.0), 1.0, 1.0)
         } else {
             ConflictPoint::get_entry_deflection_intra_arm_conflict_progresses(
@@ -233,7 +233,7 @@ impl ConflictPointIndex {
         entry_lane_index: usize,
         circulating_lane_index: usize,
     ) -> Option<(Self, bool)> {
-        let merge = circulating_lane_index == entry_lane_index;
+        let is_merge = circulating_lane_index == entry_lane_index;
         if circulating_lane_index >= entry_lane_index {
             Some((
                 ConflictPointIndex {
@@ -241,7 +241,7 @@ impl ConflictPointIndex {
                     entry_lane_index,
                     circulating_lane_index,
                 },
-                merge,
+                is_merge,
             ))
         } else {
             None
