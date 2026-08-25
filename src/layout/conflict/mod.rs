@@ -12,20 +12,87 @@ pub(crate) struct RoundaboutConflictPoints {
 }
 
 impl RoundaboutConflictPoints {
-    // pub(crate) const fn find(
-    //     arms: &Query<(Entity, &Arm)>,
-    //     entry_deflection_segments: &Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
-    //     intra_arm_sector_segments: &Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
-    // ) -> Self {
-    // }
+    pub(crate) fn generate(
+        arms: &Query<(Entity, &Arm)>,
+        entry_deflection_segments: &Query<&Segment, With<segment_type::EntryDeflection>>,
+        intra_arm_sector_segments: &Query<&Segment, With<segment_type::IntraArmSector>>,
+    ) -> Self {
+        let mut conflict_points: HashMap<ConflictPointIndex, ConflictPoint> = HashMap::new();
+
+        let sectors_by_arm: EntityHashMap<Vec<&Segment>> =
+            intra_arm_sector_segments
+                .iter()
+                .fold(EntityHashMap::new(), |mut map, segment| {
+                    map.entry(segment.arm_id()).or_default().push(segment);
+                    map
+                });
+
+        for entry_deflection_segment in entry_deflection_segments {
+            let (arm_id, arm) = arms
+                .get(entry_deflection_segment.arm_id())
+                .expect("expected Segment to point to a valid Arm entity");
+            let arm_index = arm.index();
+
+            // All sectors that are on the same arm as entry_deflection_segment.
+            let same_arm_sectors = sectors_by_arm
+                .get(&arm_id)
+                .expect("expected to find matching sector Segments on this Arm");
+
+            for &sector_segment in same_arm_sectors {
+                let Some(conflict_point_index) = ConflictPointIndex::try_new(
+                    arm_index,
+                    entry_deflection_segment.lane_index(),
+                    sector_segment.lane_index(),
+                ) else {
+                    continue;
+                };
+                if let Some(conflict_point) =
+                    ConflictPoint::try_new(entry_deflection_segment, sector_segment)
+                {
+                    conflict_points.insert(conflict_point_index, conflict_point);
+                }
+            }
+        }
+
+        RoundaboutConflictPoints {
+            points: conflict_points,
+        }
+    }
 
     pub(crate) fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
         self.points.get(&conflict_point_index).copied()
     }
 }
 
+/// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ConflictPoint {
+    /// The distance from deflection start to the conflict.
+    pub entry_distance_to_point: Distance,
+    /// The distance from the inter arm sector (between Arm N-1 and Arm N) to the conflict.
+    pub sector_distance_to_point: Distance,
+}
+
+impl ConflictPoint {
+    fn try_new(entry_deflection: &Segment, intra_arm_sector: &Segment) -> Option<Self> {
+        let (entry_deflection_progress, sector_progress) =
+            get_entry_deflection_intra_arm_conflict_progresses(entry_deflection, intra_arm_sector)?;
+        let entry_distance =
+            Distance::try_new(entry_deflection.length() * entry_deflection_progress)
+                .expect("expected distance to be positive");
+        let sector_distance = Distance::try_new(intra_arm_sector.length() * sector_progress)
+            .expect("expected distance to be positive");
+        Some(ConflictPoint {
+            entry_distance_to_point: entry_distance,
+            sector_distance_to_point: sector_distance,
+        })
+    }
+}
+
 /// Returns `Some((f32, f32))` where `.0` is `entry_deflection`'s progress and `.1` is `intra_arm`'s progress.
-fn get_entry_deflection_intra_arm_conflict_point(
+///
+/// Returns `None` if a conflict point cannot be found.
+fn get_entry_deflection_intra_arm_conflict_progresses(
     entry_deflection: &Segment,
     intra_arm_sector: &Segment,
 ) -> Option<(f32, f32)> {
@@ -112,15 +179,6 @@ fn get_entry_deflection_intra_arm_conflict_point(
     }
 
     Some((best_entry_progress, best_sector_progress))
-}
-
-/// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ConflictPoint {
-    /// The distance from deflection start to the conflict.
-    pub entry_distance_to_point: Distance,
-    /// The distance from the inter arm sector (between Arm N-1 and Arm N) to the conflict.
-    pub circulating_distance_to_point: Distance,
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]

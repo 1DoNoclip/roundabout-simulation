@@ -234,7 +234,7 @@ fn should_yield_at_entry(
             for &(circulating_kinematics, circulating_distance) in circulating_vehicles {
                 // Circulating vehicle's distance to conflict point.
                 let Ok(total_circulating_distance) = Distance::try_new(
-                    *conflict_point.circulating_distance_to_point - *circulating_distance,
+                    *conflict_point.sector_distance_to_point - *circulating_distance,
                 ) else {
                     continue;
                 };
