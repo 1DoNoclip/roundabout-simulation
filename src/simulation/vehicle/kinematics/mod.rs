@@ -216,12 +216,14 @@ fn should_yield_at_entry(
 ) -> bool {
     // Check each circulating lane that overlaps the entry vehicle's path.
     for circulating_lane_index in 0..number_of_lanes {
+        let Some(conflict_point_index) =
+            ConflictPointIndex::try_new(arm_index, entry_lane_index, circulating_lane_index)
+        else {
+            return false;
+        };
+
         // If None, then these lanes do not overlap.
-        if let Some(conflict_point) = conflict_points.get(ConflictPointIndex {
-            arm_index,
-            entry_lane_index,
-            circulating_lane_index,
-        }) {
+        if let Some(conflict_point) = conflict_points.get(conflict_point_index) {
             // Entry vehicle's distance to conflict point.
             let total_entry_distance = Distance::try_new(
                 *entry_vehicle_distance_to_line + *conflict_point.entry_distance_to_point,
