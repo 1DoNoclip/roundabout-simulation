@@ -3,20 +3,29 @@
 use crate::*;
 use bevy::platform::collections::HashMap;
 
+pub(super) struct ConflictPlugin;
+
+impl Plugin for ConflictPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(RoundaboutConflictPoints::default());
+    }
+}
+
 /// The points where lane `Segment`s cross over, but do not connect with a `Connection`.
 ///
 /// This resource is essentially a cache of points to massively reduce the work required to get conflict points.
-#[derive(Resource)]
+#[derive(Default, Resource)]
 pub(crate) struct RoundaboutConflictPoints {
     points: HashMap<ConflictPointIndex, ConflictPoint>,
 }
 
 impl RoundaboutConflictPoints {
     pub(crate) fn generate(
-        arms: &Query<(Entity, &Arm)>,
-        entry_deflection_segments: &Query<&Segment, With<segment_type::EntryDeflection>>,
-        intra_arm_sector_segments: &Query<&Segment, With<segment_type::IntraArmSector>>,
-    ) -> Self {
+        mut resource: ResMut<RoundaboutConflictPoints>,
+        arms: Query<(Entity, &Arm)>,
+        entry_deflection_segments: Query<&Segment, With<segment_type::EntryDeflection>>,
+        intra_arm_sector_segments: Query<&Segment, With<segment_type::IntraArmSector>>,
+    ) {
         let mut conflict_points: HashMap<ConflictPointIndex, ConflictPoint> = HashMap::new();
 
         let sectors_by_arm: EntityHashMap<Vec<&Segment>> =
@@ -49,14 +58,15 @@ impl RoundaboutConflictPoints {
                 if let Some(conflict_point) =
                     ConflictPoint::try_new(entry_deflection_segment, sector_segment)
                 {
+                    println!("{:?}, {:?}", conflict_point_index, conflict_point);
                     conflict_points.insert(conflict_point_index, conflict_point);
                 }
             }
         }
 
-        RoundaboutConflictPoints {
+        *resource = RoundaboutConflictPoints {
             points: conflict_points,
-        }
+        };
     }
 
     pub(crate) fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
@@ -184,7 +194,7 @@ impl ConflictPoint {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct ConflictPointIndex {
     arm_index: usize,
     /// The lane index of the entry lane.
