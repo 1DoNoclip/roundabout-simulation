@@ -58,7 +58,7 @@ impl RoundaboutConflictPoints {
                 if let Some(conflict_point) =
                     ConflictPoint::try_new(entry_deflection_segment, sector_segment)
                 {
-                    println!("{:?}, {:?}", conflict_point_index, conflict_point);
+                    println!("{:#?}, {:#?}", conflict_point_index, conflict_point);
                     conflict_points.insert(conflict_point_index, conflict_point);
                 }
             }
@@ -206,7 +206,7 @@ pub(crate) struct ConflictPointIndex {
 impl ConflictPointIndex {
     /// Attempts to create a new `Self`.
     ///
-    /// Returns `Some(Self)` if `circulating_lane_index` > `entry_lane_index`.
+    /// Returns `Some(Self)` if `circulating_lane_index` >= `entry_lane_index`.
     ///
     /// Returns `None` if there is not a valid conflict point.
     pub const fn try_new(
@@ -214,7 +214,7 @@ impl ConflictPointIndex {
         entry_lane_index: usize,
         circulating_lane_index: usize,
     ) -> Option<Self> {
-        if circulating_lane_index > entry_lane_index {
+        if circulating_lane_index >= entry_lane_index {
             Some(ConflictPointIndex {
                 arm_index,
                 entry_lane_index,

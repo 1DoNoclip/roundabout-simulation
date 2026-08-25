@@ -148,7 +148,7 @@ fn setup_roundabout_layout(mut commands: Commands) {
         RoundaboutBlueprint::try_new(
             arm_blueprints,
             circle_blueprint,
-            1,
+            2,
             Speed::from_miles_per_hour(30.0).expect("failed to create"),
         )
         .expect("failed to create"),
