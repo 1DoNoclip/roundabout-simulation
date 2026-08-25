@@ -216,7 +216,7 @@ fn should_yield_at_entry(
 ) -> bool {
     // Check each circulating lane that overlaps the entry vehicle's path.
     for circulating_lane_index in 0..number_of_lanes {
-        let Some(conflict_point_index) =
+        let Some((conflict_point_index, _)) =
             ConflictPointIndex::try_new(arm_index, entry_lane_index, circulating_lane_index)
         else {
             return false;

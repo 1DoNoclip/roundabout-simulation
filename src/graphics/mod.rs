@@ -8,7 +8,13 @@ impl Plugin for GraphicsPlugin {
             .register_type::<SegmentInspectorState>()
             .add_systems(
                 Update,
-                (draw_layout, draw_conflict_points, draw_vehicles, cycle_segment_gizmos).chain(),
+                (
+                    draw_layout,
+                    draw_conflict_points,
+                    draw_vehicles,
+                    cycle_segment_gizmos,
+                )
+                    .chain(),
             );
     }
 }
@@ -19,11 +25,18 @@ fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
         .for_each(|segment| draw_segment(&mut gizmos, segment, None));
 }
 
-fn draw_conflict_points(mut gizmos: Gizmos, conflict_points_resource: Res<RoundaboutConflictPoints>) {
+fn draw_conflict_points(
+    mut gizmos: Gizmos,
+    conflict_points_resource: Res<RoundaboutConflictPoints>,
+) {
     let conflict_points = conflict_points_resource.points();
     for (_, conflict_point) in conflict_points {
         let location = conflict_point.conflict_location;
-        gizmos.circle_2d(location.truncate(), 1.0, Color::linear_rgb(255.0, 255.0, 255.0));
+        gizmos.circle_2d(
+            location.truncate(),
+            0.75,
+            Color::linear_rgb(0.0, 0.0, 255.0),
+        );
     }
 }
 
