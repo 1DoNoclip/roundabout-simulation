@@ -78,6 +78,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.entry_line).insert((
                 Name::new(format!("EntryLine {unique_identifier}")),
+                segment_type::EntryLine,
                 Segment::new(
                     entry_line_points,
                     arm_id,
@@ -164,6 +165,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.inter_arm_sector).insert((
                 Name::new(format!("InterArmSector {unique_identifier}")),
+                segment_type::InterArmSector,
                 Segment::new(
                     inter_arm_sector_geometry,
                     arm_id,

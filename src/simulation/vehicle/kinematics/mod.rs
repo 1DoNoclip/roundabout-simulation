@@ -53,20 +53,29 @@ pub(in crate::simulation) fn move_vehicles(
                 .current_segment_id()
                 .expect("expected .current_segment_id() to be Some");
 
-            if let Ok(segment) = segments.get(current_segment_id) {
-                let delta_progress = (*kinematics.speed * delta_seconds) / segment.length();
+            if let Ok(current_segment) = segments.get(current_segment_id) {
+                let delta_progress = (*kinematics.speed * delta_seconds) / current_segment.length();
                 match navigator.add_progress(delta_progress) {
-                    Ok(_) => transform.translation = segment.sample_clamped(navigator.progress()),
-                    Err(overflow_progress) => match navigator.increment_current_segment_index() {
+                    Ok(_) => {
+                        transform.translation = current_segment.sample_clamped(navigator.progress())
+                    }
+                    Err(_overflow_progress) => match navigator.increment_current_segment_index() {
+                        // The vehicle moves onto the next segment.
                         Ok(_) => {
                             navigator.reset_progress();
-                            if let Some(next_segment_id) = navigator.current_segment_id() {
-                                if let Ok(next_segment) = segments.get(next_segment_id) {
-                                    transform.translation =
-                                        next_segment.sample_clamped(navigator.progress());
-                                }
-                            }
+                            // Currently nothing is done with `overflow_progress`, so we do not
+                            // need to add any progress to the navigator when on the next segment.
+                            // I have not used `overflow_progress` yet as it is often
+                            // a very small value so will not have much effect.
+                            //
+                            // if let Some(next_segment_id) = navigator.current_segment_id() {
+                            //     if let Ok(next_segment) = segments.get(next_segment_id) {
+                            //         transform.translation =
+                            //             next_segment.sample_clamped(navigator.progress());
+                            //     }
+                            // }
                         }
+                        // The vehicle has reached the end and will be despawned.
                         Err(_) => {
                             statistics.increment_total_vehicles_passed();
                             commands.entity(id).despawn();
