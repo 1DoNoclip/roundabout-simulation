@@ -72,11 +72,16 @@ impl RoundaboutConflictPoints {
     pub(crate) fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
         self.points.get(&conflict_point_index).copied()
     }
+
+    pub(crate) const fn points(&self) -> &HashMap<ConflictPointIndex, ConflictPoint> {
+        &self.points
+    }
 }
 
 /// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ConflictPoint {
+    pub conflict_location: Vec3,
     /// The distance from deflection start to the conflict.
     pub entry_distance_to_point: Distance,
     /// The distance from the inter arm sector (between Arm N-1 and Arm N) to the conflict.
@@ -85,7 +90,7 @@ pub(crate) struct ConflictPoint {
 
 impl ConflictPoint {
     fn try_new(entry_deflection: &Segment, intra_arm_sector: &Segment) -> Option<Self> {
-        let (entry_deflection_progress, sector_progress) =
+        let (conflict_location, entry_deflection_progress, sector_progress) =
             ConflictPoint::get_entry_deflection_intra_arm_conflict_progresses(
                 entry_deflection,
                 intra_arm_sector,
@@ -96,18 +101,22 @@ impl ConflictPoint {
         let sector_distance = Distance::try_new(intra_arm_sector.length() * sector_progress)
             .expect("expected distance to be positive");
         Some(ConflictPoint {
+            conflict_location,
             entry_distance_to_point: entry_distance,
             sector_distance_to_point: sector_distance,
         })
     }
 
-    /// Returns `Some((f32, f32))` where `.0` is `entry_deflection`'s progress and `.1` is `intra_arm`'s progress.
+    /// Returns `Some((Vec3, f32, f32))` where:
+    /// * `.0` is the location of the conflict point.
+    /// * `.1` is `entry_deflection`'s progress.
+    /// * `.2` is `intra_arm`'s progress.
     ///
     /// Returns `None` if a conflict point cannot be found.
     fn get_entry_deflection_intra_arm_conflict_progresses(
         entry_deflection: &Segment,
         intra_arm_sector: &Segment,
-    ) -> Option<(f32, f32)> {
+    ) -> Option<(Vec3, f32, f32)> {
         /// The maximum distance between the entry deflection and
         /// inter arm accepted to be considered to be overlapping.
         const MAX_ACCEPTED_DISTANCE: f32 = 2.5;
@@ -141,9 +150,9 @@ impl ConflictPoint {
                 let distance_squared = entry_position.distance_squared(sector_position);
 
                 if distance_squared < min_distance_squared {
-                    min_distance_squared = distance_squared;
                     best_entry_progress = entry_progress;
                     best_sector_progress = sector_progress;
+                    min_distance_squared = distance_squared;
                 }
             }
         }
@@ -155,6 +164,8 @@ impl ConflictPoint {
         let mut entry_step = 0.5 / (COARSE_STEPS - 1) as f32;
         // Copy entry_step.
         let mut sector_step = entry_step;
+
+        let mut best_position = Vec3::ZERO;
 
         // Do a refined grid search to get more accurate results.
         for _ in 0..REFINE_STEPS {
@@ -177,9 +188,10 @@ impl ConflictPoint {
                     let distance_squared = entry_position_2d.distance_squared(sector_position_2d);
 
                     if distance_squared < min_distance_squared {
-                        min_distance_squared = distance_squared;
+                        best_position = entry_position_3d;
                         local_best_entry_progress = test_entry_progress;
                         local_best_sector_progress = sector_test_progress;
+                        min_distance_squared = distance_squared;
                     }
                 }
             }
@@ -190,7 +202,7 @@ impl ConflictPoint {
             sector_step *= 0.5;
         }
 
-        Some((best_entry_progress, best_sector_progress))
+        Some((best_position, best_entry_progress, best_sector_progress))
     }
 }
 
