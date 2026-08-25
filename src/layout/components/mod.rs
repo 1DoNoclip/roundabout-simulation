@@ -98,6 +98,9 @@ pub(crate) struct Segment {
     /// this is ran multiple times per second when spawning vehicles and always gives the same result.
     start_position: Vec3,
 
+    /// The `Arm` that this `Segment` is on.
+    arm_id: Entity,
+
     /// The next segments / end point that this segment connects to.
     connection: Connection,
 
@@ -113,13 +116,19 @@ pub(crate) struct Segment {
 }
 
 impl Segment {
-    pub fn new<C: SegmentCurve>(curve: C, connection: Connection, speed_limit: Speed) -> Self {
+    pub fn new<C: SegmentCurve>(
+        curve: C,
+        arm_id: Entity,
+        connection: Connection,
+        speed_limit: Speed,
+    ) -> Self {
         let length = curve.length();
         let evaluator = curve.into_evaluator();
         let start_position = evaluator(0.0);
         Segment {
             evaluator,
             start_position,
+            arm_id,
             connection,
             length,
             speed_limit,

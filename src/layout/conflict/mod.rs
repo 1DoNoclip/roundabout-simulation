@@ -12,11 +12,12 @@ pub(crate) struct RoundaboutConflictPoints {
 }
 
 impl RoundaboutConflictPoints {
-    pub(crate) const fn find(
-        entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
-        intra_arm_sector_segments: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
-    ) -> Self {
-    }
+    // pub(crate) const fn find(
+    //     arms: &Query<(Entity, &Arm)>,
+    //     entry_deflection_segments: &Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
+    //     intra_arm_sector_segments: &Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+    // ) -> Self {
+    // }
 
     pub(crate) fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
         self.points.get(&conflict_point_index).copied()
