@@ -4,4 +4,4 @@ use crate::*;
 pub(crate) struct EntryDeflection;
 
 #[derive(Component)]
-pub(crate) struct InterArmSector;
+pub(crate) struct IntraArmSector;

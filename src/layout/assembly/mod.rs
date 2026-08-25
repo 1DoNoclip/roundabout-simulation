@@ -64,6 +64,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.entry_deflection).insert((
                 Name::new(format!("EntryDeflection {unique_identifier}")),
+                segment_type::EntryDeflection,
                 Segment::new(
                     entry_deflection_points,
                     Connection::Merge {
@@ -133,6 +134,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.intra_arm_sector).insert((
                 Name::new(format!("IntraArmSector {unique_identifier}")),
+                segment_type::IntraArmSector,
                 Segment::new(
                     intra_arm_sector_geometry,
                     Connection::Direct {
