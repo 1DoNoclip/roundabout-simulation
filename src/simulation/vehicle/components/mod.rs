@@ -183,21 +183,17 @@ impl Navigator {
     /// Returns `Err(())` if new index is out-of-bounds,
     /// meaning that the end of the route has been reached.
     pub(super) const fn increment_current_segment_index(&mut self) -> Result<(), ()> {
-        self.current_segment_index += 1;
-        if self.current_segment_index >= self.route.len() {
+        if self.current_segment_index + 1 >= self.route.len() {
             Err(())
         } else {
+            self.current_segment_index += 1;
             Ok(())
         }
     }
 
     /// Gets the current segment in the route.
-    ///
-    /// Returns `Some<Entity>` if the current segment is valid.
-    ///
-    /// Returns `None` if the current segment index is out of bounds (due to reaching end of route).
-    pub fn current_segment_id(&self) -> Option<Entity> {
-        self.route.get(self.current_segment_index).copied()
+    pub fn current_segment_id(&self) -> Entity {
+        self.route[self.current_segment_index]
     }
 
     /// Returns `Ok(())` if `self.progress` < 1.0.

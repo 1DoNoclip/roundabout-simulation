@@ -41,11 +41,7 @@ impl VehicleBundle {
     ) -> Result<Self, &'static str> {
         let navigator = Navigator::try_new(route)?;
         let start_segment = segments
-            .get(
-                navigator
-                    .current_segment_id()
-                    .expect("expected .current_segment_id() to be Some"),
-            )
+            .get(navigator.current_segment_id())
             .expect("expected to find a Segment component");
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
@@ -136,7 +132,7 @@ pub(super) fn spawn_vehicles(
                 .expect("expected Segment component for this Entity");
 
             let is_blocked_existing = existing_vehicles.iter().any(|(navigator, transform)| {
-                navigator.current_segment_id() == Some(entry_segment_id)
+                navigator.current_segment_id() == entry_segment_id
                     && transform
                         .translation
                         .distance_squared(entry_segment.start_position())

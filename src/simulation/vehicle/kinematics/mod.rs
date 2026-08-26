@@ -66,9 +66,7 @@ pub(in crate::simulation) fn move_vehicles(
 ) {
     let delta_seconds = time.delta_secs();
     for (id, mut navigator, mut transform, &speed) in vehicles {
-        let current_segment_id = navigator
-            .current_segment_id()
-            .expect("expected .current_segment_id() to be Some");
+        let current_segment_id = navigator.current_segment_id();
         let Ok(current_segment) = segments.get(current_segment_id) else {
             warn!("Found no segment associated with segment entity.");
             continue;
@@ -89,8 +87,9 @@ pub(in crate::simulation) fn move_vehicles(
                 }
                 // The vehicle has reached the end and will be despawned.
                 Err(_) => {
-                    statistics.increment_total_vehicles_passed();
+                    // The vehicle must be despawned to prevent invalid state of Navigator.
                     commands.entity(id).despawn();
+                    statistics.increment_total_vehicles_passed();
                 }
             },
         }
@@ -112,9 +111,7 @@ fn find_lead_vehicle(
         .map_err(|error| error.to_string())?;
 
     let this_route = this_navigator.route();
-    let Some(this_current_segment_id) = this_navigator.current_segment_id() else {
-        return Err("this vehicle has reached the end of its route".to_owned());
-    };
+    let this_current_segment_id = this_navigator.current_segment_id();
     let this_progress = this_navigator.progress();
 
     // The route from the this's current segment to the end.
@@ -139,32 +136,31 @@ fn find_lead_vehicle(
         }
 
         // If the vehicle is still on the map.
-        if let Some(current_segment_id) = navigator.current_segment_id() {
-            // If the vehicle is on the route of `this_vehicle`.
-            if let Some(index) = existing_route
-                .iter()
-                .position(|&segment_id| current_segment_id == segment_id)
-            {
-                let progress = navigator.progress();
+        let current_segment_id = navigator.current_segment_id();
+        // If the vehicle is on the route of `this_vehicle`.
+        if let Some(index) = existing_route
+            .iter()
+            .position(|&segment_id| current_segment_id == segment_id)
+        {
+            let progress = navigator.progress();
 
-                // If they are on the same segment, but the vehicle's progress is less than
-                // `this_vehicle`'s progress, then skip as we are only looking ahead.
-                if index == 0 && progress <= this_progress {
-                    continue;
-                }
+            // If they are on the same segment, but the vehicle's progress is less than
+            // `this_vehicle`'s progress, then skip as we are only looking ahead.
+            if index == 0 && progress <= this_progress {
+                continue;
+            }
 
-                // Tuples implement comparison (compares .0 first then .1 after).
-                let candidate_rank = (index, progress);
+            // Tuples implement comparison (compares .0 first then .1 after).
+            let candidate_rank = (index, progress);
 
-                if let Some((best_index, best_progress, _)) = best_lead_vehicle {
-                    // If this candidate is better than the current best, then replace it.
-                    if candidate_rank < (best_index, best_progress) {
-                        best_lead_vehicle = Some((index, progress, vehicle_id));
-                    }
-                } else {
-                    // If there is no current best, then this vehicle must (currently) be the best.
+            if let Some((best_index, best_progress, _)) = best_lead_vehicle {
+                // If this candidate is better than the current best, then replace it.
+                if candidate_rank < (best_index, best_progress) {
                     best_lead_vehicle = Some((index, progress, vehicle_id));
                 }
+            } else {
+                // If there is no current best, then this vehicle must (currently) be the best.
+                best_lead_vehicle = Some((index, progress, vehicle_id));
             }
         }
     }
