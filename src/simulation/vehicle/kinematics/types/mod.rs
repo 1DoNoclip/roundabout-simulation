@@ -64,6 +64,12 @@ impl Speed {
         let metres_per_second = miles_per_hour * 0.44704;
         Speed::new(metres_per_second)
     }
+
+    pub fn min(self, other: Speed) -> Self {
+        Speed {
+            metres_per_second: f32::min(*self, *other),
+        }
+    }
 }
 
 #[cfg(test)]

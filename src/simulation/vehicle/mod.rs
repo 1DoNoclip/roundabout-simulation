@@ -21,6 +21,7 @@ impl Plugin for VehiclePlugin {
 #[derive(Bundle)]
 struct VehicleBundle {
     name: Name,
+    vehicle: Vehicle,
     idm_driver: IdmDriver,
     kinematics: Kinematics,
     navigator: Navigator,
@@ -48,6 +49,7 @@ impl VehicleBundle {
             .expect("expected to find a Segment component");
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
+            vehicle: Vehicle,
             idm_driver: IdmDriver::default(),
             kinematics: Kinematics::new(target_speed, max_acceleration, max_deceleration),
             navigator,

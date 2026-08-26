@@ -4,11 +4,16 @@ pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<IdmDriver>()
+        app.register_type::<Vehicle>()
+            .register_type::<IdmDriver>()
             .register_type::<Kinematics>()
             .register_type::<Navigator>();
     }
 }
+
+/// Vehicle marker component;
+#[derive(Component, Reflect)]
+pub(crate) struct Vehicle;
 
 /// The IDM values for the vehicle.
 #[derive(Component, Reflect)]
@@ -33,12 +38,12 @@ impl IdmDriver {
     pub fn calculate_acceleration(
         &self,
         current_speed: Speed,
-        speed_limit: Speed,
+        target_speed: Speed,
         lead_vehicle_info: Option<LeadVehicleInfo>,
     ) -> Acceleration {
         let v = *current_speed;
-        // Vehicles will drive at their desired_speed_percentage of the speed limit.
-        let v_0 = self.desired_speed_percentage * *speed_limit;
+        // Vehicles will drive at their desired_speed_percentage of the target speed.
+        let v_0 = self.desired_speed_percentage * *target_speed;
         let a = *self.comfortable_acceleration;
         let b = *self.comfortable_deceleration;
 
@@ -134,6 +139,18 @@ impl Kinematics {
         }
         // Fallback to using constant speed time-to-arrival.
         Duration::from_secs_f32(distance / speed)
+    }
+
+    pub const fn target_speed(&self) -> Speed {
+        self.target_speed
+    }
+
+    pub const fn max_acceleration(&self) -> Acceleration {
+        self.max_acceleration
+    }
+
+    pub const fn max_deceleration(&self) -> Acceleration {
+        self.max_deceleration
     }
 }
 
