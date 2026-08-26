@@ -11,7 +11,7 @@ impl Plugin for ComponentsPlugin {
 }
 
 /// The IDM values for the vehicle.
-#[derive(Clone, Component, Copy, Reflect)]
+#[derive(Component, Reflect)]
 pub(crate) struct IdmDriver {
     /// The desired speed of this vehicle out of the speed limit.
     desired_speed_percentage: f32,

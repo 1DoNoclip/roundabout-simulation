@@ -189,7 +189,7 @@ impl CurveLength for DeflectionCurvePoints {
                 .map(|pair| pair[0].distance(pair[1]))
                 .sum(),
             Err(error) => {
-                eprintln!("failed to convert CubicBezier into CubicCurve: {error}");
+                warn!("failed to convert CubicBezier into CubicCurve: {error}");
                 0.0
             }
         }

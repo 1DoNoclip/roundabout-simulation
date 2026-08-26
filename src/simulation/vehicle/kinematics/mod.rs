@@ -14,102 +14,119 @@ impl Plugin for KinematicsPlugin {
     }
 }
 
-pub(in crate::simulation) fn move_vehicles(
-    mut commands: Commands,
-    time: Res<Time>,
+/// Calculates vehicles' accelerations due to the IDM model, road geometry, and yield logic.
+pub(in crate::simulation) fn calculate_accelerations(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
-    mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
-    entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
-    sector_segments: Query<
-        &Segment,
-        Or<(
-            With<segment_type::IntraArmSector>,
-            With<segment_type::InterArmSector>,
-        )>,
-    >,
-    mut vehicle_params: ParamSet<(
-        Query<(Entity, &Kinematics, &Navigator, &Speed)>,
-        Query<(
-            Entity,
-            &IdmDriver,
-            &Kinematics,
-            &Navigator,
-            &Speed,
-            &Acceleration,
-        )>,
-        Query<(
-            Entity,
-            &mut Kinematics,
-            &mut Navigator,
-            &mut Speed,
-            &mut Acceleration,
-            &mut Transform,
-        )>,
-    )>,
+    vehicles: Query<(Entity, &IdmDriver, &Navigator, &Speed)>,
+    mut accelerations: Query<&mut Acceleration>,
 ) {
-    let delta_seconds = time.delta_secs();
+    for (id, idm_driver, _, &speed) in vehicles {
+        let lead_vehicle_info = find_lead_vehicle(&segments, &vehicles, id).ok();
 
-    // Collect driver and kinematic values to release borrow on vehicle_params (so it can be used in the loop).
-    let vehicle_drivers = vehicle_params
-        .p1()
-        .iter()
-        .map(|(id, &idm_driver, &kinematics, _, &speed, &acceleration)| {
-            (id, idm_driver, kinematics, speed, acceleration)
-        })
-        .collect::<Vec<_>>();
-
-    for (id, idm_driver, kinematics, speed, acceleration) in vehicle_drivers {
-        let lead_vehicle_info = find_lead_vehicle(&segments, &vehicle_params.p0(), id).ok();
-        println!("{speed:?}");
-        let acceleration = idm_driver.calculate_acceleration(
+        let new_acceleration = idm_driver.calculate_acceleration(
             speed,
             roundabout_blueprint.speed_limit(),
             lead_vehicle_info,
         );
 
-        if let Ok((_, mut kinematics, mut navigator, mut speed, _, mut transform)) =
-            vehicle_params.p2().get_mut(id)
-        {
-            **speed = (**speed + *acceleration * delta_seconds).max(0.0);
-
-            let current_segment_id = navigator
-                .current_segment_id()
-                .expect("expected .current_segment_id() to be Some");
-
-            if let Ok(current_segment) = segments.get(current_segment_id) {
-                let delta_progress = (**speed * delta_seconds) / current_segment.length();
-                match navigator.add_progress(delta_progress) {
-                    Ok(_) => {
-                        transform.translation = current_segment.sample_clamped(navigator.progress())
-                    }
-                    Err(_overflow_progress) => match navigator.increment_current_segment_index() {
-                        // The vehicle moves onto the next segment.
-                        Ok(_) => {
-                            navigator.reset_progress();
-                            // Currently nothing is done with `overflow_progress`, so we do not
-                            // need to add any progress to the navigator when on the next segment.
-                            // I have not used `overflow_progress` yet as it is often
-                            // a very small value so will not have much effect.
-                            //
-                            // if let Some(next_segment_id) = navigator.current_segment_id() {
-                            //     if let Ok(next_segment) = segments.get(next_segment_id) {
-                            //         transform.translation =
-                            //             next_segment.sample_clamped(navigator.progress());
-                            //     }
-                            // }
-                        }
-                        // The vehicle has reached the end and will be despawned.
-                        Err(_) => {
-                            statistics.increment_total_vehicles_passed();
-                            commands.entity(id).despawn();
-                        }
-                    },
-                }
-            }
+        if let Ok(mut acceleration) = accelerations.get_mut(id) {
+            *acceleration = new_acceleration;
         }
     }
 }
+
+pub(in crate::simulation) fn apply_accelerations(
+    time: Res<Time>,
+    vehicles: Query<(&mut Speed, &Acceleration)>,
+) {
+    let delta_seconds = time.delta_secs();
+    for (mut speed, &acceleration) in vehicles {
+        **speed += *acceleration * delta_seconds;
+    }
+}
+
+/// Moves vehicles along their routes using their accelerations.
+///
+/// Increments segments once a vehicle has reached the end of the current segment.
+pub(in crate::simulation) fn move_vehicles(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut statistics: ResMut<Statistics>,
+    segments: Query<&Segment>,
+    vehicles: Query<(Entity, &mut Navigator, &mut Transform, &Speed)>,
+) {
+    let delta_seconds = time.delta_secs();
+    for (id, mut navigator, mut transform, &speed) in vehicles {
+        let current_segment_id = navigator
+            .current_segment_id()
+            .expect("expected .current_segment_id() to be Some");
+        let Ok(current_segment) = segments.get(current_segment_id) else {
+            warn!("Found no segment associated with segment entity.");
+            continue;
+        };
+        let delta_progress = (*speed * delta_seconds) / current_segment.length();
+        match navigator.add_progress(delta_progress) {
+            Ok(_) => {
+                transform.translation = current_segment.sample_clamped(navigator.progress());
+            }
+            Err(_overflow_progress) => match navigator.increment_current_segment_index() {
+                // The vehicle moves onto the next segment.
+                Ok(_) => {
+                    navigator.reset_progress();
+                    // Currently nothing is done with `overflow_progress`, so we do not
+                    // need to add any progress to the navigator when on the next segment.
+                    // I have not used `overflow_progress` yet as it is often
+                    // a very small value so will not have much effect.
+                }
+                // The vehicle has reached the end and will be despawned.
+                Err(_) => {
+                    statistics.increment_total_vehicles_passed();
+                    commands.entity(id).despawn();
+                }
+            },
+        }
+    }
+}
+
+// pub(in crate::simulation) fn move_vehicles(
+//             let current_segment_id = navigator
+//                 .current_segment_id()
+//                 .expect("expected .current_segment_id() to be Some");
+
+//             if let Ok(current_segment) = segments.get(current_segment_id) {
+//                 let delta_progress = (**speed * delta_seconds) / current_segment.length();
+//                 match navigator.add_progress(delta_progress) {
+//                     Ok(_) => {
+//                         transform.translation = current_segment.sample_clamped(navigator.progress())
+//                     }
+//                     Err(_overflow_progress) => match navigator.increment_current_segment_index() {
+//                         // The vehicle moves onto the next segment.
+//                         Ok(_) => {
+//                             navigator.reset_progress();
+//                             // Currently nothing is done with `overflow_progress`, so we do not
+//                             // need to add any progress to the navigator when on the next segment.
+//                             // I have not used `overflow_progress` yet as it is often
+//                             // a very small value so will not have much effect.
+//                             //
+//                             // if let Some(next_segment_id) = navigator.current_segment_id() {
+//                             //     if let Ok(next_segment) = segments.get(next_segment_id) {
+//                             //         transform.translation =
+//                             //             next_segment.sample_clamped(navigator.progress());
+//                             //     }
+//                             // }
+//                         }
+//                         // The vehicle has reached the end and will be despawned.
+//                         Err(_) => {
+//                             statistics.increment_total_vehicles_passed();
+//                             commands.entity(id).despawn();
+//                         }
+//                     },
+//                 }
+//             }
+//         }
+//     }
+// }
 
 /// Finds the vehicle in front of this vehicle.
 ///
@@ -118,7 +135,7 @@ pub(in crate::simulation) fn move_vehicles(
 /// * `this_vehicle_id` - The vehicle to find the lead vehicle for.
 fn find_lead_vehicle(
     segments: &Query<&Segment>,
-    vehicles: &Query<(Entity, &Kinematics, &Navigator, &Speed)>,
+    vehicles: &Query<(Entity, &IdmDriver, &Navigator, &Speed)>,
     this_vehicle_id: Entity,
 ) -> Result<LeadVehicleInfo, String> {
     let (_, _, this_navigator, this_speed) = vehicles

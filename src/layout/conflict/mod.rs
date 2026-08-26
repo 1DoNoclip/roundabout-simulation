@@ -58,7 +58,6 @@ impl RoundaboutConflictPoints {
                 if let Some(conflict_point) =
                     ConflictPoint::try_new(entry_deflection_segment, sector_segment, is_merge)
                 {
-                    println!("{:#?}, {:#?}", conflict_point_index, conflict_point);
                     conflict_points.insert(conflict_point_index, conflict_point);
                 }
             }
