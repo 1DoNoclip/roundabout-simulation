@@ -88,12 +88,8 @@ pub(crate) struct LeadVehicleInfo {
 /// The motion characteristics for the vehicle.
 #[derive(Clone, Component, Copy, Reflect)]
 pub(crate) struct Kinematics {
-    /// The current speed of the vehicle.
-    pub speed: Speed,
     /// Target speed that the driver would aim for on an empty road.
     target_speed: Speed,
-    /// The current acceleration of the vehicle.
-    pub acceleration: Acceleration,
     /// The maximum acceleration possible.
     max_acceleration: Acceleration,
     /// The maximum deceleration possible by braking.
@@ -104,28 +100,30 @@ pub(crate) struct Kinematics {
 
 impl Kinematics {
     pub const fn new(
-        speed: Speed,
         target_speed: Speed,
         max_acceleration: Acceleration,
         max_deceleration: Acceleration,
     ) -> Self {
         Kinematics {
-            speed,
             target_speed,
-            acceleration: Acceleration::new(0.0),
             max_acceleration,
             max_deceleration,
         }
     }
 
-    pub fn calculate_time_to_arrival(&self, distance: Distance) -> Duration {
+    pub fn calculate_time_to_arrival(
+        &self,
+        current_speed: Speed,
+        current_acceleration: Acceleration,
+        distance: Distance,
+    ) -> Duration {
         // Dereference newtypes into primitives.
-        let (distance, speed, acceleration) = (*distance, *self.speed, *self.acceleration);
+        let (distance, speed, acceleration) = (*distance, *current_speed, *current_acceleration);
 
         // Uses s = ut + (1/2)at^2
         if acceleration.abs() > 0.01 {
-            // If accelerating / decelerating significantly, solve the quadratic equation.
-            // v^2 + 2as.
+            // If accelerating / decelerating significantly,
+            // solve the quadratic equation. v^2 + 2as.
             let discriminant = speed * speed + 2.0 * acceleration * distance;
             if discriminant > 0.0 {
                 let time = (-speed + discriminant.sqrt()) / acceleration;

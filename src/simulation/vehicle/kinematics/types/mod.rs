@@ -13,7 +13,7 @@ impl Plugin for TypesPlugin {
 }
 
 /// An acceleration, can be used for acceleration and deceleration (with negative).
-#[derive(Clone, Copy, Debug, Deref, DerefMut, Reflect)]
+#[derive(Clone, Component, Copy, Debug, Deref, DerefMut, Reflect)]
 pub(crate) struct Acceleration {
     metres_per_second_squared: f32,
 }
@@ -43,7 +43,7 @@ impl Distance {
 }
 
 /// A speed, can be used for vehicle speed and speed limit.
-#[derive(Clone, Copy, Debug, Deref, DerefMut, Reflect)]
+#[derive(Clone, Component, Copy, Debug, Deref, DerefMut, Reflect)]
 pub(crate) struct Speed {
     metres_per_second: f32,
 }

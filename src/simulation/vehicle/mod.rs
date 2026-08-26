@@ -24,13 +24,15 @@ struct VehicleBundle {
     idm_driver: IdmDriver,
     kinematics: Kinematics,
     navigator: Navigator,
+    current_speed: Speed,
+    current_acceleration: Acceleration,
     transform: Transform,
 }
 
 impl VehicleBundle {
     fn try_new(
         segments: &Query<&Segment>,
-        speed: Speed,
+        current_speed: Speed,
         target_speed: Speed,
         max_acceleration: Acceleration,
         max_deceleration: Acceleration,
@@ -47,8 +49,10 @@ impl VehicleBundle {
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
             idm_driver: IdmDriver::default(),
-            kinematics: Kinematics::new(speed, target_speed, max_acceleration, max_deceleration),
+            kinematics: Kinematics::new(target_speed, max_acceleration, max_deceleration),
             navigator,
+            current_speed,
+            current_acceleration: Acceleration::new(0.0),
             transform: Transform::from_translation(start_segment.sample_clamped(0.0)),
         })
     }

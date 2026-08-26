@@ -20,10 +20,32 @@ pub(in crate::simulation) fn move_vehicles(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
     mut statistics: ResMut<Statistics>,
     segments: Query<&Segment>,
+    entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+    sector_segments: Query<
+        &Segment,
+        Or<(
+            With<segment_type::IntraArmSector>,
+            With<segment_type::InterArmSector>,
+        )>,
+    >,
     mut vehicle_params: ParamSet<(
-        Query<(Entity, &Kinematics, &Navigator)>,
-        Query<(Entity, &IdmDriver, &Kinematics, &Navigator)>,
-        Query<(Entity, &mut Kinematics, &mut Navigator, &mut Transform)>,
+        Query<(Entity, &Kinematics, &Navigator, &Speed)>,
+        Query<(
+            Entity,
+            &IdmDriver,
+            &Kinematics,
+            &Navigator,
+            &Speed,
+            &Acceleration,
+        )>,
+        Query<(
+            Entity,
+            &mut Kinematics,
+            &mut Navigator,
+            &mut Speed,
+            &mut Acceleration,
+            &mut Transform,
+        )>,
     )>,
 ) {
     let delta_seconds = time.delta_secs();
@@ -32,29 +54,31 @@ pub(in crate::simulation) fn move_vehicles(
     let vehicle_drivers = vehicle_params
         .p1()
         .iter()
-        .map(|(id, idm_driver, kinematics, _)| (id, *idm_driver, *kinematics))
+        .map(|(id, &idm_driver, &kinematics, _, &speed, &acceleration)| {
+            (id, idm_driver, kinematics, speed, acceleration)
+        })
         .collect::<Vec<_>>();
 
-    // let mut accelerations = Vec::with_capacity(vehicle_drivers.len());
-    for (id, idm_driver, kinematics) in vehicle_drivers {
+    for (id, idm_driver, kinematics, speed, acceleration) in vehicle_drivers {
         let lead_vehicle_info = find_lead_vehicle(&segments, &vehicle_params.p0(), id).ok();
+        println!("{speed:?}");
         let acceleration = idm_driver.calculate_acceleration(
-            kinematics.speed,
+            speed,
             roundabout_blueprint.speed_limit(),
             lead_vehicle_info,
         );
 
-        if let Ok((_, mut kinematics, mut navigator, mut transform)) =
+        if let Ok((_, mut kinematics, mut navigator, mut speed, _, mut transform)) =
             vehicle_params.p2().get_mut(id)
         {
-            *kinematics.speed = (*kinematics.speed + *acceleration * delta_seconds).max(0.0);
+            **speed = (**speed + *acceleration * delta_seconds).max(0.0);
 
             let current_segment_id = navigator
                 .current_segment_id()
                 .expect("expected .current_segment_id() to be Some");
 
             if let Ok(current_segment) = segments.get(current_segment_id) {
-                let delta_progress = (*kinematics.speed * delta_seconds) / current_segment.length();
+                let delta_progress = (**speed * delta_seconds) / current_segment.length();
                 match navigator.add_progress(delta_progress) {
                     Ok(_) => {
                         transform.translation = current_segment.sample_clamped(navigator.progress())
@@ -94,10 +118,10 @@ pub(in crate::simulation) fn move_vehicles(
 /// * `this_vehicle_id` - The vehicle to find the lead vehicle for.
 fn find_lead_vehicle(
     segments: &Query<&Segment>,
-    vehicles: &Query<(Entity, &Kinematics, &Navigator)>,
+    vehicles: &Query<(Entity, &Kinematics, &Navigator, &Speed)>,
     this_vehicle_id: Entity,
 ) -> Result<LeadVehicleInfo, String> {
-    let (_, _, this_navigator) = vehicles
+    let (_, _, this_navigator, this_speed) = vehicles
         .get(this_vehicle_id)
         .map_err(|error| error.to_string())?;
 
@@ -123,7 +147,7 @@ fn find_lead_vehicle(
 
     // (route_index, progress, vehicle_entity_id)
     let mut best_lead_vehicle: Option<(usize, f32, Entity)> = None;
-    for (vehicle_id, _, navigator) in vehicles {
+    for (vehicle_id, _, navigator, speed) in vehicles {
         if vehicle_id == this_vehicle_id {
             continue;
         }
@@ -194,13 +218,13 @@ fn find_lead_vehicle(
         total_distance
     })?;
 
-    let (_, lead_kinematics, _) = vehicles
+    let (_, _, _, lead_speed) = vehicles
         .get(lead_vehicle_id)
         .expect("expected to find vehicle components");
 
     Ok(LeadVehicleInfo {
         distance: total_distance,
-        speed: lead_kinematics.speed,
+        speed: *lead_speed,
     })
 }
 
@@ -216,10 +240,12 @@ fn find_lead_vehicle(
 fn should_yield_at_entry(
     conflict_points: &RoundaboutConflictPoints,
     number_of_lanes: usize,
-    circulating_vehicles: &[(&Kinematics, Distance)],
+    circulating_vehicles: &[(&Kinematics, Distance, Speed, Acceleration)],
     arm_index: usize,
     entry_lane_index: usize,
     entry_vehicle_kinematics: &Kinematics,
+    entry_vehicle_speed: Speed,
+    entry_vehicle_acceleration: Acceleration,
     entry_vehicle_distance_to_line: Distance,
     critical_gap: Duration,
 ) -> bool {
@@ -239,10 +265,19 @@ fn should_yield_at_entry(
             )
             .expect("expected to have a positive distance");
 
-            let entry_tta =
-                entry_vehicle_kinematics.calculate_time_to_arrival(total_entry_distance);
+            let entry_tta = entry_vehicle_kinematics.calculate_time_to_arrival(
+                entry_vehicle_speed,
+                entry_vehicle_acceleration,
+                total_entry_distance,
+            );
 
-            for &(circulating_kinematics, circulating_distance) in circulating_vehicles {
+            for &(
+                circulating_kinematics,
+                circulating_distance,
+                circulating_speed,
+                circulating_acceleration,
+            ) in circulating_vehicles
+            {
                 // Circulating vehicle's distance to conflict point.
                 let Ok(total_circulating_distance) = Distance::try_new(
                     *conflict_point.sector_distance_to_point - *circulating_distance,
@@ -250,8 +285,11 @@ fn should_yield_at_entry(
                     continue;
                 };
 
-                let circulating_tta =
-                    circulating_kinematics.calculate_time_to_arrival(total_circulating_distance);
+                let circulating_tta = circulating_kinematics.calculate_time_to_arrival(
+                    circulating_speed,
+                    circulating_acceleration,
+                    total_circulating_distance,
+                );
 
                 if (entry_tta - circulating_tta).as_secs_f32().abs() < critical_gap.as_secs_f32() {
                     return true;
