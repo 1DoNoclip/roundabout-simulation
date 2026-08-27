@@ -31,15 +31,18 @@ impl Acceleration {
     }
 }
 
-/// A vehicle's target acceleration. Used to prevent runtime panics from mutable and immutable borrows of `Acceleration`.
+/// A vehicle's acceleration in the next frame.
+/// Used to prevent runtime panics from mutable and immutable borrows of `Acceleration`.
+///
+/// `Acceleration` is updated to the value of `NextAcceleration` each frame.
 #[derive(Clone, Component, Copy, Debug, Deref, DerefMut, Reflect)]
-pub(crate) struct TargetAcceleration {
+pub(crate) struct NextAcceleration {
     acceleration: Acceleration,
 }
 
-impl TargetAcceleration {
-    pub const fn new_metres_per_second_squared(metres_per_second_squared: f32) -> Self {
-        TargetAcceleration { acceleration: Acceleration::new_metres_per_second_squared(metres_per_second_squared) }
+impl NextAcceleration {
+    pub const fn from_acceleration(acceleration: Acceleration) -> Self {
+        NextAcceleration { acceleration }
     }
 }
 

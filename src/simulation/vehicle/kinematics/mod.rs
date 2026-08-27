@@ -24,12 +24,22 @@ pub(in crate::simulation) fn calculate_accelerations(
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
     intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-    vehicles: Query<(Entity, &IdmDriver, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
+    vehicles: Query<
+        (
+            Entity,
+            &IdmDriver,
+            &Kinematics,
+            &Navigator,
+            &Speed,
+            &Acceleration,
+        ),
+        With<Vehicle>,
+    >,
     circulating_vehicles: Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
-    mut accelerations: Query<&mut Acceleration, With<Vehicle>>,
+    mut next_accelerations: Query<&mut NextAcceleration, With<Vehicle>>,
     lead_vehicles_query: Query<(Entity, &Navigator, &Speed), With<Vehicle>>,
 ) {
-    for (id, idm_driver, kinematics, navigator, &speed) in vehicles {
+    for (id, idm_driver, kinematics, navigator, &speed, &acceleration) in vehicles {
         let lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
 
         let current_segment_id = navigator.current_segment_id();
@@ -49,8 +59,7 @@ pub(in crate::simulation) fn calculate_accelerations(
                 intra_arm_sectors,
                 inter_arm_sectors,
                 circulating_vehicles,
-            ) && let Ok(&acceleration) = accelerations.get(id)
-            {
+            ) {
                 let should_yield = should_yield_at_entry(
                     &conflict_points,
                     roundabout_blueprint.number_of_lanes(),
@@ -78,9 +87,17 @@ pub(in crate::simulation) fn calculate_accelerations(
             *kinematics.max_acceleration(),
         ));
 
-        if let Ok(mut acceleration) = accelerations.get_mut(id) {
-            *acceleration = new_acceleration;
+        if let Ok(mut next_acceleration) = next_accelerations.get_mut(id) {
+            *next_acceleration = NextAcceleration::from_acceleration(new_acceleration);
         }
+    }
+}
+
+pub(in crate::simulation) fn update_vehicle_accelerations(
+    query: Query<(&mut Acceleration, &NextAcceleration)>,
+) {
+    for (mut acceleration, &next_acceleration) in query {
+        *acceleration = *next_acceleration;
     }
 }
 

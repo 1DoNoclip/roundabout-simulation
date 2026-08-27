@@ -27,6 +27,7 @@ struct VehicleBundle {
     navigator: Navigator,
     current_speed: Speed,
     current_acceleration: Acceleration,
+    next_acceleration: NextAcceleration,
     transform: Transform,
 }
 
@@ -43,6 +44,7 @@ impl VehicleBundle {
         let start_segment = segments
             .get(navigator.current_segment_id())
             .expect("expected to find a Segment component");
+        let current_acceleration = Acceleration::new_metres_per_second_squared(0.0);
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
             vehicle: Vehicle,
@@ -50,7 +52,8 @@ impl VehicleBundle {
             kinematics: Kinematics::new(target_speed, max_acceleration, max_deceleration),
             navigator,
             current_speed,
-            current_acceleration: Acceleration::new_metres_per_second_squared(0.0),
+            current_acceleration,
+            next_acceleration: NextAcceleration::from_acceleration(current_acceleration),
             transform: Transform::from_translation(start_segment.sample_clamped(0.0)),
         })
     }

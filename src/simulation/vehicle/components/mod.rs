@@ -64,7 +64,9 @@ impl IdmDriver {
             0.0
         };
 
-        Acceleration::new_metres_per_second_squared(*self.comfortable_acceleration * (free_road_term - intersection_term))
+        Acceleration::new_metres_per_second_squared(
+            *self.comfortable_acceleration * (free_road_term - intersection_term),
+        )
     }
 
     pub const fn critical_gap(&self) -> Duration {

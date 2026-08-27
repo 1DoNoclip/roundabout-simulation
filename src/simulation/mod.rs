@@ -16,7 +16,13 @@ impl Plugin for SimulationPlugin {
                 FixedUpdate,
                 (
                     spawn_vehicles,
-                    (calculate_accelerations, apply_accelerations, move_vehicles).chain(),
+                    (
+                        calculate_accelerations,
+                        update_vehicle_accelerations,
+                        apply_accelerations,
+                        move_vehicles,
+                    )
+                        .chain(),
                 ),
             );
     }
