@@ -196,75 +196,66 @@ fn get_circulating_vehicles(
         if id == entry_vehicle_id {
             continue;
         }
-        let vehicle_length_metres =
-            kinematics.vehicle_length_metres() + LENGTH_SAFETY_BUFFER_METRES;
 
+        let vehicle_length_metres =
+            kinematics.vehicle_length_metres() + Kinematics::LENGTH_SAFETY_BUFFER_METRES;
         let current_segment_id = navigator.current_segment_id();
-        if let Some(&circulating_lane_index) = intra_arm_sectors.get_by_left(&current_segment_id) {
-            let (_, intra_arm_segment) =
-                intra_arm_sectors_query
+
+        // Determine sector type and circulating lane index.
+        let (circulating_lane_index, is_inter_arm) =
+            match intra_arm_sectors.get_by_left(&current_segment_id) {
+                Some(&lane_index) => (lane_index, false),
+                None => match inter_arm_sectors.get_by_left(&current_segment_id) {
+                    Some(&lane_index) => (lane_index, true),
+                    None => continue,
+                },
+            };
+
+        // Fetch conflict point mapping.
+        let (conflict_point_index, _) =
+            ConflictPointIndex::try_new(entry_arm_index, entry_lane_index, circulating_lane_index)
+                .ok_or_else(|| "failed to create ConflictPointIndex".to_owned())?;
+
+        let Some(conflict_point) = conflict_points.get(conflict_point_index) else {
+            continue;
+        };
+
+        // Calculate distance to conflict point based on sector type.
+        let distance_to_conflict_metres =
+            if !is_inter_arm {
+                let (_, intra_arm_segment) = intra_arm_sectors_query
                     .get(current_segment_id)
                     .map_err(|_| {
                         format!("expected Segment for intra arm Entity {current_segment_id:?}")
                     })?;
-            let (conflict_point_index, _) = ConflictPointIndex::try_new(
-                entry_arm_index,
-                entry_lane_index,
-                circulating_lane_index,
-            )
-            .ok_or_else(|| "failed to create ConflictPointIndex".to_owned())?;
-            let Some(conflict_point) = conflict_points.get(conflict_point_index) else {
-                continue;
-            };
 
-            let distance_to_conflict_metres = intra_arm_segment.length_metres()
-                * (conflict_point.intra_arm_sector_progress - navigator.progress());
-            // If the vehicle is behind the conflict point / length still within conflict zone.
-            if distance_to_conflict_metres > -vehicle_length_metres {
-                circulating_vehicles.push(CirculatingVehicleInfo {
-                    distance_to_conflict_metres,
-                    speed,
-                    vehicle_length_metres,
-                });
-            }
-        } else if let Some(&circulating_lane_index) =
-            inter_arm_sectors.get_by_left(&current_segment_id)
-        {
-            let (_, inter_arm_segment) =
-                inter_arm_sectors_query
+                intra_arm_segment.length_metres()
+                    * (conflict_point.intra_arm_sector_progress - navigator.progress())
+            } else {
+                let (_, inter_arm_segment) = inter_arm_sectors_query
                     .get(current_segment_id)
                     .map_err(|_| {
                         format!("expected Segment for inter arm Entity {current_segment_id:?}")
                     })?;
-            let (conflict_point_index, _) = ConflictPointIndex::try_new(
-                entry_arm_index,
-                entry_lane_index,
-                circulating_lane_index,
-            )
-            .ok_or_else(|| "failed to create ConflictPointIndex".to_owned())?;
-            let Some(conflict_point) = conflict_points.get(conflict_point_index) else {
-                continue;
-            };
-            let (_, intra_arm_segment) = intra_arm_sectors_query
-                .get(conflict_point.intra_arm_sector_id)
-                .map_err(|_| {
-                    format!(
-                        "expected Segment for intra arm Entity {:?}",
-                        conflict_point.intra_arm_sector_id
-                    )
-                })?;
 
-            let distance_to_conflict_metres = intra_arm_segment.length_metres()
-                * conflict_point.intra_arm_sector_progress
-                + inter_arm_segment.length_metres() * (1.0 - navigator.progress());
-            // If the vehicle is behind the conflict point / length still within conflict zone.
-            if distance_to_conflict_metres > -vehicle_length_metres {
-                circulating_vehicles.push(CirculatingVehicleInfo {
-                    distance_to_conflict_metres,
-                    speed,
-                    vehicle_length_metres,
-                });
-            }
+                let intra_arm_sector_id = conflict_point.intra_arm_sector_id;
+                let (_, intra_arm_segment) = intra_arm_sectors_query
+                    .get(intra_arm_sector_id)
+                    .map_err(|_| {
+                        format!("expected Segment for intra arm Entity {intra_arm_sector_id:?}")
+                    })?;
+
+                intra_arm_segment.length_metres() * conflict_point.intra_arm_sector_progress
+                    + inter_arm_segment.length_metres() * (1.0 - navigator.progress())
+            };
+
+        // Retain in vector if vehicle is approaching or still clearing the conflict zone.
+        if distance_to_conflict_metres > -vehicle_length_metres {
+            circulating_vehicles.push(CirculatingVehicleInfo {
+                distance_to_conflict_metres,
+                speed,
+                vehicle_length_metres,
+            });
         }
     }
 
