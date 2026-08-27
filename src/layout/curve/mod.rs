@@ -1,4 +1,4 @@
-//! Contains the trait implementations to convert Bevy splines into Segments.
+//! Contains the trait definitions to convert Bevy splines into Segments.
 
 use crate::*;
 

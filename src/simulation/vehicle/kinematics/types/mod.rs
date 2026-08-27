@@ -49,6 +49,10 @@ pub(crate) struct Speed {
 }
 
 impl Speed {
+    pub const ZERO: Self = Speed {
+        metres_per_second: 0.0,
+    };
+
     pub fn new(metres_per_second: f32) -> Result<Self, String> {
         if metres_per_second < 0.0 || metres_per_second.is_nan() {
             Err(format!(

@@ -127,85 +127,77 @@ pub(in crate::simulation) fn move_vehicles(
 }
 
 /// ### Returns
-/// * `Ok(Vec<(Distance, Speed, Acceleration)>)` -
-/// The distance is the vehicle's distance along `entry_arm_index - 1`'s inter arm sector
+/// `Ok(Vec<(usize, Distance, Speed, Acceleration)>)`.
+/// * The `usize` is the lane index of the vehicle.
+/// * The `Distance` is the vehicle's distance along `entry_arm_index - 1`'s inter arm sector
 /// (+ the distance along `entry_arm_index`'s intra arm sector if the vehicle is on that sector).
 fn gather_circulating_vehicles(
     this_vehicle_id: Entity,
     entry_arm_index: usize,
     number_of_arms: usize,
-    intra_arm_sectors: &Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
-    inter_arm_sectors: &Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+    intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+    inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
     vehicles: &Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
-) -> Result<Vec<(Distance, Speed, Acceleration)>, String> {
-    let intra_segments = intra_arm_sectors
-        .iter()
-        .filter(|&(_, segment)| segment.arm_index() == entry_arm_index)
-    else {
-        return Err("failed to get the correct intra sector segment".to_owned());
-    };
-    let previous_arm_index = (entry_arm_index + number_of_arms - 1) % number_of_arms;
-    let inter_segments = inter_arm_sectors
-        .iter()
-        .filter(|&(_, segment)| segment.arm_index() == previous_arm_index)
-    else {
-        return Err("failed to get the correct inter sector segment".to_owned());
-    };
+) -> Result<Vec<(usize, Distance, Speed, Acceleration)>, String> {
+    let (inter_arm_sectors, intra_arm_sectors) = get_sectors(
+        entry_arm_index,
+        number_of_arms,
+        intra_arm_sectors_query,
+        inter_arm_sectors_query,
+    );
 
-    let mut circulating_vehicles: Vec<(Distance, Speed, Acceleration)> = Vec::new();
+    let mut circulating_vehicles: Vec<(usize, Distance, Speed, Acceleration)> = Vec::new();
     for (id, navigator, &speed, &acceleration) in vehicles {
         if id == this_vehicle_id {
             continue;
         }
         let current_segment_id = navigator.current_segment_id();
-        let distance = if current_segment_id == intra_segment_id {
-            Distance::try_new(
-                navigator.progress() * intra_segment.length() + inter_segment.length(),
-            )
-        } else if current_segment_id == inter_segment_id {
-            Distance::try_new(navigator.progress() * inter_segment.length())
-        } else {
-            // This vehicle is not one we're interested in.
-            continue;
-        }?;
-        circulating_vehicles.push((distance, speed, acceleration));
+        if let Some(&lane_index) = intra_arm_sectors.get(&current_segment_id) {
+        } else if let Some(&lane_index) = inter_arm_sectors.get(&current_segment_id) {
+        }
     }
     Ok(circulating_vehicles)
 }
 
 /// Gets the relevant sectors for vehicles at `arm_index` to yield to.
+///
+/// ### Arguments
+/// * `entry_arm_index` - The arm index of entry vehicles.
+/// * `number_of_arms` - Used to calculate the previous arm index for getting inter arm sectors.
+///
 /// ### Returns
-/// `(Vec<Entity>, Vec<Entity)` -
-/// `.0` is inter arm sectors,
-/// `.1` is intra arm sectors.
+/// `(HashMap<Entity, usize>, HashMap<Entity, usize>)` - The `usize` is the lane index of that sector.
+/// * `.0` is intra arm sectors.
+/// * `.1` is inter arm sectors.
 fn get_sectors(
-    arm_index: usize,
+    entry_arm_index: usize,
     number_of_arms: usize,
     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-) -> (HashMap<usize, Entity>, HashMap<usize, Entity>) {
+) -> (HashMap<Entity, usize>, HashMap<Entity, usize>) {
     let intra_arm_sectors =
         intra_arm_sectors_query
             .iter()
             .fold(HashMap::new(), |mut map, (id, segment)| {
-                if segment.arm_index() == arm_index {
-                    map.insert(segment.lane_index(), id);
+                if segment.arm_index() == entry_arm_index {
+                    map.insert(id, segment.lane_index());
                 }
                 map
             });
 
-    let prev_arm_index = (arm_index + number_of_arms - 1) % number_of_arms;
+    // The `inter_arm_sectors` are the sector behind the `intra_arm_sectors`.
+    let prev_arm_index = (entry_arm_index + number_of_arms - 1) % number_of_arms;
     let inter_arm_sectors =
         inter_arm_sectors_query
             .iter()
             .fold(HashMap::new(), |mut map, (id, segment)| {
                 if segment.arm_index() == prev_arm_index {
-                    map.insert(segment.lane_index(), id);
+                    map.insert(id, segment.lane_index());
                 }
                 map
             });
 
-    (inter_arm_sectors, intra_arm_sectors)
+    (intra_arm_sectors, inter_arm_sectors)
 }
 
 /// Finds the vehicle in front of this vehicle.
@@ -388,4 +380,106 @@ fn should_yield_at_entry(
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod test_get_sectors {
+        use super::*;
+        use bevy::ecs::system::SystemState;
+
+        fn spawn_segment(
+            world: &mut World,
+            arm_index: usize,
+            lane_index: usize,
+            component: impl Component,
+        ) -> Entity {
+            let dummy_arm_id = Entity::PLACEHOLDER;
+            let dummy_curve = StraightLinePoints([Vec3::ZERO, Vec3::ZERO]);
+            let dummy_connection = Connection::Direct {
+                next_segment_id: Entity::PLACEHOLDER,
+            };
+            let dummy_speed_limit = Speed::ZERO;
+
+            let segment = Segment::new(
+                dummy_curve,
+                dummy_arm_id,
+                arm_index,
+                lane_index,
+                dummy_connection,
+                dummy_speed_limit,
+            );
+
+            world.spawn((segment, component)).id()
+        }
+
+        #[test]
+        fn get_sectors_filters_matching_arms_and_lanes() {
+            let mut world = World::new();
+
+            // Entry arm index 1, number of arms 4 => prev_arm_index = (1 + 4 - 1) % 4 = 0
+            let entry_arm = 1;
+            let number_of_arms = 4;
+
+            // Target IntraArmSector entities (arm_index = 1)
+            let intra_target_lane0 = spawn_segment(&mut world, 1, 0, segment_type::IntraArmSector);
+            let intra_target_lane1 = spawn_segment(&mut world, 1, 1, segment_type::IntraArmSector);
+            let intra_ignored_arm = spawn_segment(&mut world, 2, 0, segment_type::IntraArmSector);
+
+            // Target InterArmSector entities (arm_index = 0)
+            let inter_target_lane0 = spawn_segment(&mut world, 0, 0, segment_type::InterArmSector);
+            let inter_target_lane1 = spawn_segment(&mut world, 0, 1, segment_type::InterArmSector);
+            let inter_ignored_arm = spawn_segment(&mut world, 1, 0, segment_type::InterArmSector);
+
+            let mut system_state = SystemState::<(
+                Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+                Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+            )>::new(&mut world);
+
+            let (intra_query, inter_query) = system_state.get(&world).unwrap();
+
+            let (intra_map, inter_map) =
+                get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
+
+            assert_eq!(intra_map.len(), 2);
+            assert_eq!(intra_map.get(&intra_target_lane0), Some(&0));
+            assert_eq!(intra_map.get(&intra_target_lane1), Some(&1));
+            assert!(!intra_map.contains_key(&intra_ignored_arm));
+
+            assert_eq!(inter_map.len(), 2);
+            assert_eq!(inter_map.get(&inter_target_lane0), Some(&0));
+            assert_eq!(inter_map.get(&inter_target_lane1), Some(&1));
+            assert!(!inter_map.contains_key(&inter_ignored_arm));
+        }
+
+        #[test]
+        fn get_sectors_handles_arm_zero_wraparound() {
+            let mut world = World::new();
+
+            // Entry arm index 0, number of arms 4 => prev_arm_index = (0 + 4 - 1) % 4 = 3
+            let entry_arm = 0;
+            let number_of_arms = 4;
+
+            let intra_arm0_lane0 = spawn_segment(&mut world, 0, 0, segment_type::IntraArmSector);
+            let inter_arm3_lane2 = spawn_segment(&mut world, 3, 2, segment_type::InterArmSector);
+
+            let mut system_state = SystemState::<(
+                Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+                Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+            )>::new(&mut world);
+
+            let (intra_query, inter_query) = system_state.get(&world).unwrap();
+
+            let (intra_map, inter_map) =
+                get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
+
+            assert_eq!(intra_map.len(), 1);
+            assert_eq!(intra_map.get(&intra_arm0_lane0), Some(&0));
+
+            assert_eq!(inter_map.len(), 1);
+            assert_eq!(inter_map.get(&inter_arm3_lane2), Some(&2));
+        }
+    }
 }
