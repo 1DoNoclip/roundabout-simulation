@@ -52,25 +52,27 @@ pub(in crate::simulation) fn calculate_accelerations(
             let entry_arm_index = entry_segment.arm_index();
             let entry_lane_index = entry_segment.lane_index();
 
-            if let Ok(circulating_vehicles) = gather_circulating_vehicles(
+            if let Ok(circulating_vehicles) = get_circulating_vehicles(
                 id,
                 entry_arm_index,
                 roundabout_blueprint.number_of_arms(),
+                &conflict_points,
                 intra_arm_sectors,
                 inter_arm_sectors,
                 circulating_vehicles,
             ) {
-                if should_yield_at_entry(
-                    &conflict_points,
-                    roundabout_blueprint.number_of_lanes(),
-                    &circulating_vehicles,
-                    entry_arm_index,
-                    entry_lane_index,
-                    speed,
-                    acceleration,
-                    distance_to_line,
-                    idm_driver.critical_gap(),
-                ) {
+                // if should_yield_at_entry(
+                //     &conflict_points,
+                //     roundabout_blueprint.number_of_lanes(),
+                //     &circulating_vehicles,
+                //     entry_arm_index,
+                //     entry_lane_index,
+                //     speed,
+                //     acceleration,
+                //     distance_to_line,
+                //     idm_driver.critical_gap(),
+                // ) {
+                if should_yield_at_entry() {
                     println!("yielding");
                     // Virtual object at the yield line, forcing this vehicle to yield.
                     let virtual_lead_vehicle = LeadVehicleInfo {
@@ -171,74 +173,130 @@ pub(in crate::simulation) fn move_vehicles(
     }
 }
 
-/// ### Returns
-/// `Ok(Vec<(Distance, Speed, Acceleration)>)`.
-/// * The `Distance` is the vehicle's distance along `entry_arm_index - 1`'s inter arm sector
-/// (+ the distance along `entry_arm_index`'s intra arm sector if the vehicle is on that sector).
-fn gather_circulating_vehicles(
-    this_vehicle_id: Entity,
+fn get_circulating_vehicles(
+    entry_vehicle_id: Entity,
+    entry_lane_index: usize,
     entry_arm_index: usize,
     number_of_arms: usize,
+    conflict_points: &RoundaboutConflictPoints,
     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-    vehicles: Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
-) -> Result<Vec<(Distance, Speed, Acceleration)>, String> {
+    vehicles: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
+) -> Result<Vec<CirculatingVehicleInfo>, String> {
     let (intra_arm_sectors, inter_arm_sectors) = get_sectors(
         entry_arm_index,
         number_of_arms,
         intra_arm_sectors_query,
         inter_arm_sectors_query,
     );
+    let mut circulating_vehicles = Vec::new();
 
-    let mut circulating_vehicles: Vec<(Distance, Speed, Acceleration)> = Vec::new();
-
-    for (id, navigator, &speed, &acceleration) in vehicles {
-        if id == this_vehicle_id {
+    for (id, kinematics, navigator, &speed) in vehicles {
+        if id == entry_vehicle_id {
             continue;
         }
 
         let current_segment_id = navigator.current_segment_id();
-
-        if let Some(&lane_index) = intra_arm_sectors.get_by_left(&current_segment_id) {
-            let &inter_arm_id = inter_arm_sectors.get_by_right(&lane_index).ok_or_else(|| {
-                format!("expected to find inter arm sector for lane {lane_index}")
-            })?;
-
-            let (_, inter_arm_segment) = inter_arm_sectors_query
-                .get(inter_arm_id)
-                .map_err(|_| format!("expected segment for inter arm entity {inter_arm_id:?}"))?;
-
+        if let Some(&circulating_lane_index) = intra_arm_sectors.get_by_left(&current_segment_id) {
             let (_, intra_arm_segment) =
                 intra_arm_sectors_query
                     .get(current_segment_id)
                     .map_err(|_| {
-                        format!("expected segment for intra arm entity {current_segment_id:?}")
+                        format!("expected Segment for intra arm Entity {current_segment_id:?}")
                     })?;
+            let (conflict_point_index, _) = ConflictPointIndex::try_new(
+                entry_arm_index,
+                entry_lane_index,
+                circulating_lane_index,
+            )
+            .ok_or_else(|| "failed to create ConflictPointIndex".to_owned())?;
+            let Some(conflict_point) = conflict_points.get(conflict_point_index) else {
+                continue;
+            };
 
-            let distance_metres =
-                inter_arm_segment.length() + intra_arm_segment.length() * navigator.progress();
-            let distance = Distance::try_new_metres(distance_metres)
-                .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
-
-            circulating_vehicles.push((distance, speed, acceleration));
+            let distance_to_conflict_metres =
+                intra_arm_segment.length() * (conflict_point. - navigator.progress());
+            if distance_to_conflict_metres > 0.0 {
+                circulating_vehicles.push(CirculatingVehicleInfo {
+                    distance_to_conflict_metres,
+                    speed,
+                });
+            }
         } else if let Some(&lane_index) = inter_arm_sectors.get_by_left(&current_segment_id) {
-            let (_, inter_arm_segment) =
-                inter_arm_sectors_query
-                    .get(current_segment_id)
-                    .map_err(|_| {
-                        format!("expected segment for inter arm entity {current_segment_id:?}")
-                    })?;
-
-            let distance_metres = inter_arm_segment.length() * navigator.progress();
-            let distance = Distance::try_new_metres(distance_metres)
-                .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
-
-            circulating_vehicles.push((distance, speed, acceleration));
         }
     }
 
     Ok(circulating_vehicles)
 }
+
+// /// ### Returns
+// /// `Ok(Vec<(Distance, Speed, Acceleration)>)`.
+// /// * The `Distance` is the vehicle's distance along `entry_arm_index - 1`'s inter arm sector
+// /// (+ the distance along `entry_arm_index`'s intra arm sector if the vehicle is on that sector).
+// fn gather_circulating_vehicles(
+//     this_vehicle_id: Entity,
+//     entry_arm_index: usize,
+//     number_of_arms: usize,
+//     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+//     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+//     vehicles: Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
+// ) -> Result<Vec<(Distance, Speed, Acceleration)>, String> {
+//     let (intra_arm_sectors, inter_arm_sectors) = get_sectors(
+//         entry_arm_index,
+//         number_of_arms,
+//         intra_arm_sectors_query,
+//         inter_arm_sectors_query,
+//     );
+
+//     let mut circulating_vehicles: Vec<(Distance, Speed, Acceleration)> = Vec::new();
+
+//     for (id, navigator, &speed, &acceleration) in vehicles {
+//         if id == this_vehicle_id {
+//             continue;
+//         }
+
+//         let current_segment_id = navigator.current_segment_id();
+
+//         if let Some(&lane_index) = intra_arm_sectors.get_by_left(&current_segment_id) {
+//             let &inter_arm_id = inter_arm_sectors.get_by_right(&lane_index).ok_or_else(|| {
+//                 format!("expected to find inter arm sector for lane {lane_index}")
+//             })?;
+
+//             let (_, inter_arm_segment) = inter_arm_sectors_query
+//                 .get(inter_arm_id)
+//                 .map_err(|_| format!("expected segment for inter arm entity {inter_arm_id:?}"))?;
+
+//             let (_, intra_arm_segment) =
+//                 intra_arm_sectors_query
+//                     .get(current_segment_id)
+//                     .map_err(|_| {
+//                         format!("expected segment for intra arm entity {current_segment_id:?}")
+//                     })?;
+
+//             let distance_metres =
+//                 inter_arm_segment.length() + intra_arm_segment.length() * navigator.progress();
+//             let distance = Distance::try_new_metres(distance_metres)
+//                 .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
+
+//             circulating_vehicles.push((distance, speed, acceleration));
+//         } else if let Some(&lane_index) = inter_arm_sectors.get_by_left(&current_segment_id) {
+//             let (_, inter_arm_segment) =
+//                 inter_arm_sectors_query
+//                     .get(current_segment_id)
+//                     .map_err(|_| {
+//                         format!("expected segment for inter arm entity {current_segment_id:?}")
+//                     })?;
+
+//             let distance_metres = inter_arm_segment.length() * navigator.progress();
+//             let distance = Distance::try_new_metres(distance_metres)
+//                 .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
+
+//             circulating_vehicles.push((distance, speed, acceleration));
+//         }
+//     }
+
+//     Ok(circulating_vehicles)
+// }
 
 /// Gets the relevant sectors for vehicles at `arm_index` to yield to.
 ///
@@ -395,77 +453,111 @@ fn find_lead_vehicle(
     })
 }
 
-/// Compares the time-to-arrival (TTA) of the entering and the circulating vehicles.
-///
-/// Decides whether the vehicle entering is required to yield at the line.
-///
-/// ### Arguments
-/// * `circulating_vehicles` - The `Distance` is the distance along Arm N-1's inter arm sector.
-/// * `entry_arm_index` - The arm index that the entry vehicle is on and that the circulating vehicles can approach.
-/// * `entry_vehicle_distance_to_line` - The distance that the entry vehicle is to the start of the deflection curve / yield line.
-/// * `critical_gap` - The minimum amount of time the entry vehicle requires to enter between circulating traffic.
 fn should_yield_at_entry(
-    conflict_points: &RoundaboutConflictPoints,
-    number_of_lanes: usize,
-    circulating_vehicles: &[(Distance, Speed, Acceleration)],
-    entry_arm_index: usize,
-    entry_lane_index: usize,
-    entry_vehicle_speed: Speed,
-    entry_vehicle_acceleration: Acceleration,
-    entry_vehicle_distance_to_line: Distance,
+    circulating_vehicles: &[CirculatingVehicleInfo],
     critical_gap: Duration,
 ) -> bool {
-    // Check each circulating lane that overlaps the entry vehicle's path.
-    for circulating_lane_index in 0..number_of_lanes {
-        let Some((conflict_point_index, _)) =
-            ConflictPointIndex::try_new(entry_arm_index, entry_lane_index, circulating_lane_index)
-        else {
-            return false;
-        };
+    let critical_gap_seconds = critical_gap.as_secs_f32();
 
-        // If None, then these lanes do not overlap.
-        if let Some(conflict_point) = conflict_points.get(conflict_point_index) {
-            // Entry vehicle's distance to conflict point.
-            let total_entry_distance = Distance::try_new_metres(
-                *entry_vehicle_distance_to_line + *conflict_point.entry_distance_to_point,
-            )
-            .expect("expected to have a positive distance");
+    for vehicle in circulating_vehicles {
+        // Ignore vehicles that have passed the conflict zone.
+        if vehicle.distance_to_conflict_metres < 0.0 {
+            continue;
+        }
+        // If the vehicle is queued near the conflict zone then prevent entry.
+        else if vehicle.distance_to_conflict_metres < 12.0 && *vehicle.speed < 0.5 {
+            return true;
+        }
 
-            let Some(entry_tta) = Kinematics::calculate_time_to_arrival(
-                entry_vehicle_speed,
-                entry_vehicle_acceleration,
-                total_entry_distance,
-            ) else {
-                continue;
-            };
+        // Avoid division by zero.
+        let speed_metres_per_second = vehicle.speed.max(0.1);
+        let time_to_conflict = vehicle.distance_to_conflict_metres / speed_metres_per_second;
 
-            for &(circulating_distance, circulating_speed, circulating_acceleration) in
-                circulating_vehicles
-            {
-                // Circulating vehicle's distance to conflict point.
-                let Ok(total_circulating_distance) = Distance::try_new_metres(
-                    *conflict_point.sector_distance_to_point - *circulating_distance,
-                ) else {
-                    continue;
-                };
-
-                let Some(circulating_tta) = Kinematics::calculate_time_to_arrival(
-                    circulating_speed,
-                    circulating_acceleration,
-                    total_circulating_distance,
-                ) else {
-                    continue;
-                };
-
-                if entry_tta.abs_diff(circulating_tta) < critical_gap {
-                    return true;
-                }
-            }
+        if time_to_conflict < critical_gap_seconds {
+            return true;
         }
     }
 
     false
 }
+
+#[derive(Clone, Copy, Debug)]
+struct CirculatingVehicleInfo {
+    distance_to_conflict_metres: f32,
+    speed: Speed,
+}
+
+// /// Compares the time-to-arrival (TTA) of the entering and the circulating vehicles.
+// ///
+// /// Decides whether the vehicle entering is required to yield at the line.
+// ///
+// /// ### Arguments
+// /// * `circulating_vehicles` - The `Distance` is the distance along Arm N-1's inter arm sector.
+// /// * `entry_arm_index` - The arm index that the entry vehicle is on and that the circulating vehicles can approach.
+// /// * `entry_vehicle_distance_to_line` - The distance that the entry vehicle is to the start of the deflection curve / yield line.
+// /// * `critical_gap` - The minimum amount of time the entry vehicle requires to enter between circulating traffic.
+// fn should_yield_at_entry(
+//     conflict_points: &RoundaboutConflictPoints,
+//     number_of_lanes: usize,
+//     circulating_vehicles: &[(Distance, Speed, Acceleration)],
+//     entry_arm_index: usize,
+//     entry_lane_index: usize,
+//     entry_vehicle_speed: Speed,
+//     entry_vehicle_acceleration: Acceleration,
+//     entry_vehicle_distance_to_line: Distance,
+//     critical_gap: Duration,
+// ) -> bool {
+//     // Check each circulating lane that overlaps the entry vehicle's path.
+//     for circulating_lane_index in 0..number_of_lanes {
+//         let Some((conflict_point_index, _)) =
+//             ConflictPointIndex::try_new(entry_arm_index, entry_lane_index, circulating_lane_index)
+//         else {
+//             return false;
+//         };
+
+//         // If None, then these lanes do not overlap.
+//         if let Some(conflict_point) = conflict_points.get(conflict_point_index) {
+//             // Entry vehicle's distance to conflict point.
+//             let total_entry_distance = Distance::try_new_metres(
+//                 *entry_vehicle_distance_to_line + *conflict_point.entry_distance_to_point,
+//             )
+//             .expect("expected to have a positive distance");
+
+//             let Some(entry_tta) = Kinematics::calculate_time_to_arrival(
+//                 entry_vehicle_speed,
+//                 entry_vehicle_acceleration,
+//                 total_entry_distance,
+//             ) else {
+//                 continue;
+//             };
+
+//             for &(circulating_distance, circulating_speed, circulating_acceleration) in
+//                 circulating_vehicles
+//             {
+//                 // Circulating vehicle's distance to conflict point.
+//                 let Ok(total_circulating_distance) = Distance::try_new_metres(
+//                     *conflict_point.sector_distance_to_point - *circulating_distance,
+//                 ) else {
+//                     continue;
+//                 };
+
+//                 let Some(circulating_tta) = Kinematics::calculate_time_to_arrival(
+//                     circulating_speed,
+//                     circulating_acceleration,
+//                     total_circulating_distance,
+//                 ) else {
+//                     continue;
+//                 };
+
+//                 if entry_tta.abs_diff(circulating_tta) < critical_gap {
+//                     return true;
+//                 }
+//             }
+//         }
+//     }
+
+//     false
+// }
 
 #[cfg(test)]
 mod tests {

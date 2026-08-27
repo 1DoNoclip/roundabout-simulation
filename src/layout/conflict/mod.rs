@@ -88,10 +88,10 @@ pub(crate) struct ConflictPoint {
     /// Used in graphics for easily displaying conflict points.
     /// No use in the simulation.
     pub(crate) conflict_location: Vec3,
-    /// The distance from deflection start to the conflict.
-    pub entry_distance_to_point: Distance,
-    /// The distance from the inter arm sector (between Arm N-1 and Arm N) to the conflict.
-    pub sector_distance_to_point: Distance,
+    /// The conflict point as a progress along the entry deflection.
+    pub entry_deflection_progress: f32,
+    /// The conflict point as a progress along the intra arm sector.
+    pub intra_arm_sector_progress: f32,
 }
 
 impl ConflictPoint {
@@ -100,7 +100,7 @@ impl ConflictPoint {
         intra_arm_sector: &Segment,
         is_merge: bool,
     ) -> Option<Self> {
-        let (conflict_location, entry_deflection_progress, sector_progress) = if is_merge {
+        let (conflict_location, entry_deflection_progress, intra_arm_sector_progress) = if is_merge {
             (intra_arm_sector.sample_clamped(1.0), 1.0, 1.0)
         } else {
             ConflictPoint::get_entry_deflection_intra_arm_conflict_progresses(
@@ -108,15 +108,10 @@ impl ConflictPoint {
                 intra_arm_sector,
             )?
         };
-        let entry_distance =
-            Distance::try_new_metres(entry_deflection.length() * entry_deflection_progress)
-                .expect("expected distance to be positive");
-        let sector_distance = Distance::try_new_metres(intra_arm_sector.length() * sector_progress)
-            .expect("expected distance to be positive");
         Some(ConflictPoint {
             conflict_location,
-            entry_distance_to_point: entry_distance,
-            sector_distance_to_point: sector_distance,
+            entry_deflection_progress,
+            intra_arm_sector_progress,
         })
     }
 
