@@ -33,7 +33,7 @@ pub(crate) struct Distance {
 }
 
 impl Distance {
-    pub fn try_new(metres: f32) -> Result<Self, String> {
+    pub fn try_new_metres(metres: f32) -> Result<Self, String> {
         if metres >= 0.0 {
             Ok(Distance { metres })
         } else {

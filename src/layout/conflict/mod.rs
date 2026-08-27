@@ -102,9 +102,9 @@ impl ConflictPoint {
             )?
         };
         let entry_distance =
-            Distance::try_new(entry_deflection.length() * entry_deflection_progress)
+            Distance::try_new_metres(entry_deflection.length() * entry_deflection_progress)
                 .expect("expected distance to be positive");
-        let sector_distance = Distance::try_new(intra_arm_sector.length() * sector_progress)
+        let sector_distance = Distance::try_new_metres(intra_arm_sector.length() * sector_progress)
             .expect("expected distance to be positive");
         Some(ConflictPoint {
             conflict_location,

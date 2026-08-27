@@ -1,7 +1,7 @@
 //! Related to vehicle movement, such as `move_vehicles` system.
 
 use crate::*;
-use bevy::platform::collections::HashMap;
+use bimap::BiHashMap;
 
 pub(crate) mod types;
 
@@ -39,7 +39,7 @@ pub(in crate::simulation) fn calculate_accelerations(
         // If the vehicle is on the entry line, then check if it needs to yield.
         if let Ok(segment) = entry_line_segments.get(current_segment_id) {
             let distance_to_line =
-                Distance::try_new((1.0 - navigator.progress()) * segment.length())
+                Distance::try_new_metres((1.0 - navigator.progress()) * segment.length())
                     .expect("expected distance to be positive");
 
             let mut circulating_vehicles: Vec<Entity> = Vec::new();
@@ -139,7 +139,7 @@ fn gather_circulating_vehicles(
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
     vehicles: &Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
 ) -> Result<Vec<(usize, Distance, Speed, Acceleration)>, String> {
-    let (inter_arm_sectors, intra_arm_sectors) = get_sectors(
+    let (intra_arm_sectors, inter_arm_sectors) = get_sectors(
         entry_arm_index,
         number_of_arms,
         intra_arm_sectors_query,
@@ -147,15 +147,52 @@ fn gather_circulating_vehicles(
     );
 
     let mut circulating_vehicles: Vec<(usize, Distance, Speed, Acceleration)> = Vec::new();
+
     for (id, navigator, &speed, &acceleration) in vehicles {
         if id == this_vehicle_id {
             continue;
         }
+
         let current_segment_id = navigator.current_segment_id();
-        if let Some(&lane_index) = intra_arm_sectors.get(&current_segment_id) {
-        } else if let Some(&lane_index) = inter_arm_sectors.get(&current_segment_id) {
+
+        if let Some(&lane_index) = intra_arm_sectors.get_by_left(&current_segment_id) {
+            let &inter_arm_id = inter_arm_sectors.get_by_right(&lane_index).ok_or_else(|| {
+                format!("expected to find inter arm sector for lane {lane_index}")
+            })?;
+
+            let (_, inter_arm_segment) = inter_arm_sectors_query
+                .get(inter_arm_id)
+                .map_err(|_| format!("expected segment for inter arm entity {inter_arm_id:?}"))?;
+
+            let (_, intra_arm_segment) =
+                intra_arm_sectors_query
+                    .get(current_segment_id)
+                    .map_err(|_| {
+                        format!("expected segment for intra arm entity {current_segment_id:?}")
+                    })?;
+
+            let distance_metres =
+                inter_arm_segment.length() + intra_arm_segment.length() * navigator.progress();
+            let distance = Distance::try_new_metres(distance_metres)
+                .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
+
+            circulating_vehicles.push((lane_index, distance, speed, acceleration));
+        } else if let Some(&lane_index) = inter_arm_sectors.get_by_left(&current_segment_id) {
+            let (_, inter_arm_segment) =
+                inter_arm_sectors_query
+                    .get(current_segment_id)
+                    .map_err(|_| {
+                        format!("expected segment for inter arm entity {current_segment_id:?}")
+                    })?;
+
+            let distance_metres = inter_arm_segment.length() * navigator.progress();
+            let distance = Distance::try_new_metres(distance_metres)
+                .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
+
+            circulating_vehicles.push((lane_index, distance, speed, acceleration));
         }
     }
+
     Ok(circulating_vehicles)
 }
 
@@ -166,7 +203,7 @@ fn gather_circulating_vehicles(
 /// * `number_of_arms` - Used to calculate the previous arm index for getting inter arm sectors.
 ///
 /// ### Returns
-/// `(HashMap<Entity, usize>, HashMap<Entity, usize>)` - The `usize` is the lane index of that sector.
+/// `(BiHashMap<Entity, usize>, BiHashMap<Entity, usize>)` - The `usize` is the lane index of that sector.
 /// * `.0` is intra arm sectors.
 /// * `.1` is inter arm sectors.
 fn get_sectors(
@@ -174,11 +211,11 @@ fn get_sectors(
     number_of_arms: usize,
     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-) -> (HashMap<Entity, usize>, HashMap<Entity, usize>) {
+) -> (BiHashMap<Entity, usize>, BiHashMap<Entity, usize>) {
     let intra_arm_sectors =
         intra_arm_sectors_query
             .iter()
-            .fold(HashMap::new(), |mut map, (id, segment)| {
+            .fold(BiHashMap::new(), |mut map, (id, segment)| {
                 if segment.arm_index() == entry_arm_index {
                     map.insert(id, segment.lane_index());
                 }
@@ -190,7 +227,7 @@ fn get_sectors(
     let inter_arm_sectors =
         inter_arm_sectors_query
             .iter()
-            .fold(HashMap::new(), |mut map, (id, segment)| {
+            .fold(BiHashMap::new(), |mut map, (id, segment)| {
                 if segment.arm_index() == prev_arm_index {
                     map.insert(id, segment.lane_index());
                 }
@@ -272,7 +309,7 @@ fn find_lead_vehicle(
     let (lead_index, lead_progress, lead_vehicle_id) =
         best_lead_vehicle.ok_or("failed to find a lead vehicle")?;
 
-    let total_distance = Distance::try_new(if lead_index == 0 {
+    let total_distance = Distance::try_new_metres(if lead_index == 0 {
         let segment_length = segments
             .get(existing_route[0])
             .map_err(|_| "expected to get segment component")?
@@ -345,7 +382,7 @@ fn should_yield_at_entry(
         // If None, then these lanes do not overlap.
         if let Some(conflict_point) = conflict_points.get(conflict_point_index) {
             // Entry vehicle's distance to conflict point.
-            let total_entry_distance = Distance::try_new(
+            let total_entry_distance = Distance::try_new_metres(
                 *entry_vehicle_distance_to_line + *conflict_point.entry_distance_to_point,
             )
             .expect("expected to have a positive distance");
@@ -360,7 +397,7 @@ fn should_yield_at_entry(
                 circulating_vehicles
             {
                 // Circulating vehicle's distance to conflict point.
-                let Ok(total_circulating_distance) = Distance::try_new(
+                let Ok(total_circulating_distance) = Distance::try_new_metres(
                     *conflict_point.sector_distance_to_point - *circulating_distance,
                 ) else {
                     continue;
