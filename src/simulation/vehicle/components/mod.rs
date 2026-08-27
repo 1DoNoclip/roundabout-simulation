@@ -64,7 +64,11 @@ impl IdmDriver {
             0.0
         };
 
-        Acceleration::new(*self.comfortable_acceleration * (free_road_term - intersection_term))
+        Acceleration::new_metres_per_second_squared(*self.comfortable_acceleration * (free_road_term - intersection_term))
+    }
+
+    pub const fn critical_gap(&self) -> Duration {
+        self.critical_gap
     }
 }
 
@@ -72,8 +76,8 @@ impl Default for IdmDriver {
     fn default() -> Self {
         IdmDriver {
             desired_speed_percentage: 0.95,
-            comfortable_acceleration: Acceleration::new(2.5),
-            comfortable_deceleration: Acceleration::new(-2.0),
+            comfortable_acceleration: Acceleration::new_metres_per_second_squared(2.5),
+            comfortable_deceleration: Acceleration::new_metres_per_second_squared(-2.0),
             minimum_gap: Distance::try_new_metres(2.0).expect("failed to create"),
             time_headway: Duration::from_secs_f32(1.5),
             critical_gap: Duration::from_secs_f32(3.5),

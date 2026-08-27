@@ -24,10 +24,22 @@ impl Acceleration {
         metres_per_second_squared: 0.0,
     };
 
-    pub const fn new(metres_per_second_squared: f32) -> Self {
+    pub const fn new_metres_per_second_squared(metres_per_second_squared: f32) -> Self {
         Acceleration {
             metres_per_second_squared,
         }
+    }
+}
+
+/// A vehicle's target acceleration. Used to prevent runtime panics from mutable and immutable borrows of `Acceleration`.
+#[derive(Clone, Component, Copy, Debug, Deref, DerefMut, Reflect)]
+pub(crate) struct TargetAcceleration {
+    acceleration: Acceleration,
+}
+
+impl TargetAcceleration {
+    pub const fn new_metres_per_second_squared(metres_per_second_squared: f32) -> Self {
+        TargetAcceleration { acceleration: Acceleration::new_metres_per_second_squared(metres_per_second_squared) }
     }
 }
 

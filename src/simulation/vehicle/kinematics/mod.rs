@@ -16,7 +16,7 @@ impl Plugin for KinematicsPlugin {
     }
 }
 
-/// Calculates vehicles' accelerations due to the IDM model, road geometry, and yield logic.
+/// Calculates vehicles' accelerations due to the IDM model, road geometry (coming soon), and yield logic.
 pub(in crate::simulation) fn calculate_accelerations(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
     conflict_points: Res<RoundaboutConflictPoints>,
@@ -40,7 +40,7 @@ pub(in crate::simulation) fn calculate_accelerations(
                     .expect("expected to be positive");
 
             let entry_arm_index = entry_segment.arm_index();
-            let vehicle_lane_index = entry_segment.lane_index();
+            let entry_lane_index = entry_segment.lane_index();
 
             if let Ok(circulating_vehicles) = gather_circulating_vehicles(
                 id,
@@ -49,9 +49,19 @@ pub(in crate::simulation) fn calculate_accelerations(
                 intra_arm_sectors,
                 inter_arm_sectors,
                 circulating_vehicles,
-            ) {
-                // let conflict_distance =
-                //     conflict_points.get_distance(entry_arm_index, vehicle_lane_index);
+            ) && let Ok(&acceleration) = accelerations.get(id)
+            {
+                let should_yield = should_yield_at_entry(
+                    &conflict_points,
+                    roundabout_blueprint.number_of_lanes(),
+                    &circulating_vehicles,
+                    entry_arm_index,
+                    entry_lane_index,
+                    speed,
+                    acceleration,
+                    distance_to_line,
+                    idm_driver.critical_gap(),
+                );
             }
         }
 
@@ -63,7 +73,7 @@ pub(in crate::simulation) fn calculate_accelerations(
             lead_vehicle_info,
         );
 
-        let new_acceleration = Acceleration::new(raw_acceleration.clamp(
+        let new_acceleration = Acceleration::new_metres_per_second_squared(raw_acceleration.clamp(
             *kinematics.max_deceleration(),
             *kinematics.max_acceleration(),
         ));
@@ -127,8 +137,7 @@ pub(in crate::simulation) fn move_vehicles(
 }
 
 /// ### Returns
-/// `Ok(Vec<(usize, Distance, Speed, Acceleration)>)`.
-/// * The `usize` is the lane index of the vehicle.
+/// `Ok(Vec<(Distance, Speed, Acceleration)>)`.
 /// * The `Distance` is the vehicle's distance along `entry_arm_index - 1`'s inter arm sector
 /// (+ the distance along `entry_arm_index`'s intra arm sector if the vehicle is on that sector).
 fn gather_circulating_vehicles(
@@ -138,7 +147,7 @@ fn gather_circulating_vehicles(
     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
     vehicles: Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
-) -> Result<Vec<(usize, Distance, Speed, Acceleration)>, String> {
+) -> Result<Vec<(Distance, Speed, Acceleration)>, String> {
     let (intra_arm_sectors, inter_arm_sectors) = get_sectors(
         entry_arm_index,
         number_of_arms,
@@ -146,7 +155,7 @@ fn gather_circulating_vehicles(
         inter_arm_sectors_query,
     );
 
-    let mut circulating_vehicles: Vec<(usize, Distance, Speed, Acceleration)> = Vec::new();
+    let mut circulating_vehicles: Vec<(Distance, Speed, Acceleration)> = Vec::new();
 
     for (id, navigator, &speed, &acceleration) in vehicles {
         if id == this_vehicle_id {
@@ -176,7 +185,7 @@ fn gather_circulating_vehicles(
             let distance = Distance::try_new_metres(distance_metres)
                 .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
 
-            circulating_vehicles.push((lane_index, distance, speed, acceleration));
+            circulating_vehicles.push((distance, speed, acceleration));
         } else if let Some(&lane_index) = inter_arm_sectors.get_by_left(&current_segment_id) {
             let (_, inter_arm_segment) =
                 inter_arm_sectors_query
@@ -189,7 +198,7 @@ fn gather_circulating_vehicles(
             let distance = Distance::try_new_metres(distance_metres)
                 .map_err(|error| format!("invalid distance calculated: {error:?}"))?;
 
-            circulating_vehicles.push((lane_index, distance, speed, acceleration));
+            circulating_vehicles.push((distance, speed, acceleration));
         }
     }
 
@@ -357,14 +366,14 @@ fn find_lead_vehicle(
 ///
 /// ### Arguments
 /// * `circulating_vehicles` - The `Distance` is the distance along Arm N-1's inter arm sector.
-/// * `arm_index` - The arm index that the entry vehicle is on and that the circulating vehicles can approach.
+/// * `entry_arm_index` - The arm index that the entry vehicle is on and that the circulating vehicles can approach.
 /// * `entry_vehicle_distance_to_line` - The distance that the entry vehicle is to the start of the deflection curve / yield line.
 /// * `critical_gap` - The minimum amount of time the entry vehicle requires to enter between circulating traffic.
 fn should_yield_at_entry(
     conflict_points: &RoundaboutConflictPoints,
     number_of_lanes: usize,
     circulating_vehicles: &[(Distance, Speed, Acceleration)],
-    arm_index: usize,
+    entry_arm_index: usize,
     entry_lane_index: usize,
     entry_vehicle_speed: Speed,
     entry_vehicle_acceleration: Acceleration,
@@ -374,7 +383,7 @@ fn should_yield_at_entry(
     // Check each circulating lane that overlaps the entry vehicle's path.
     for circulating_lane_index in 0..number_of_lanes {
         let Some((conflict_point_index, _)) =
-            ConflictPointIndex::try_new(arm_index, entry_lane_index, circulating_lane_index)
+            ConflictPointIndex::try_new(entry_arm_index, entry_lane_index, circulating_lane_index)
         else {
             return false;
         };

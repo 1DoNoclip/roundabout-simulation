@@ -50,7 +50,7 @@ impl VehicleBundle {
             kinematics: Kinematics::new(target_speed, max_acceleration, max_deceleration),
             navigator,
             current_speed,
-            current_acceleration: Acceleration::new(0.0),
+            current_acceleration: Acceleration::new_metres_per_second_squared(0.0),
             transform: Transform::from_translation(start_segment.sample_clamped(0.0)),
         })
     }
@@ -180,8 +180,8 @@ fn spawn_vehicle(
             &segments,
             Speed::try_miles_per_hour(5.0).expect("failed to create"),
             Speed::try_miles_per_hour(60.0).expect("failed to create"),
-            Acceleration::new(3.0),
-            Acceleration::new(-8.0),
+            Acceleration::new_metres_per_second_squared(3.0),
+            Acceleration::new_metres_per_second_squared(-8.0),
             route,
         )
         .expect("failed to spawn VehicleBundle"),
