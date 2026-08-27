@@ -413,11 +413,13 @@ fn should_yield_at_entry(
             )
             .expect("expected to have a positive distance");
 
-            let entry_tta = Kinematics::calculate_time_to_arrival(
+            let Some(entry_tta) = Kinematics::calculate_time_to_arrival(
                 entry_vehicle_speed,
                 entry_vehicle_acceleration,
                 total_entry_distance,
-            );
+            ) else {
+                continue;
+            };
 
             for &(circulating_distance, circulating_speed, circulating_acceleration) in
                 circulating_vehicles
@@ -429,11 +431,13 @@ fn should_yield_at_entry(
                     continue;
                 };
 
-                let circulating_tta = Kinematics::calculate_time_to_arrival(
+                let Some(circulating_tta) = Kinematics::calculate_time_to_arrival(
                     circulating_speed,
                     circulating_acceleration,
                     total_circulating_distance,
-                );
+                ) else {
+                    continue;
+                };
 
                 if entry_tta.abs_diff(circulating_tta) < critical_gap {
                     return true;

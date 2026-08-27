@@ -126,7 +126,7 @@ impl Kinematics {
         current_speed: Speed,
         current_acceleration: Acceleration,
         distance: Distance,
-    ) -> Duration {
+    ) -> Option<Duration> {
         // Dereference newtypes into primitives.
         let (distance, speed, acceleration) = (*distance, *current_speed, *current_acceleration);
 
@@ -138,12 +138,13 @@ impl Kinematics {
             if discriminant > 0.0 {
                 let time = (-speed + discriminant.sqrt()) / acceleration;
                 if time > 0.0 {
-                    return Duration::from_secs_f32(time);
+                    return Duration::try_from_secs_f32(time).ok();
                 }
             }
         }
+
         // Fallback to using constant speed time-to-arrival.
-        Duration::from_secs_f32(distance / speed)
+        Duration::try_from_secs_f32(distance / speed).ok()
     }
 
     pub const fn target_speed(&self) -> Speed {
