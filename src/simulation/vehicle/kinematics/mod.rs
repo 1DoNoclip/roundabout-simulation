@@ -482,14 +482,14 @@ mod tests {
                 get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
 
             assert_eq!(intra_map.len(), 2);
-            assert_eq!(intra_map.get(&intra_target_lane0), Some(&0));
-            assert_eq!(intra_map.get(&intra_target_lane1), Some(&1));
-            assert!(!intra_map.contains_key(&intra_ignored_arm));
+            assert_eq!(intra_map.get_by_left(&intra_target_lane0), Some(&0));
+            assert_eq!(intra_map.get_by_left(&intra_target_lane1), Some(&1));
+            assert!(!intra_map.contains_left(&intra_ignored_arm));
 
             assert_eq!(inter_map.len(), 2);
-            assert_eq!(inter_map.get(&inter_target_lane0), Some(&0));
-            assert_eq!(inter_map.get(&inter_target_lane1), Some(&1));
-            assert!(!inter_map.contains_key(&inter_ignored_arm));
+            assert_eq!(inter_map.get_by_left(&inter_target_lane0), Some(&0));
+            assert_eq!(inter_map.get_by_left(&inter_target_lane1), Some(&1));
+            assert!(!inter_map.contains_left(&inter_ignored_arm));
         }
 
         #[test]
@@ -514,10 +514,10 @@ mod tests {
                 get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
 
             assert_eq!(intra_map.len(), 1);
-            assert_eq!(intra_map.get(&intra_arm0_lane0), Some(&0));
+            assert_eq!(intra_map.get_by_left(&intra_arm0_lane0), Some(&0));
 
             assert_eq!(inter_map.len(), 1);
-            assert_eq!(inter_map.get(&inter_arm3_lane2), Some(&2));
+            assert_eq!(inter_map.get_by_left(&inter_arm3_lane2), Some(&2));
         }
 
         #[test]
@@ -563,10 +563,10 @@ mod tests {
                 get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
 
             assert_eq!(intra_map.len(), 1);
-            assert_eq!(intra_map.get(&intra_arm0_lane0), Some(&0));
+            assert_eq!(intra_map.get_by_left(&intra_arm0_lane0), Some(&0));
 
             assert_eq!(inter_map.len(), 1);
-            assert_eq!(inter_map.get(&inter_arm1_lane0), Some(&0));
+            assert_eq!(inter_map.get_by_left(&inter_arm1_lane0), Some(&0));
         }
 
         #[test]
@@ -595,10 +595,10 @@ mod tests {
                 get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
 
             assert_eq!(intra_map.len(), 1);
-            assert!(intra_map.contains_key(&intra_target));
+            assert!(intra_map.contains_left(&intra_target));
 
             assert_eq!(inter_map.len(), 1);
-            assert!(inter_map.contains_key(&inter_target));
+            assert!(inter_map.contains_left(&inter_target));
         }
     }
 }
