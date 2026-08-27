@@ -34,7 +34,8 @@ pub(crate) struct IdmDriver {
 impl IdmDriver {
     /// ### Arguments
     /// * `current_speed` - Speed of this vehicle.
-    /// * `lead_vehicle` - (distance to lead, speed of lead).
+    /// * `target_speed` - The speed that this vehicle achieves on an empty, straight road.
+    /// * `lead_vehicle_info` - The information about the vehicle ahead (or a virtual yield vehicle).
     pub fn calculate_acceleration(
         &self,
         current_speed: Speed,
@@ -51,7 +52,12 @@ impl IdmDriver {
         let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
 
         let intersection_term = if let Some(lead_vehicle_info) = lead_vehicle_info {
-            let s = *lead_vehicle_info.distance;
+            let s = *lead_vehicle_info.distance
+                // If the lead vehicle is virtual (a yield line), then do not add a safety buffer.
+                - match lead_vehicle_info.vehicle_kind {
+                    VehicleKind::Real { length_metres } => length_metres + Kinematics::LENGTH_SAFETY_BUFFER_METRES,
+                    VehicleKind::Virtual => 0.0,
+                };
             let v_lead = *lead_vehicle_info.speed;
             let delta_v = v - v_lead;
 
@@ -90,10 +96,19 @@ impl Default for IdmDriver {
 
 /// Information about the vehicle in front of this vehicle.
 pub(crate) struct LeadVehicleInfo {
-    /// Distance between rear bumper of lead to front bumper of this vehicle.
+    pub vehicle_kind: VehicleKind,
+    /// Distance between front bumper of lead to front bumper of this vehicle.
     pub distance: Distance,
     /// The speed of the vehicle in front.
     pub speed: Speed,
+}
+
+pub(crate) enum VehicleKind {
+    /// The positive length of the vehicle behind its front position (progress).
+    Real {
+        length_metres: f32,
+    },
+    Virtual,
 }
 
 /// The motion characteristics for the vehicle.

@@ -36,7 +36,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     >,
     circulating_vehicles: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
     mut next_accelerations: Query<&mut NextAcceleration, With<Vehicle>>,
-    lead_vehicles_query: Query<(Entity, &Navigator, &Speed), With<Vehicle>>,
+    lead_vehicles_query: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
 ) {
     for (id, idm_driver, kinematics, navigator, &speed, &acceleration) in vehicles {
         let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
@@ -65,6 +65,7 @@ pub(in crate::simulation) fn calculate_accelerations(
                 if should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap()) {
                     // Virtual object at the yield line, forcing this vehicle to yield.
                     let virtual_lead_vehicle = LeadVehicleInfo {
+                        vehicle_kind: VehicleKind::Virtual,
                         distance: distance_to_line,
                         speed: Speed::ZERO,
                     };
@@ -185,8 +186,9 @@ fn get_circulating_vehicles(
             continue;
         }
 
-        let vehicle_length_metres =
-            kinematics.vehicle_length_metres() + Kinematics::LENGTH_SAFETY_BUFFER_METRES;
+        let vehicle_length_metres = kinematics.vehicle_length_metres();
+        let vehicle_length_metres_with_safety_buffer =
+            vehicle_length_metres + Kinematics::LENGTH_SAFETY_BUFFER_METRES;
         let current_segment_id = navigator.current_segment_id();
 
         // Determine sector type and circulating lane index.
@@ -238,7 +240,7 @@ fn get_circulating_vehicles(
             };
 
         // Retain in vector if vehicle is approaching or still clearing the conflict zone.
-        if distance_to_conflict_metres > -vehicle_length_metres {
+        if distance_to_conflict_metres > -vehicle_length_metres_with_safety_buffer {
             circulating_vehicles.push(CirculatingVehicleInfo {
                 distance_to_conflict_metres,
                 speed,
@@ -298,10 +300,10 @@ fn get_sectors(
 /// * `this_vehicle_id` - The vehicle to find the lead vehicle for.
 fn find_lead_vehicle(
     segments: &Query<&Segment>,
-    vehicles: &Query<(Entity, &Navigator, &Speed), With<Vehicle>>,
+    vehicles: &Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
     this_vehicle_id: Entity,
 ) -> Result<LeadVehicleInfo, String> {
-    let (_, this_navigator, _) = vehicles
+    let (_, _, this_navigator, _) = vehicles
         .get(this_vehicle_id)
         .map_err(|error| error.to_string())?;
 
@@ -325,7 +327,7 @@ fn find_lead_vehicle(
 
     // (route_index, progress, vehicle_entity_id)
     let mut best_lead_vehicle: Option<(usize, f32, Entity)> = None;
-    for (vehicle_id, navigator, _) in vehicles {
+    for (vehicle_id, _, navigator, _) in vehicles {
         if vehicle_id == this_vehicle_id {
             continue;
         }
@@ -395,11 +397,14 @@ fn find_lead_vehicle(
         total_distance
     })?;
 
-    let (_, _, lead_speed) = vehicles
+    let (_, kinematics, _, lead_speed) = vehicles
         .get(lead_vehicle_id)
         .expect("expected to find vehicle components");
 
     Ok(LeadVehicleInfo {
+        vehicle_kind: VehicleKind::Real {
+            length_metres: kinematics.vehicle_length_metres(),
+        },
         distance: total_distance,
         speed: *lead_speed,
     })
