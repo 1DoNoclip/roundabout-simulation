@@ -107,9 +107,14 @@ pub(crate) struct Kinematics {
     ///
     /// Use negative values as it is represented as an `Acceleration`.
     max_deceleration: Acceleration,
+    /// The length of the vehicle behind its front position (progress).
+    vehicle_length_metres: f32,
 }
 
 impl Kinematics {
+    /// Behind vehicles will give an additional distance instead of drive into the lead vehicle's bumper.
+    pub const LENGTH_SAFETY_BUFFER_METRES: f32 = 1.0;
+
     pub const fn new(
         target_speed: Speed,
         max_acceleration: Acceleration,
@@ -119,6 +124,7 @@ impl Kinematics {
             target_speed,
             max_acceleration,
             max_deceleration,
+            vehicle_length_metres: 4.4,
         }
     }
 
@@ -157,6 +163,10 @@ impl Kinematics {
 
     pub const fn max_deceleration(&self) -> Acceleration {
         self.max_deceleration
+    }
+
+    pub const fn vehicle_length_metres(&self) -> f32 {
+        self.vehicle_length_metres
     }
 }
 

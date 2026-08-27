@@ -192,10 +192,12 @@ fn get_circulating_vehicles(
     );
     let mut circulating_vehicles = Vec::new();
 
-    for (id, _kinematics, navigator, &speed) in vehicles {
+    for (id, kinematics, navigator, &speed) in vehicles {
         if id == entry_vehicle_id {
             continue;
         }
+        let vehicle_length_metres =
+            kinematics.vehicle_length_metres() + LENGTH_SAFETY_BUFFER_METRES;
 
         let current_segment_id = navigator.current_segment_id();
         if let Some(&circulating_lane_index) = intra_arm_sectors.get_by_left(&current_segment_id) {
@@ -217,11 +219,12 @@ fn get_circulating_vehicles(
 
             let distance_to_conflict_metres = intra_arm_segment.length_metres()
                 * (conflict_point.intra_arm_sector_progress - navigator.progress());
-            // If the vehicle is behind the conflict point.
-            if distance_to_conflict_metres > 0.0 {
+            // If the vehicle is behind the conflict point / length still within conflict zone.
+            if distance_to_conflict_metres > -vehicle_length_metres {
                 circulating_vehicles.push(CirculatingVehicleInfo {
                     distance_to_conflict_metres,
                     speed,
+                    vehicle_length_metres,
                 });
             }
         } else if let Some(&circulating_lane_index) =
@@ -245,17 +248,21 @@ fn get_circulating_vehicles(
             let (_, intra_arm_segment) = intra_arm_sectors_query
                 .get(conflict_point.intra_arm_sector_id)
                 .map_err(|_| {
-                    format!("expected Segment for intra arm Entity {current_segment_id:?}")
+                    format!(
+                        "expected Segment for intra arm Entity {:?}",
+                        conflict_point.intra_arm_sector_id
+                    )
                 })?;
 
-            let distance_to_conflict_metres = (intra_arm_segment.length_metres()
+            let distance_to_conflict_metres = intra_arm_segment.length_metres()
                 * conflict_point.intra_arm_sector_progress
-                + inter_arm_segment.length_metres() * (1.0 - navigator.progress()));
-            // If the vehicle is behind the conflict point.
-            if distance_to_conflict_metres > 0.0 {
+                + inter_arm_segment.length_metres() * (1.0 - navigator.progress());
+            // If the vehicle is behind the conflict point / length still within conflict zone.
+            if distance_to_conflict_metres > -vehicle_length_metres {
                 circulating_vehicles.push(CirculatingVehicleInfo {
                     distance_to_conflict_metres,
                     speed,
+                    vehicle_length_metres,
                 });
             }
         }
@@ -520,6 +527,7 @@ fn should_yield_at_entry(
 struct CirculatingVehicleInfo {
     distance_to_conflict_metres: f32,
     speed: Speed,
+    vehicle_length_metres: f32,
 }
 
 // /// Compares the time-to-arrival (TTA) of the entering and the circulating vehicles.
