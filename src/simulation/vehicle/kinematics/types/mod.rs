@@ -19,6 +19,11 @@ pub(crate) struct Acceleration {
 }
 
 impl Acceleration {
+    #[cfg(test)]
+    pub const ZERO: Self = Acceleration {
+        metres_per_second_squared: 0.0,
+    };
+
     pub const fn new(metres_per_second_squared: f32) -> Self {
         Acceleration {
             metres_per_second_squared,
@@ -54,7 +59,7 @@ impl Speed {
         metres_per_second: 0.0,
     };
 
-    pub fn new(metres_per_second: f32) -> Result<Self, String> {
+    pub fn try_new_metres_per_second(metres_per_second: f32) -> Result<Self, String> {
         if metres_per_second < 0.0 || metres_per_second.is_nan() {
             Err(format!(
                 "metres_per_second cannot be negative, found {metres_per_second}"
@@ -65,9 +70,9 @@ impl Speed {
     }
 
     /// Creates a `Speed` by converting `miles_per_hour` into metres per second.
-    pub fn from_miles_per_hour(miles_per_hour: f32) -> Result<Self, String> {
+    pub fn try_miles_per_hour(miles_per_hour: f32) -> Result<Self, String> {
         let metres_per_second = miles_per_hour * 0.44704;
-        Speed::new(metres_per_second)
+        Speed::try_new_metres_per_second(metres_per_second)
     }
 
     pub fn min(self, other: Speed) -> Self {
@@ -83,25 +88,25 @@ mod tests {
 
     #[test]
     fn new_valid_speed() {
-        let speed_limit = Speed::new(13.4);
+        let speed_limit = Speed::try_new_metres_per_second(13.4);
         assert!(speed_limit.is_ok())
     }
 
     #[test]
     fn new_invalid_speed() {
-        let speed_limit = Speed::new(-13.4);
+        let speed_limit = Speed::try_new_metres_per_second(-13.4);
         assert!(speed_limit.is_err())
     }
 
     #[test]
     fn from_miles_per_hour_valid_speed() {
-        let speed_limit = Speed::from_miles_per_hour(30.0);
+        let speed_limit = Speed::try_miles_per_hour(30.0);
         assert!(speed_limit.is_ok())
     }
 
     #[test]
     fn from_miles_per_hour_invalid_speed() {
-        let speed_limit = Speed::from_miles_per_hour(-30.0);
+        let speed_limit = Speed::try_miles_per_hour(-30.0);
         assert!(speed_limit.is_err())
     }
 }

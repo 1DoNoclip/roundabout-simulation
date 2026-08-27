@@ -149,7 +149,7 @@ fn setup_roundabout_layout(mut commands: Commands) {
             arm_blueprints,
             circle_blueprint,
             2,
-            Speed::from_miles_per_hour(30.0).expect("failed to create"),
+            Speed::try_miles_per_hour(30.0).expect("failed to create"),
         )
         .expect("failed to create"),
     );
@@ -177,7 +177,7 @@ mod tests {
                 arm_blueprints,
                 circle_blueprint,
                 2,
-                Speed::from_miles_per_hour(30.0).expect("failed to create"),
+                Speed::try_miles_per_hour(30.0).expect("failed to create"),
             )
             .expect("failed to create"),
         );

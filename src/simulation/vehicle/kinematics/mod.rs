@@ -1,6 +1,7 @@
 //! Related to vehicle movement, such as `move_vehicles` system.
 
 use crate::*;
+use bevy::ecs::system::QueryLens;
 use bimap::BiHashMap;
 
 pub(crate) mod types;
@@ -21,14 +22,10 @@ pub(in crate::simulation) fn calculate_accelerations(
     conflict_points: Res<RoundaboutConflictPoints>,
     segments: Query<&Segment>,
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
-    sector_segments: Query<
-        &Segment,
-        Or<(
-            With<segment_type::IntraArmSector>,
-            With<segment_type::InterArmSector>,
-        )>,
-    >,
+    intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+    inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
     vehicles: Query<(Entity, &IdmDriver, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
+    circulating_vehicles: Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
     mut accelerations: Query<&mut Acceleration, With<Vehicle>>,
     lead_vehicles_query: Query<(Entity, &Navigator, &Speed), With<Vehicle>>,
 ) {
@@ -36,22 +33,25 @@ pub(in crate::simulation) fn calculate_accelerations(
         let lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
 
         let current_segment_id = navigator.current_segment_id();
-        // If the vehicle is on the entry line, then check if it needs to yield.
-        if let Ok(segment) = entry_line_segments.get(current_segment_id) {
+        // If the vehicle is on an entry line, then check if it needs to yield.
+        if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
             let distance_to_line =
-                Distance::try_new_metres((1.0 - navigator.progress()) * segment.length())
-                    .expect("expected distance to be positive");
+                Distance::try_new_metres((1.0 - navigator.progress()) * entry_segment.length())
+                    .expect("expected to be positive");
 
-            let mut circulating_vehicles: Vec<Entity> = Vec::new();
-            for (sector_id, sector_idm_driver, sector_kinematics, sector_navigator, sector_speed) in
-                vehicles
-            {
-                if sector_id == id {
-                    continue;
-                } else if let Ok(sector_segment) =
-                    sector_segments.get(sector_navigator.current_segment_id())
-                {
-                }
+            let entry_arm_index = entry_segment.arm_index();
+            let vehicle_lane_index = entry_segment.lane_index();
+
+            if let Ok(circulating_vehicles) = gather_circulating_vehicles(
+                id,
+                entry_arm_index,
+                roundabout_blueprint.number_of_arms(),
+                intra_arm_sectors,
+                inter_arm_sectors,
+                circulating_vehicles,
+            ) {
+                // let conflict_distance =
+                //     conflict_points.get_distance(entry_arm_index, vehicle_lane_index);
             }
         }
 
@@ -137,7 +137,7 @@ fn gather_circulating_vehicles(
     number_of_arms: usize,
     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-    vehicles: &Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
+    vehicles: Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
 ) -> Result<Vec<(usize, Distance, Speed, Acceleration)>, String> {
     let (intra_arm_sectors, inter_arm_sectors) = get_sectors(
         entry_arm_index,
@@ -409,7 +409,7 @@ fn should_yield_at_entry(
                     total_circulating_distance,
                 );
 
-                if (entry_tta - circulating_tta).as_secs_f32().abs() < critical_gap.as_secs_f32() {
+                if entry_tta.abs_diff(circulating_tta) < critical_gap {
                     return true;
                 }
             }
@@ -599,6 +599,225 @@ mod tests {
 
             assert_eq!(inter_map.len(), 1);
             assert!(inter_map.contains_left(&inter_target));
+        }
+    }
+
+    /// Tests for `should_yield_at_entry`.
+    mod test_should_yield_at_entry {
+        use super::*;
+
+        /// Helper to construct a standard set of test inputs.
+        fn default_test_setup() -> (
+            RoundaboutConflictPoints,
+            usize, // Number of lanes.
+            usize, // Arm index.
+            usize, // Entry lane index.
+            Speed,
+            Acceleration,
+            Distance,
+            Duration, // Critical gap.
+        ) {
+            let mut conflict_points = RoundaboutConflictPoints::default();
+
+            // Populate conflict point for arm 0, entry lane 0, circulating lane 0.
+            if let Some((conflict_point_index, _)) = ConflictPointIndex::try_new(0, 0, 0) {
+                conflict_points.points_mut().insert(
+                    conflict_point_index,
+                    ConflictPoint {
+                        conflict_location: Vec3::ZERO,
+                        entry_distance_to_point: Distance::try_new_metres(5.0).unwrap(),
+                        sector_distance_to_point: Distance::try_new_metres(20.0).unwrap(),
+                    },
+                );
+            }
+
+            (
+                conflict_points,
+                1, // 1 lane for simple isolation.
+                0, // Arm index.
+                0, // Entry lane index.
+                Speed::try_new_metres_per_second(10.0).unwrap(),
+                Acceleration::ZERO,
+                Distance::try_new_metres(10.0).unwrap(), // 10m to entry line + 5m to point = 15m total.
+                Duration::from_secs_f32(3.0),            // 3.0 second critical gap
+            )
+        }
+
+        #[test]
+        fn yields_when_time_difference_is_within_critical_gap() {
+            let (
+                conflict_points,
+                number_of_lanes,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            ) = default_test_setup();
+
+            // Entry vehicle distance = 10m + 5m = 15m @ 10 m/s -> TTA = 1.5s.
+            // Circulating vehicle distance = 20m - 5m = 15m @ 10 m/s -> TTA = 1.5s.
+            // |1.5s - 1.5s| = 0.0s < 3.0s critical gap -> Must yield.
+            let circulating_vehicles = vec![(
+                Distance::try_new_metres(5.0).unwrap(),
+                Speed::try_new_metres_per_second(10.0).unwrap(),
+                Acceleration::ZERO,
+            )];
+
+            let should_yield = should_yield_at_entry(
+                &conflict_points,
+                number_of_lanes,
+                &circulating_vehicles,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            );
+
+            assert!(should_yield);
+        }
+
+        #[test]
+        fn does_not_yield_when_time_difference_exceeds_critical_gap() {
+            let (
+                conflict_points,
+                number_of_lanes,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            ) = default_test_setup();
+
+            // Entry TTA = 1.5s.
+            // Circulating vehicle distance = 20m - 1m = 19m @ 2 m/s -> TTA = 9.5s.
+            // |1.5s - 9.5s| = 8.0s >= 3.0s critical gap -> Safe to proceed.
+            let circulating_vehicles = vec![(
+                Distance::try_new_metres(1.0).unwrap(),
+                Speed::try_new_metres_per_second(2.0).unwrap(),
+                Acceleration::ZERO,
+            )];
+
+            let should_yield = should_yield_at_entry(
+                &conflict_points,
+                number_of_lanes,
+                &circulating_vehicles,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            );
+
+            assert!(!should_yield);
+        }
+
+        #[test]
+        fn ignores_circulating_vehicles_that_have_cleared_the_conflict_point() {
+            let (
+                conflict_points,
+                number_of_lanes,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            ) = default_test_setup();
+
+            // Circulating distance (25m) > sector distance to point (20m).
+            // Vehicle has already passed conflict point -> total_circulating_distance fails -> skipped.
+            let circulating_vehicles = vec![(
+                Distance::try_new_metres(25.0).unwrap(),
+                Speed::try_new_metres_per_second(10.0).unwrap(),
+                Acceleration::ZERO,
+            )];
+
+            let should_yield = should_yield_at_entry(
+                &conflict_points,
+                number_of_lanes,
+                &circulating_vehicles,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            );
+
+            assert!(!should_yield);
+        }
+
+        #[test]
+        fn returns_false_when_no_circulating_vehicles_present() {
+            let (
+                conflict_points,
+                number_of_lanes,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            ) = default_test_setup();
+
+            let circulating_vehicles = vec![];
+
+            let should_yield = should_yield_at_entry(
+                &conflict_points,
+                number_of_lanes,
+                &circulating_vehicles,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            );
+
+            assert!(!should_yield);
+        }
+
+        #[test]
+        fn returns_false_when_no_conflict_point_exists_for_lanes() {
+            let (
+                _,
+                number_of_lanes,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            ) = default_test_setup();
+
+            // Empty conflict points lookup table
+            let empty_conflict_points = RoundaboutConflictPoints::default();
+
+            let circulating_vehicles = vec![(
+                Distance::try_new_metres(5.0).unwrap(),
+                Speed::try_new_metres_per_second(10.0).unwrap(),
+                Acceleration::ZERO,
+            )];
+
+            let should_yield = should_yield_at_entry(
+                &empty_conflict_points,
+                number_of_lanes,
+                &circulating_vehicles,
+                arm_index,
+                entry_lane_index,
+                speed,
+                accel,
+                dist_to_line,
+                critical_gap,
+            );
+
+            assert!(!should_yield);
         }
     }
 }

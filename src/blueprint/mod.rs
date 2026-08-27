@@ -71,6 +71,10 @@ impl RoundaboutBlueprint {
         self.arm_blueprints.as_slice()
     }
 
+    pub const fn number_of_arms(&self) -> usize {
+        self.arm_blueprints.len()
+    }
+
     pub const fn circle_blueprint(&self) -> &CircleBlueprint {
         &self.circle_blueprint
     }
@@ -186,7 +190,7 @@ mod tests {
         ];
         let circle_blueprint = CircleBlueprint::try_new(30.0, 15.0).expect("failed to create");
         let number_of_lanes = 2;
-        let speed_limit = Speed::from_miles_per_hour(30.0).expect("failed to create");
+        let speed_limit = Speed::try_miles_per_hour(30.0).expect("failed to create");
 
         RoundaboutBlueprint::try_new(arms, circle_blueprint, number_of_lanes, speed_limit)
             .expect("failed to create");

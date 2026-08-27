@@ -75,12 +75,19 @@ impl RoundaboutConflictPoints {
     pub(crate) const fn points(&self) -> &HashMap<ConflictPointIndex, ConflictPoint> {
         &self.points
     }
+
+    #[cfg(test)]
+    pub(crate) const fn points_mut(&mut self) -> &mut HashMap<ConflictPointIndex, ConflictPoint> {
+        &mut self.points
+    }
 }
 
 /// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ConflictPoint {
-    pub conflict_location: Vec3,
+    /// Used in graphics for easily displaying conflict points.
+    /// No use in the simulation.
+    pub(crate) conflict_location: Vec3,
     /// The distance from deflection start to the conflict.
     pub entry_distance_to_point: Distance,
     /// The distance from the inter arm sector (between Arm N-1 and Arm N) to the conflict.

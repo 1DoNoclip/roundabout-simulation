@@ -178,8 +178,8 @@ fn spawn_vehicle(
     commands.spawn(
         VehicleBundle::try_new(
             &segments,
-            Speed::from_miles_per_hour(5.0).expect("failed to create"),
-            Speed::from_miles_per_hour(60.0).expect("failed to create"),
+            Speed::try_miles_per_hour(5.0).expect("failed to create"),
+            Speed::try_miles_per_hour(60.0).expect("failed to create"),
             Acceleration::new(3.0),
             Acceleration::new(-8.0),
             route,
