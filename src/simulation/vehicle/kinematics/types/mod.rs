@@ -19,11 +19,6 @@ pub(crate) struct Acceleration {
 }
 
 impl Acceleration {
-    #[cfg(test)]
-    pub const ZERO: Self = Acceleration {
-        metres_per_second_squared: 0.0,
-    };
-
     pub const fn new_metres_per_second_squared(metres_per_second_squared: f32) -> Self {
         Acceleration {
             metres_per_second_squared,
