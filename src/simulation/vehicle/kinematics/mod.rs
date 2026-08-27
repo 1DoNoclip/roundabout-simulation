@@ -21,6 +21,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     conflict_points: Res<RoundaboutConflictPoints>,
     segments: Query<&Segment>,
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+    exit_deflection_segments: Query<(), With<segment_type::ExitDeflection>>,
     intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
     vehicles: Query<
@@ -30,7 +31,6 @@ pub(in crate::simulation) fn calculate_accelerations(
             &Kinematics,
             &Navigator,
             &Speed,
-            &Acceleration,
         ),
         With<Vehicle>,
     >,
@@ -38,7 +38,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     mut next_accelerations: Query<&mut NextAcceleration, With<Vehicle>>,
     lead_vehicles_query: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
 ) {
-    for (id, idm_driver, kinematics, navigator, &speed, &acceleration) in vehicles {
+    for (id, idm_driver, kinematics, navigator, &speed) in vehicles {
         let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
 
         let current_segment_id = navigator.current_segment_id();
@@ -58,6 +58,7 @@ pub(in crate::simulation) fn calculate_accelerations(
                 entry_arm_index,
                 roundabout_blueprint.number_of_arms(),
                 &conflict_points,
+                exit_deflection_segments,
                 intra_arm_sectors,
                 inter_arm_sectors,
                 circulating_vehicles,
@@ -169,6 +170,7 @@ fn get_circulating_vehicles(
     entry_arm_index: usize,
     number_of_arms: usize,
     conflict_points: &RoundaboutConflictPoints,
+    exit_deflection_segments_query: Query<(), With<segment_type::ExitDeflection>>,
     intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
     vehicles: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
@@ -187,9 +189,18 @@ fn get_circulating_vehicles(
         }
 
         let vehicle_length_metres = kinematics.vehicle_length_metres();
-        let vehicle_length_metres_with_safety_buffer =
-            vehicle_length_metres + Kinematics::LENGTH_SAFETY_BUFFER_METRES;
         let current_segment_id = navigator.current_segment_id();
+        let Some(next_segment_id) = navigator.next_segment_id() else {
+            // The vehicle's next segment is not a valid one, therefore
+            // the current segment must be the last segment, so is not on
+            // a circulating segment.
+            continue;
+        };
+        // If the vehicle is going to exit the circle next, then ignore it.
+        // Entering vehicles do not need to yield to exiting vehicles.
+        if let Ok(_) = exit_deflection_segments_query.get(next_segment_id) {
+            continue;
+        }
 
         // Determine sector type and circulating lane index.
         let (circulating_lane_index, is_inter_arm) =
@@ -212,16 +223,8 @@ fn get_circulating_vehicles(
 
         // Calculate distance to conflict point based on sector type.
         let distance_to_conflict_metres =
-            if !is_inter_arm {
-                let (_, intra_arm_segment) = intra_arm_sectors_query
-                    .get(current_segment_id)
-                    .map_err(|_| {
-                        format!("expected Segment for intra arm Entity {current_segment_id:?}")
-                    })?;
-
-                intra_arm_segment.length_metres()
-                    * (conflict_point.intra_arm_sector_progress - navigator.progress())
-            } else {
+            if is_inter_arm {
+                // If on the intra arm segment.
                 let (_, inter_arm_segment) = inter_arm_sectors_query
                     .get(current_segment_id)
                     .map_err(|_| {
@@ -237,10 +240,20 @@ fn get_circulating_vehicles(
 
                 intra_arm_segment.length_metres() * conflict_point.intra_arm_sector_progress
                     + inter_arm_segment.length_metres() * (1.0 - navigator.progress())
+            // If on the intra arm segment.
+            } else {
+                let (_, intra_arm_segment) = intra_arm_sectors_query
+                    .get(current_segment_id)
+                    .map_err(|_| {
+                        format!("expected Segment for intra arm Entity {current_segment_id:?}")
+                    })?;
+
+                intra_arm_segment.length_metres()
+                    * (conflict_point.intra_arm_sector_progress - navigator.progress())
             };
 
         // Retain in vector if vehicle is approaching or still clearing the conflict zone.
-        if distance_to_conflict_metres > -vehicle_length_metres_with_safety_buffer {
+        if distance_to_conflict_metres > -vehicle_length_metres {
             circulating_vehicles.push(CirculatingVehicleInfo {
                 distance_to_conflict_metres,
                 speed,
@@ -416,19 +429,24 @@ fn should_yield_at_entry(
 ) -> bool {
     let critical_gap_seconds = critical_gap.as_secs_f32();
 
-    for vehicle in circulating_vehicles {
+    for circulating_vehicle in circulating_vehicles {
         // Ignore vehicles that have passed the conflict zone.
-        if vehicle.distance_to_conflict_metres < 0.0 {
+        if circulating_vehicle.distance_to_conflict_metres
+            < -circulating_vehicle.vehicle_length_metres
+        {
             continue;
         }
         // If the vehicle is queued near the conflict zone then prevent entry.
-        else if vehicle.distance_to_conflict_metres < 12.0 && *vehicle.speed < 0.5 {
+        else if circulating_vehicle.distance_to_conflict_metres < 8.0
+            && *circulating_vehicle.speed < 0.5
+        {
             return true;
         }
 
         // Avoid division by zero.
-        let speed_metres_per_second = vehicle.speed.max(0.1);
-        let time_to_conflict = vehicle.distance_to_conflict_metres / speed_metres_per_second;
+        let speed_metres_per_second = circulating_vehicle.speed.max(0.1);
+        let time_to_conflict =
+            circulating_vehicle.distance_to_conflict_metres / speed_metres_per_second;
 
         if time_to_conflict < critical_gap_seconds {
             return true;

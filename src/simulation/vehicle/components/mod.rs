@@ -223,8 +223,18 @@ impl Navigator {
     }
 
     /// Gets the current segment in the route.
+    /// ### Panics
+    /// May panic if `self.current_segment_index` is out of bounds, such as reaching the end of the route.
     pub fn current_segment_id(&self) -> Entity {
         self.route[self.current_segment_index]
+    }
+
+    /// Tries to get the next segment in the route.
+    /// ### Returns
+    /// * `Some(Entity)` - If the next segment is valid.
+    /// * `None` - If the current segment is the last segment.
+    pub fn next_segment_id(&self) -> Option<Entity> {
+        self.route.get(self.current_segment_index + 1).copied()
     }
 
     /// Returns `Ok(())` if `self.progress` < 1.0.
