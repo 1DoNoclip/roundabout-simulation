@@ -40,7 +40,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     lead_vehicles_query: Query<(Entity, &Navigator, &Speed), With<Vehicle>>,
 ) {
     for (id, idm_driver, kinematics, navigator, &speed, &acceleration) in vehicles {
-        let lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
+        let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
 
         let current_segment_id = navigator.current_segment_id();
         // If the vehicle is on an entry line, then check if it needs to yield.
@@ -60,7 +60,7 @@ pub(in crate::simulation) fn calculate_accelerations(
                 inter_arm_sectors,
                 circulating_vehicles,
             ) {
-                let should_yield = should_yield_at_entry(
+                if should_yield_at_entry(
                     &conflict_points,
                     roundabout_blueprint.number_of_lanes(),
                     &circulating_vehicles,
@@ -70,7 +70,25 @@ pub(in crate::simulation) fn calculate_accelerations(
                     acceleration,
                     distance_to_line,
                     idm_driver.critical_gap(),
-                );
+                ) {
+                    println!("yielding");
+                    // Virtual object at the yield line, forcing this vehicle to yield.
+                    let virtual_lead_vehicle = LeadVehicleInfo {
+                        distance: distance_to_line,
+                        speed: Speed::ZERO,
+                    };
+
+                    // Replace the actual lead vehicle with a virtual lead
+                    // vehicle if the virtual is closer to the yield line.
+                    lead_vehicle_info = match lead_vehicle_info {
+                        Some(lead_vehicle_info)
+                            if *lead_vehicle_info.distance < *distance_to_line =>
+                        {
+                            Some(lead_vehicle_info)
+                        }
+                        _ => Some(virtual_lead_vehicle),
+                    }
+                }
             }
         }
 

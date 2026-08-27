@@ -69,7 +69,6 @@ pub(crate) struct Speed {
 }
 
 impl Speed {
-    #[cfg(test)]
     pub const ZERO: Self = Speed {
         metres_per_second: 0.0,
     };
