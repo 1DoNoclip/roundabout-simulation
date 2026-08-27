@@ -1,6 +1,7 @@
 //! Related to vehicle movement, such as `move_vehicles` system.
 
 use crate::*;
+use bevy::platform::collections::HashMap;
 
 pub(crate) mod types;
 
@@ -17,13 +18,42 @@ impl Plugin for KinematicsPlugin {
 /// Calculates vehicles' accelerations due to the IDM model, road geometry, and yield logic.
 pub(in crate::simulation) fn calculate_accelerations(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
+    conflict_points: Res<RoundaboutConflictPoints>,
     segments: Query<&Segment>,
+    entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+    sector_segments: Query<
+        &Segment,
+        Or<(
+            With<segment_type::IntraArmSector>,
+            With<segment_type::InterArmSector>,
+        )>,
+    >,
     vehicles: Query<(Entity, &IdmDriver, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
+    mut accelerations: Query<&mut Acceleration, With<Vehicle>>,
     lead_vehicles_query: Query<(Entity, &Navigator, &Speed), With<Vehicle>>,
-    mut accelerations: Query<&mut Acceleration>,
 ) {
-    for (id, idm_driver, kinematics, _, &speed) in vehicles {
+    for (id, idm_driver, kinematics, navigator, &speed) in vehicles {
         let lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
+
+        let current_segment_id = navigator.current_segment_id();
+        // If the vehicle is on the entry line, then check if it needs to yield.
+        if let Ok(segment) = entry_line_segments.get(current_segment_id) {
+            let distance_to_line =
+                Distance::try_new((1.0 - navigator.progress()) * segment.length())
+                    .expect("expected distance to be positive");
+
+            let mut circulating_vehicles: Vec<Entity> = Vec::new();
+            for (sector_id, sector_idm_driver, sector_kinematics, sector_navigator, sector_speed) in
+                vehicles
+            {
+                if sector_id == id {
+                    continue;
+                } else if let Ok(sector_segment) =
+                    sector_segments.get(sector_navigator.current_segment_id())
+                {
+                }
+            }
+        }
 
         let raw_acceleration = idm_driver.calculate_acceleration(
             speed,
@@ -46,10 +76,10 @@ pub(in crate::simulation) fn calculate_accelerations(
 
 pub(in crate::simulation) fn apply_accelerations(
     time: Res<Time>,
-    vehicles: Query<(&mut Speed, &Acceleration), With<Vehicle>>,
+    query: Query<(&mut Speed, &Acceleration)>,
 ) {
     let delta_seconds = time.delta_secs();
-    for (mut speed, &acceleration) in vehicles {
+    for (mut speed, &acceleration) in query {
         **speed += *acceleration * delta_seconds;
     }
 }
@@ -94,6 +124,88 @@ pub(in crate::simulation) fn move_vehicles(
             },
         }
     }
+}
+
+/// ### Returns
+/// * `Ok(Vec<(Distance, Speed, Acceleration)>)` -
+/// The distance is the vehicle's distance along `entry_arm_index - 1`'s inter arm sector
+/// (+ the distance along `entry_arm_index`'s intra arm sector if the vehicle is on that sector).
+fn gather_circulating_vehicles(
+    this_vehicle_id: Entity,
+    entry_arm_index: usize,
+    number_of_arms: usize,
+    intra_arm_sectors: &Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+    inter_arm_sectors: &Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+    vehicles: &Query<(Entity, &Navigator, &Speed, &Acceleration), With<Vehicle>>,
+) -> Result<Vec<(Distance, Speed, Acceleration)>, String> {
+    let intra_segments = intra_arm_sectors
+        .iter()
+        .filter(|&(_, segment)| segment.arm_index() == entry_arm_index)
+    else {
+        return Err("failed to get the correct intra sector segment".to_owned());
+    };
+    let previous_arm_index = (entry_arm_index + number_of_arms - 1) % number_of_arms;
+    let inter_segments = inter_arm_sectors
+        .iter()
+        .filter(|&(_, segment)| segment.arm_index() == previous_arm_index)
+    else {
+        return Err("failed to get the correct inter sector segment".to_owned());
+    };
+
+    let mut circulating_vehicles: Vec<(Distance, Speed, Acceleration)> = Vec::new();
+    for (id, navigator, &speed, &acceleration) in vehicles {
+        if id == this_vehicle_id {
+            continue;
+        }
+        let current_segment_id = navigator.current_segment_id();
+        let distance = if current_segment_id == intra_segment_id {
+            Distance::try_new(
+                navigator.progress() * intra_segment.length() + inter_segment.length(),
+            )
+        } else if current_segment_id == inter_segment_id {
+            Distance::try_new(navigator.progress() * inter_segment.length())
+        } else {
+            // This vehicle is not one we're interested in.
+            continue;
+        }?;
+        circulating_vehicles.push((distance, speed, acceleration));
+    }
+    Ok(circulating_vehicles)
+}
+
+/// Gets the relevant sectors for vehicles at `arm_index` to yield to.
+/// ### Returns
+/// `(Vec<Entity>, Vec<Entity)` -
+/// `.0` is inter arm sectors,
+/// `.1` is intra arm sectors.
+fn get_sectors(
+    arm_index: usize,
+    number_of_arms: usize,
+    intra_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+    inter_arm_sectors_query: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+) -> (HashMap<usize, Entity>, HashMap<usize, Entity>) {
+    let intra_arm_sectors =
+        intra_arm_sectors_query
+            .iter()
+            .fold(HashMap::new(), |mut map, (id, segment)| {
+                if segment.arm_index() == arm_index {
+                    map.insert(segment.lane_index(), id);
+                }
+                map
+            });
+
+    let prev_arm_index = (arm_index + number_of_arms - 1) % number_of_arms;
+    let inter_arm_sectors =
+        inter_arm_sectors_query
+            .iter()
+            .fold(HashMap::new(), |mut map, (id, segment)| {
+                if segment.arm_index() == prev_arm_index {
+                    map.insert(segment.lane_index(), id);
+                }
+                map
+            });
+
+    (inter_arm_sectors, intra_arm_sectors)
 }
 
 /// Finds the vehicle in front of this vehicle.
@@ -222,10 +334,9 @@ fn find_lead_vehicle(
 fn should_yield_at_entry(
     conflict_points: &RoundaboutConflictPoints,
     number_of_lanes: usize,
-    circulating_vehicles: &[(&Kinematics, Distance, Speed, Acceleration)],
+    circulating_vehicles: &[(Distance, Speed, Acceleration)],
     arm_index: usize,
     entry_lane_index: usize,
-    entry_vehicle_kinematics: &Kinematics,
     entry_vehicle_speed: Speed,
     entry_vehicle_acceleration: Acceleration,
     entry_vehicle_distance_to_line: Distance,
@@ -247,18 +358,14 @@ fn should_yield_at_entry(
             )
             .expect("expected to have a positive distance");
 
-            let entry_tta = entry_vehicle_kinematics.calculate_time_to_arrival(
+            let entry_tta = Kinematics::calculate_time_to_arrival(
                 entry_vehicle_speed,
                 entry_vehicle_acceleration,
                 total_entry_distance,
             );
 
-            for &(
-                circulating_kinematics,
-                circulating_distance,
-                circulating_speed,
-                circulating_acceleration,
-            ) in circulating_vehicles
+            for &(circulating_distance, circulating_speed, circulating_acceleration) in
+                circulating_vehicles
             {
                 // Circulating vehicle's distance to conflict point.
                 let Ok(total_circulating_distance) = Distance::try_new(
@@ -267,7 +374,7 @@ fn should_yield_at_entry(
                     continue;
                 };
 
-                let circulating_tta = circulating_kinematics.calculate_time_to_arrival(
+                let circulating_tta = Kinematics::calculate_time_to_arrival(
                     circulating_speed,
                     circulating_acceleration,
                     total_circulating_distance,

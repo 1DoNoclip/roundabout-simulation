@@ -68,6 +68,7 @@ pub(crate) fn assemble_roundabout(
                 Segment::new(
                     entry_deflection_points,
                     arm_id,
+                    arm_index,
                     lane_index,
                     Connection::Merge {
                         next_segment_id: ids.inter_arm_sector,
@@ -82,6 +83,7 @@ pub(crate) fn assemble_roundabout(
                 Segment::new(
                     entry_line_points,
                     arm_id,
+                    arm_index,
                     lane_index,
                     Connection::Direct {
                         next_segment_id: ids.entry_deflection,
@@ -115,6 +117,7 @@ pub(crate) fn assemble_roundabout(
                 Segment::new(
                     exit_line_points,
                     arm_id,
+                    arm_index,
                     lane_index,
                     Connection::EndPoint { end_point_id },
                     speed_limit,
@@ -126,6 +129,7 @@ pub(crate) fn assemble_roundabout(
                 Segment::new(
                     exit_deflection_points,
                     arm_id,
+                    arm_index,
                     lane_index,
                     Connection::Direct {
                         next_segment_id: ids.exit_line,
@@ -147,6 +151,7 @@ pub(crate) fn assemble_roundabout(
                 Segment::new(
                     intra_arm_sector_geometry,
                     arm_id,
+                    arm_index,
                     lane_index,
                     Connection::Direct {
                         next_segment_id: ids.inter_arm_sector,
@@ -169,6 +174,7 @@ pub(crate) fn assemble_roundabout(
                 Segment::new(
                     inter_arm_sector_geometry,
                     arm_id,
+                    arm_index,
                     lane_index,
                     Connection::Diverge {
                         exit_arm_index: next_arm_index,

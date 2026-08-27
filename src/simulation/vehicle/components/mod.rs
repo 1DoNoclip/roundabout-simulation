@@ -117,7 +117,6 @@ impl Kinematics {
     }
 
     pub fn calculate_time_to_arrival(
-        &self,
         current_speed: Speed,
         current_acceleration: Acceleration,
         distance: Distance,

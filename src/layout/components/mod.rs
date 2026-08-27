@@ -101,6 +101,9 @@ pub(crate) struct Segment {
     /// The `Arm` that this `Segment` is on.
     arm_id: Entity,
 
+    /// The arm index that this `Segment` is on.
+    arm_index: usize,
+
     /// The lane index that this `Segment` is on.
     lane_index: usize,
 
@@ -122,6 +125,7 @@ impl Segment {
     pub fn new<C: SegmentCurve>(
         curve: C,
         arm_id: Entity,
+        arm_index: usize,
         lane_index: usize,
         connection: Connection,
         speed_limit: Speed,
@@ -133,6 +137,7 @@ impl Segment {
             evaluator,
             start_position,
             arm_id,
+            arm_index,
             lane_index,
             connection,
             length,
@@ -150,6 +155,10 @@ impl Segment {
 
     pub const fn arm_id(&self) -> Entity {
         self.arm_id
+    }
+
+    pub const fn arm_index(&self) -> usize {
+        self.arm_index
     }
 
     pub const fn lane_index(&self) -> usize {
