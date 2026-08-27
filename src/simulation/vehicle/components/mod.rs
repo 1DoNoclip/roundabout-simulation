@@ -143,31 +143,6 @@ impl Kinematics {
         }
     }
 
-    pub fn calculate_time_to_arrival(
-        current_speed: Speed,
-        current_acceleration: Acceleration,
-        distance: Distance,
-    ) -> Option<Duration> {
-        // Dereference newtypes into primitives.
-        let (distance, speed, acceleration) = (*distance, *current_speed, *current_acceleration);
-
-        // Uses s = ut + (1/2)at^2
-        if acceleration.abs() > 0.01 {
-            // If accelerating / decelerating significantly,
-            // solve the quadratic equation. v^2 + 2as.
-            let discriminant = speed * speed + 2.0 * acceleration * distance;
-            if discriminant > 0.0 {
-                let time = (-speed + discriminant.sqrt()) / acceleration;
-                if time > 0.0 {
-                    return Duration::try_from_secs_f32(time).ok();
-                }
-            }
-        }
-
-        // Fallback to using constant speed time-to-arrival.
-        Duration::try_from_secs_f32(distance / speed).ok()
-    }
-
     pub const fn target_speed(&self) -> Speed {
         self.target_speed
     }

@@ -79,10 +79,8 @@ pub(super) fn spawn_vehicles(
     time: Res<Time>,
     roundabout_blueprint: Res<RoundaboutBlueprint>,
     mut spawning_arms: Query<(Entity, &Arm, &mut VehicleSpawnQueue)>,
-    arms: Query<&Arm>,
     target_arms: Query<&Arm>,
     spawn_points: Query<(Entity, &SpawnPoint)>,
-    end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
     existing_vehicles: Query<(&Navigator, &Transform), With<Kinematics>>,
 ) {
@@ -175,7 +173,7 @@ fn spawn_vehicle(
         .get(end_arm_id)
         .expect("expected to get end Arm from entity");
 
-    let route = calculate_route(&arms, &end_points, &segments, &spawn_point, end_arm.index())
+    let route = calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
         .expect("failed to pathfind from SpawnPoint to EndPoint");
 
     commands.spawn(

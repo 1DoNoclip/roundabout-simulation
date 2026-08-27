@@ -16,6 +16,7 @@ impl Plugin for KinematicsPlugin {
 }
 
 /// Calculates vehicles' accelerations due to the IDM model, road geometry (coming soon), and yield logic.
+#[allow(clippy::too_many_arguments)]
 pub(in crate::simulation) fn calculate_accelerations(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
     conflict_points: Res<RoundaboutConflictPoints>,
@@ -24,16 +25,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     exit_deflection_segments: Query<(), With<segment_type::ExitDeflection>>,
     intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-    vehicles: Query<
-        (
-            Entity,
-            &IdmDriver,
-            &Kinematics,
-            &Navigator,
-            &Speed,
-        ),
-        With<Vehicle>,
-    >,
+    vehicles: Query<(Entity, &IdmDriver, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
     circulating_vehicles: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
     mut next_accelerations: Query<&mut NextAcceleration, With<Vehicle>>,
     lead_vehicles_query: Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
@@ -62,25 +54,22 @@ pub(in crate::simulation) fn calculate_accelerations(
                 intra_arm_sectors,
                 inter_arm_sectors,
                 circulating_vehicles,
-            ) {
-                if should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap()) {
-                    // Virtual object at the yield line, forcing this vehicle to yield.
-                    let virtual_lead_vehicle = LeadVehicleInfo {
-                        vehicle_kind: VehicleKind::Virtual,
-                        distance: distance_to_line,
-                        speed: Speed::ZERO,
-                    };
+            ) && should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap())
+            {
+                // Virtual object at the yield line, forcing this vehicle to yield.
+                let virtual_lead_vehicle = LeadVehicleInfo {
+                    vehicle_kind: VehicleKind::Virtual,
+                    distance: distance_to_line,
+                    speed: Speed::ZERO,
+                };
 
-                    // Replace the actual lead vehicle with a virtual lead
-                    // vehicle if the virtual is closer to the yield line.
-                    lead_vehicle_info = match lead_vehicle_info {
+                // Replace the actual lead vehicle with a virtual lead
+                // vehicle if the virtual is closer to the yield line.
+                lead_vehicle_info = match lead_vehicle_info {
+                    Some(lead_vehicle_info) if *lead_vehicle_info.distance < *distance_to_line => {
                         Some(lead_vehicle_info)
-                            if *lead_vehicle_info.distance < *distance_to_line =>
-                        {
-                            Some(lead_vehicle_info)
-                        }
-                        _ => Some(virtual_lead_vehicle),
                     }
+                    _ => Some(virtual_lead_vehicle),
                 }
             }
         }
@@ -198,7 +187,7 @@ fn get_circulating_vehicles(
         };
         // If the vehicle is going to exit the circle next, then ignore it.
         // Entering vehicles do not need to yield to exiting vehicles.
-        if let Ok(_) = exit_deflection_segments_query.get(next_segment_id) {
+        if exit_deflection_segments_query.get(next_segment_id).is_ok() {
             continue;
         }
 
@@ -393,9 +382,9 @@ fn find_lead_vehicle(
             .length_metres();
         total_distance += (1.0 - this_progress) * first_segment_length;
 
-        for index in 1..lead_index {
+        for &id in existing_route.iter().take(lead_index).skip(1) {
             let segment_length = segments
-                .get(existing_route[index])
+                .get(id)
                 .map_err(|_| "expected to get segment component")?
                 .length_metres();
             total_distance += segment_length;
@@ -437,7 +426,7 @@ fn should_yield_at_entry(
             continue;
         }
         // If the vehicle is queued near the conflict zone then prevent entry.
-        else if circulating_vehicle.distance_to_conflict_metres < 8.0
+        else if circulating_vehicle.distance_to_conflict_metres <= 8.0
             && *circulating_vehicle.speed < 0.5
         {
             return true;
@@ -655,11 +644,11 @@ mod tests {
         /// Helper to construct a `CirculatingVehicleInfo` instance.
         fn create_circulating_vehicle(
             distance_metres: f32,
-            speed_mps: f32,
+            speed_metres_per_second: f32,
         ) -> CirculatingVehicleInfo {
             CirculatingVehicleInfo {
                 distance_to_conflict_metres: distance_metres,
-                speed: Speed::try_new_metres_per_second(speed_mps).unwrap(),
+                speed: Speed::try_new_metres_per_second(speed_metres_per_second).unwrap(),
                 vehicle_length_metres: 4.5,
             }
         }

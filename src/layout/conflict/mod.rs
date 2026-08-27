@@ -74,11 +74,6 @@ impl RoundaboutConflictPoints {
     pub(crate) const fn points(&self) -> &HashMap<ConflictPointIndex, ConflictPoint> {
         &self.points
     }
-
-    #[cfg(test)]
-    pub(crate) const fn points_mut(&mut self) -> &mut HashMap<ConflictPointIndex, ConflictPoint> {
-        &mut self.points
-    }
 }
 
 /// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
@@ -88,7 +83,7 @@ pub(crate) struct ConflictPoint {
     /// No use in the simulation.
     pub(crate) conflict_location: Vec3,
     /// The conflict point as a progress along the entry deflection.
-    pub entry_deflection_progress: f32,
+    pub _entry_deflection_progress: f32,
     /// The conflict point as a progress along the intra arm sector.
     pub intra_arm_sector_progress: f32,
     pub intra_arm_sector_id: Entity,
@@ -112,7 +107,7 @@ impl ConflictPoint {
         };
         Some(ConflictPoint {
             conflict_location,
-            entry_deflection_progress,
+            _entry_deflection_progress: entry_deflection_progress,
             intra_arm_sector_progress,
             intra_arm_sector_id,
         })

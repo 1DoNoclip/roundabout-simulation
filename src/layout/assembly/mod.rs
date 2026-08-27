@@ -195,7 +195,7 @@ fn clear_existing_layout(
     existing_segments: Query<Entity, With<Segment>>,
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
-) -> () {
+) {
     info!("Despawning all existing vehicles.");
     for vehicle in existing_vehicles {
         commands.entity(vehicle).despawn();
