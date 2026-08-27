@@ -45,9 +45,10 @@ pub(in crate::simulation) fn calculate_accelerations(
         let current_segment_id = navigator.current_segment_id();
         // If the vehicle is on an entry line, then check if it needs to yield.
         if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
-            let distance_to_line =
-                Distance::try_new_metres((1.0 - navigator.progress()) * entry_segment.length())
-                    .expect("expected to be positive");
+            let distance_to_line = Distance::try_new_metres(
+                (1.0 - navigator.progress()) * entry_segment.length_metres(),
+            )
+            .expect("expected to be positive");
 
             let entry_arm_index = entry_segment.arm_index();
             let entry_lane_index = entry_segment.lane_index();
@@ -148,7 +149,7 @@ pub(in crate::simulation) fn move_vehicles(
             warn!("Found no segment associated with segment entity.");
             continue;
         };
-        let delta_progress = (*speed * delta_seconds) / current_segment.length();
+        let delta_progress = (*speed * delta_seconds) / current_segment.length_metres();
         match navigator.add_progress(delta_progress) {
             Ok(_) => {
                 transform.translation = current_segment.sample_clamped(navigator.progress());
@@ -191,7 +192,7 @@ fn get_circulating_vehicles(
     );
     let mut circulating_vehicles = Vec::new();
 
-    for (id, kinematics, navigator, &speed) in vehicles {
+    for (id, _kinematics, navigator, &speed) in vehicles {
         if id == entry_vehicle_id {
             continue;
         }
@@ -214,15 +215,49 @@ fn get_circulating_vehicles(
                 continue;
             };
 
-            let distance_to_conflict_metres =
-                intra_arm_segment.length() * (conflict_point. - navigator.progress());
+            let distance_to_conflict_metres = intra_arm_segment.length_metres()
+                * (conflict_point.intra_arm_sector_progress - navigator.progress());
+            // If the vehicle is behind the conflict point.
             if distance_to_conflict_metres > 0.0 {
                 circulating_vehicles.push(CirculatingVehicleInfo {
                     distance_to_conflict_metres,
                     speed,
                 });
             }
-        } else if let Some(&lane_index) = inter_arm_sectors.get_by_left(&current_segment_id) {
+        } else if let Some(&circulating_lane_index) =
+            inter_arm_sectors.get_by_left(&current_segment_id)
+        {
+            let (_, inter_arm_segment) =
+                inter_arm_sectors_query
+                    .get(current_segment_id)
+                    .map_err(|_| {
+                        format!("expected Segment for inter arm Entity {current_segment_id:?}")
+                    })?;
+            let (conflict_point_index, _) = ConflictPointIndex::try_new(
+                entry_arm_index,
+                entry_lane_index,
+                circulating_lane_index,
+            )
+            .ok_or_else(|| "failed to create ConflictPointIndex".to_owned())?;
+            let Some(conflict_point) = conflict_points.get(conflict_point_index) else {
+                continue;
+            };
+            let (_, intra_arm_segment) = intra_arm_sectors_query
+                .get(conflict_point.intra_arm_sector_id)
+                .map_err(|_| {
+                    format!("expected Segment for intra arm Entity {current_segment_id:?}")
+                })?;
+
+            let distance_to_conflict_metres = (intra_arm_segment.length_metres()
+                * conflict_point.intra_arm_sector_progress
+                + inter_arm_segment.length_metres() * (1.0 - navigator.progress()));
+            // If the vehicle is behind the conflict point.
+            if distance_to_conflict_metres > 0.0 {
+                circulating_vehicles.push(CirculatingVehicleInfo {
+                    distance_to_conflict_metres,
+                    speed,
+                });
+            }
         }
     }
 
@@ -415,7 +450,7 @@ fn find_lead_vehicle(
         let segment_length = segments
             .get(existing_route[0])
             .map_err(|_| "expected to get segment component")?
-            .length();
+            .length_metres();
         (lead_progress - this_progress) * segment_length
     } else {
         let mut total_distance = 0.0;
@@ -423,21 +458,21 @@ fn find_lead_vehicle(
         let first_segment_length = segments
             .get(existing_route[0])
             .map_err(|_| "expected to get segment component")?
-            .length();
+            .length_metres();
         total_distance += (1.0 - this_progress) * first_segment_length;
 
         for index in 1..lead_index {
             let segment_length = segments
                 .get(existing_route[index])
                 .map_err(|_| "expected to get segment component")?
-                .length();
+                .length_metres();
             total_distance += segment_length;
         }
 
         let last_segment_length = segments
             .get(existing_route[lead_index])
             .map_err(|_| "expected to get segment component")?
-            .length();
+            .length_metres();
         total_distance += lead_progress * last_segment_length;
 
         total_distance

@@ -24,17 +24,16 @@ impl RoundaboutConflictPoints {
         mut resource: ResMut<RoundaboutConflictPoints>,
         arms: Query<(Entity, &Arm)>,
         entry_deflection_segments: Query<&Segment, With<segment_type::EntryDeflection>>,
-        intra_arm_sector_segments: Query<&Segment, With<segment_type::IntraArmSector>>,
+        intra_arm_sector_segments: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     ) {
         let mut conflict_points: HashMap<ConflictPointIndex, ConflictPoint> = HashMap::new();
 
-        let sectors_by_arm: EntityHashMap<Vec<&Segment>> =
-            intra_arm_sector_segments
-                .iter()
-                .fold(EntityHashMap::new(), |mut map, segment| {
-                    map.entry(segment.arm_id()).or_default().push(segment);
-                    map
-                });
+        let sectors_by_arm: EntityHashMap<Vec<(Entity, &Segment)>> = intra_arm_sector_segments
+            .iter()
+            .fold(EntityHashMap::new(), |mut map, (id, segment)| {
+                map.entry(segment.arm_id()).or_default().push((id, segment));
+                map
+            });
 
         for entry_deflection_segment in entry_deflection_segments {
             let (arm_id, arm) = arms
@@ -47,7 +46,7 @@ impl RoundaboutConflictPoints {
                 .get(&arm_id)
                 .expect("expected to find matching sector Segments on this Arm");
 
-            for &sector_segment in same_arm_sectors {
+            for &(id, sector_segment) in same_arm_sectors {
                 let Some((conflict_point_index, is_merge)) = ConflictPointIndex::try_new(
                     arm_index,
                     entry_deflection_segment.lane_index(),
@@ -56,7 +55,7 @@ impl RoundaboutConflictPoints {
                     continue;
                 };
                 if let Some(conflict_point) =
-                    ConflictPoint::try_new(entry_deflection_segment, sector_segment, is_merge)
+                    ConflictPoint::try_new(entry_deflection_segment, sector_segment, id, is_merge)
                 {
                     conflict_points.insert(conflict_point_index, conflict_point);
                 }
@@ -92,15 +91,18 @@ pub(crate) struct ConflictPoint {
     pub entry_deflection_progress: f32,
     /// The conflict point as a progress along the intra arm sector.
     pub intra_arm_sector_progress: f32,
+    pub intra_arm_sector_id: Entity,
 }
 
 impl ConflictPoint {
     fn try_new(
         entry_deflection: &Segment,
         intra_arm_sector: &Segment,
+        intra_arm_sector_id: Entity,
         is_merge: bool,
     ) -> Option<Self> {
-        let (conflict_location, entry_deflection_progress, intra_arm_sector_progress) = if is_merge {
+        let (conflict_location, entry_deflection_progress, intra_arm_sector_progress) = if is_merge
+        {
             (intra_arm_sector.sample_clamped(1.0), 1.0, 1.0)
         } else {
             ConflictPoint::get_entry_deflection_intra_arm_conflict_progresses(
@@ -112,6 +114,7 @@ impl ConflictPoint {
             conflict_location,
             entry_deflection_progress,
             intra_arm_sector_progress,
+            intra_arm_sector_id,
         })
     }
 
