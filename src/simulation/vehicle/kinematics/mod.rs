@@ -386,6 +386,7 @@ fn should_yield_at_entry(
 mod tests {
     use super::*;
 
+    /// Tests for `get_sectors`.
     mod test_get_sectors {
         use super::*;
         use bevy::ecs::system::SystemState;
@@ -419,16 +420,16 @@ mod tests {
         fn get_sectors_filters_matching_arms_and_lanes() {
             let mut world = World::new();
 
-            // Entry arm index 1, number of arms 4 => prev_arm_index = (1 + 4 - 1) % 4 = 0
+            // Entry arm index 1, number of arms 4 => prev_arm_index = (1 + 4 - 1) % 4 = 0.
             let entry_arm = 1;
             let number_of_arms = 4;
 
-            // Target IntraArmSector entities (arm_index = 1)
+            // Target IntraArmSector entities (arm_index = 1).
             let intra_target_lane0 = spawn_segment(&mut world, 1, 0, segment_type::IntraArmSector);
             let intra_target_lane1 = spawn_segment(&mut world, 1, 1, segment_type::IntraArmSector);
             let intra_ignored_arm = spawn_segment(&mut world, 2, 0, segment_type::IntraArmSector);
 
-            // Target InterArmSector entities (arm_index = 0)
+            // Target InterArmSector entities (arm_index = 0).
             let inter_target_lane0 = spawn_segment(&mut world, 0, 0, segment_type::InterArmSector);
             let inter_target_lane1 = spawn_segment(&mut world, 0, 1, segment_type::InterArmSector);
             let inter_ignored_arm = spawn_segment(&mut world, 1, 0, segment_type::InterArmSector);
@@ -458,7 +459,7 @@ mod tests {
         fn get_sectors_handles_arm_zero_wraparound() {
             let mut world = World::new();
 
-            // Entry arm index 0, number of arms 4 => prev_arm_index = (0 + 4 - 1) % 4 = 3
+            // Entry arm index 0, number of arms 4 => prev_arm_index = (0 + 4 - 1) % 4 = 3.
             let entry_arm = 0;
             let number_of_arms = 4;
 
@@ -480,6 +481,87 @@ mod tests {
 
             assert_eq!(inter_map.len(), 1);
             assert_eq!(inter_map.get(&inter_arm3_lane2), Some(&2));
+        }
+
+        #[test]
+        fn get_sectors_returns_empty_maps_when_no_matching_sectors_exist() {
+            let mut world = World::new();
+
+            // Spawn segments for arm 2, but query for arm 0.
+            spawn_segment(&mut world, 2, 0, segment_type::IntraArmSector);
+            spawn_segment(&mut world, 2, 0, segment_type::InterArmSector);
+
+            let mut system_state = SystemState::<(
+                Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+                Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+            )>::new(&mut world);
+
+            let (intra_query, inter_query) = system_state.get(&world).unwrap();
+
+            let (intra_map, inter_map) = get_sectors(0, 4, intra_query, inter_query);
+
+            assert!(intra_map.is_empty());
+            assert!(inter_map.is_empty());
+        }
+
+        #[test]
+        fn get_sectors_handles_two_arm_roundabout() {
+            let mut world = World::new();
+
+            // Entry arm index 0, number of arms 2 => prev_arm_index = (0 + 2 - 1) % 2 = 1.
+            let entry_arm = 0;
+            let number_of_arms = 2;
+
+            let intra_arm0_lane0 = spawn_segment(&mut world, 0, 0, segment_type::IntraArmSector);
+            let inter_arm1_lane0 = spawn_segment(&mut world, 1, 0, segment_type::InterArmSector);
+
+            let mut system_state = SystemState::<(
+                Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+                Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+            )>::new(&mut world);
+
+            let (intra_query, inter_query) = system_state.get(&world).unwrap();
+
+            let (intra_map, inter_map) =
+                get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
+
+            assert_eq!(intra_map.len(), 1);
+            assert_eq!(intra_map.get(&intra_arm0_lane0), Some(&0));
+
+            assert_eq!(inter_map.len(), 1);
+            assert_eq!(inter_map.get(&inter_arm1_lane0), Some(&0));
+        }
+
+        #[test]
+        fn get_sectors_ignores_other_segment_types_on_same_arm() {
+            let mut world = World::new();
+
+            let entry_arm = 1;
+            let number_of_arms = 4;
+
+            // Target sectors
+            let intra_target = spawn_segment(&mut world, 1, 0, segment_type::IntraArmSector);
+            let inter_target = spawn_segment(&mut world, 0, 0, segment_type::InterArmSector);
+
+            // Non-sector segments on the target arms.
+            spawn_segment(&mut world, 1, 0, segment_type::EntryLine);
+            spawn_segment(&mut world, 0, 0, segment_type::EntryDeflection);
+
+            let mut system_state = SystemState::<(
+                Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+                Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+            )>::new(&mut world);
+
+            let (intra_query, inter_query) = system_state.get(&world).unwrap();
+
+            let (intra_map, inter_map) =
+                get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
+
+            assert_eq!(intra_map.len(), 1);
+            assert!(intra_map.contains_key(&intra_target));
+
+            assert_eq!(inter_map.len(), 1);
+            assert!(inter_map.contains_key(&inter_target));
         }
     }
 }
