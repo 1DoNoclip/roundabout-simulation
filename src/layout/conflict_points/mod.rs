@@ -84,7 +84,7 @@ impl RoundaboutConflictPoints {
 pub(crate) struct ConflictPoint {
     /// Used in graphics for displaying conflict points.
     /// No use in the simulation.
-    pub conflict_location: Vec3,
+    pub location: Vec3,
     /// The conflict point as a progress along the entry deflection.
     ///
     /// Used to determine locations of `YieldPoint`s.
@@ -111,7 +111,7 @@ impl ConflictPoint {
             )?
         };
         Some(ConflictPoint {
-            conflict_location,
+            location: conflict_location,
             entry_deflection_progress,
             intra_arm_sector_progress,
             intra_arm_sector_id,

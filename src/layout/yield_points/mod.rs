@@ -23,12 +23,13 @@ impl RoundaboutYieldPoints {
     pub fn generate(
         mut resource: ResMut<Self>,
         conflict_points: Res<RoundaboutConflictPoints>,
-        number_of_lanes: usize,
+        roundabout_blueprint: Res<RoundaboutBlueprint>,
         entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
         entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
     ) {
-        let mut yield_points: HashMap<YieldPointIndex, YieldPoint> = HashMap::new();
+        let number_of_lanes = roundabout_blueprint.number_of_lanes();
 
+        let mut yield_points: HashMap<YieldPointIndex, YieldPoint> = HashMap::new();
         for (entry_deflection_segment_id, entry_deflection_segment) in entry_deflection_segments {
             // Ensure that this segment merges (which they all should do anyway).
             let Connection::Merge { .. } = entry_deflection_segment.connection() else {
@@ -65,7 +66,7 @@ impl RoundaboutYieldPoints {
                         lane_index: entry_deflection_segment.lane_index(),
                     },
                     YieldPoint {
-                        yield_location,
+                        location: yield_location,
                         progress: deflection_yield_point_progress,
                         segment_id: entry_deflection_segment_id,
                     },
@@ -113,7 +114,7 @@ fn get_first_conflict_point(
 pub(crate) struct YieldPoint {
     /// Used in graphics for displaying yield points.
     /// No use in the simulation.
-    yield_location: Vec3,
+    pub location: Vec3,
     /// The location of the yield point as a progress of the segment.
     progress: f32,
     segment_id: Entity,

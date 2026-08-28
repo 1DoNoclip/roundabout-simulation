@@ -42,6 +42,9 @@ fn roundabout_blueprint_changed(mut commands: Commands, blueprint: Res<Roundabou
         world
             .run_system_cached(RoundaboutConflictPoints::generate)
             .unwrap();
+        world
+            .run_system_cached(RoundaboutYieldPoints::generate)
+            .unwrap();
         info!("Roundabout layout and conflict points successfully updated.");
     });
 }
