@@ -70,8 +70,8 @@ impl RoundaboutConflictPoints {
         };
     }
 
-    pub fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
-        self.points.get(&conflict_point_index).copied()
+    pub fn get(&self, index: ConflictPointIndex) -> Option<ConflictPoint> {
+        self.points.get(&index).copied()
     }
 
     pub const fn points(&self) -> &HashMap<ConflictPointIndex, ConflictPoint> {
