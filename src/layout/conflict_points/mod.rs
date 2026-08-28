@@ -23,8 +23,8 @@ pub(crate) struct RoundaboutConflictPoints {
 }
 
 impl RoundaboutConflictPoints {
-    pub(crate) fn generate(
-        mut resource: ResMut<RoundaboutConflictPoints>,
+    pub fn generate(
+        mut resource: ResMut<Self>,
         arms: Query<(Entity, &Arm)>,
         entry_deflection_segments: Query<&Segment, With<segment_type::EntryDeflection>>,
         intra_arm_sector_segments: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
@@ -70,11 +70,11 @@ impl RoundaboutConflictPoints {
         };
     }
 
-    pub(crate) fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
+    pub fn get(&self, conflict_point_index: ConflictPointIndex) -> Option<ConflictPoint> {
         self.points.get(&conflict_point_index).copied()
     }
 
-    pub(crate) const fn points(&self) -> &HashMap<ConflictPointIndex, ConflictPoint> {
+    pub const fn points(&self) -> &HashMap<ConflictPointIndex, ConflictPoint> {
         &self.points
     }
 }
@@ -82,9 +82,9 @@ impl RoundaboutConflictPoints {
 /// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
 #[derive(Clone, Copy, Debug, Reflect)]
 pub(crate) struct ConflictPoint {
-    /// Used in graphics for easily displaying conflict points.
+    /// Used in graphics for displaying conflict points.
     /// No use in the simulation.
-    pub(crate) conflict_location: Vec3,
+    pub conflict_location: Vec3,
     /// The conflict point as a progress along the entry deflection.
     ///
     /// Used to determine locations of `YieldPoint`s.
@@ -220,9 +220,9 @@ impl ConflictPoint {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Reflect)]
 pub(crate) struct ConflictPointIndex {
     arm_index: usize,
-    /// The lane index of the entry lane.
+    /// The index of the entry lane.
     entry_lane_index: usize,
-    /// The lane index of the circulating lane.
+    /// The index of the circulating lane.
     circulating_lane_index: usize,
 }
 

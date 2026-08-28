@@ -51,7 +51,7 @@ impl LaneGeometry {
         )
     }
 
-    pub(crate) fn into_curves(self) -> (StraightLinePoints, DeflectionCurvePoints) {
+    pub fn into_curves(self) -> (StraightLinePoints, DeflectionCurvePoints) {
         (self.straight_line_points, self.deflection_curve_points)
     }
 
