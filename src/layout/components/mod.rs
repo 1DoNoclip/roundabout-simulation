@@ -198,7 +198,7 @@ pub(crate) enum Connection {
     },
     /// This connection exits the map.
     EndPoint { end_point_id: Entity },
-    /// A merge onto the roundabout, requiring a yield.
+    /// A merge onto the roundabout, requiring a yield at the designated yield point.
     Merge { next_segment_id: Entity },
 }
 

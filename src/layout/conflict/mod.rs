@@ -7,7 +7,10 @@ pub(super) struct ConflictPlugin;
 
 impl Plugin for ConflictPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(RoundaboutConflictPoints::default());
+        app.register_type::<RoundaboutConflictPoints>()
+            .register_type::<ConflictPoint>()
+            .register_type::<ConflictPointIndex>()
+            .insert_resource(RoundaboutConflictPoints::default());
     }
 }
 

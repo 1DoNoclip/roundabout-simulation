@@ -5,12 +5,14 @@ pub(crate) mod components;
 pub(crate) mod conflict;
 pub(crate) mod curve;
 pub(crate) mod geometry;
+pub(crate) mod yield_point;
 
 use assembly::*;
 pub(crate) use components::*;
 pub(crate) use conflict::*;
 pub(crate) use curve::*;
 pub(crate) use geometry::*;
+pub(crate) use yield_point::*;
 
 pub(crate) struct LayoutPlugin;
 
