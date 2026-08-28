@@ -2,17 +2,17 @@ use crate::*;
 
 pub(crate) mod assembly;
 pub(crate) mod components;
-pub(crate) mod conflict;
+pub(crate) mod conflict_points;
 pub(crate) mod curve;
 pub(crate) mod geometry;
-pub(crate) mod yield_point;
+pub(crate) mod yield_points;
 
 use assembly::*;
 pub(crate) use components::*;
-pub(crate) use conflict::*;
+pub(crate) use conflict_points::*;
 pub(crate) use curve::*;
 pub(crate) use geometry::*;
-pub(crate) use yield_point::*;
+pub(crate) use yield_points::*;
 
 pub(crate) struct LayoutPlugin;
 
@@ -21,9 +21,10 @@ impl Plugin for LayoutPlugin {
         app.add_plugins((
             AssemblyPlugin,
             ComponentsPlugin,
-            ConflictPlugin,
+            ConflictPointsPlugin,
             CurvePlugin,
             GeometryPlugin,
+            YieldPointsPlugin,
         ))
         .add_systems(Update, roundabout_blueprint_changed);
     }

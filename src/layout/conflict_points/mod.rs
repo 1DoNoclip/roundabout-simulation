@@ -3,9 +3,9 @@
 use crate::*;
 use bevy::platform::collections::HashMap;
 
-pub(super) struct ConflictPlugin;
+pub(super) struct ConflictPointsPlugin;
 
-impl Plugin for ConflictPlugin {
+impl Plugin for ConflictPointsPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<RoundaboutConflictPoints>()
             .register_type::<ConflictPoint>()
@@ -17,7 +17,7 @@ impl Plugin for ConflictPlugin {
 /// The points where lane `Segment`s cross over, but do not connect with a `Connection`.
 ///
 /// This resource is essentially a cache of points to massively reduce the work required to get conflict points.
-#[derive(Default, Resource)]
+#[derive(Default, Reflect, Resource)]
 pub(crate) struct RoundaboutConflictPoints {
     points: HashMap<ConflictPointIndex, ConflictPoint>,
 }
@@ -80,13 +80,15 @@ impl RoundaboutConflictPoints {
 }
 
 /// Defines a conflict point (where vehicles have to cross) when merging onto the roundabout.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Reflect)]
 pub(crate) struct ConflictPoint {
     /// Used in graphics for easily displaying conflict points.
     /// No use in the simulation.
     pub(crate) conflict_location: Vec3,
     /// The conflict point as a progress along the entry deflection.
-    pub _entry_deflection_progress: f32,
+    ///
+    /// Used to determine locations of `YieldPoint`s.
+    pub entry_deflection_progress: f32,
     /// The conflict point as a progress along the intra arm sector.
     pub intra_arm_sector_progress: f32,
     pub intra_arm_sector_id: Entity,
@@ -110,7 +112,7 @@ impl ConflictPoint {
         };
         Some(ConflictPoint {
             conflict_location,
-            _entry_deflection_progress: entry_deflection_progress,
+            entry_deflection_progress,
             intra_arm_sector_progress,
             intra_arm_sector_id,
         })
@@ -215,7 +217,7 @@ impl ConflictPoint {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Reflect)]
 pub(crate) struct ConflictPointIndex {
     arm_index: usize,
     /// The lane index of the entry lane.
