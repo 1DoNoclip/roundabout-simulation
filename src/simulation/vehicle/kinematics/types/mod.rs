@@ -1,5 +1,7 @@
 //! Contains `Speed`, `Distance` and `Acceleration` types.
 
+use std::ops::Add;
+
 use crate::*;
 
 pub(super) struct TypesPlugin;
@@ -53,6 +55,16 @@ impl Distance {
             Ok(Distance { metres })
         } else {
             Err(format!("metres cannot be negative, found {metres}"))
+        }
+    }
+}
+
+impl Add for Distance {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Distance {
+            metres: self.metres + rhs.metres,
         }
     }
 }

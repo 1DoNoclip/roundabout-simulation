@@ -34,70 +34,90 @@ pub(in crate::simulation) fn calculate_accelerations(
 ) {
     for (id, idm_driver, kinematics, navigator, &speed) in vehicles {
         let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
-
         let current_segment_id = navigator.current_segment_id();
-        // If the vehicle is on an entry line, then check if it needs to yield.
-        if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
-            let (entry_deflection_segment_id, entry_deflection_segment) = entry_deflection_segments
+
+        let yield_context = if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
+            let (deflection_id, deflection_segment) = entry_deflection_segments
                 .iter()
                 .find(|&(_, segment)| {
                     segment.arm_id() == entry_segment.arm_id()
                         && segment.lane_index() == entry_segment.lane_index()
                 })
-                .expect(&format!(
-                    "{current_segment_id:?} should have an entry deflection segment after"
-                ));
-            let yield_point = yield_points
-                .get(YieldPointIndex::new(
-                    entry_segment.arm_index(),
-                    entry_segment.lane_index(),
-                ))
-                .expect("expected to find a yield point for this entry");
+                .expect("entry line segment should have an associated entry deflection segment");
 
-            // let distance_to_line = Distance::try_new_metres(
-            //     (1.0 - navigator.progress()) * entry_segment.length_metres(),
-            // )
-            // .expect("expected to be positive");
-            let distance_to_yield =
-                Distance::try_new_metres(if yield_point.segment_id() == current_segment_id {
-                    panic!()
-                } else if yield_point.segment_id() == entry_deflection_segment_id {
-                    (1.0 - navigator.progress()) * entry_segment.length_metres()
-                        + yield_point.progress() * entry_deflection_segment.length_metres()
-                } else {
-                    panic!("yield point is not on either entry line or deflection segment");
-                })
-                .expect("expected distance to be positive");
+            let arm_index = entry_segment.arm_index();
+            let lane_index = entry_segment.lane_index();
 
-            let entry_arm_index = entry_segment.arm_index();
-            let entry_lane_index = entry_segment.lane_index();
-
-            if let Ok(circulating_vehicles) = get_circulating_vehicles(
-                id,
-                entry_lane_index,
-                entry_arm_index,
-                roundabout_blueprint.number_of_arms(),
-                &conflict_points,
-                exit_deflection_segments,
-                intra_arm_sectors,
-                inter_arm_sectors,
-                circulating_vehicles,
-            ) && should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap())
+            if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
             {
-                // Virtual object at the yield line, forcing this vehicle to yield.
-                let virtual_lead_vehicle = LeadVehicleInfo {
-                    vehicle_kind: VehicleKind::Virtual,
-                    distance: distance_to_yield,
-                    speed: Speed::ZERO,
+                // If the yield point is on the entry line.
+                let distance_to_yield_metres = if yield_point.segment_id() == current_segment_id {
+                    (yield_point.progress() - navigator.progress()) * entry_segment.length_metres()
+                }
+                // If the yield point is on the entry deflection.
+                else if yield_point.segment_id() == deflection_id {
+                    (1.0 - navigator.progress()) * entry_segment.length_metres()
+                        + yield_point.progress() * deflection_segment.length_metres()
+                } else {
+                    -1.0
                 };
+                Some((arm_index, lane_index, distance_to_yield_metres))
+            } else {
+                None
+            }
+        } else if let Ok((deflection_id, deflection_segment)) =
+            entry_deflection_segments.get(current_segment_id)
+        {
+            let arm_index = deflection_segment.arm_index();
+            let lane_index = deflection_segment.lane_index();
 
-                // Replace the actual lead vehicle with a virtual lead
-                // vehicle if the yield line is closer than the lead vehicle.
-                lead_vehicle_info = match lead_vehicle_info {
-                    Some(lead_vehicle_info) if *lead_vehicle_info.distance < *distance_to_yield => {
-                        Some(lead_vehicle_info)
+            if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
+            {
+                if yield_point.segment_id() == deflection_id {
+                    let distance_to_yield_metres = (yield_point.progress() - navigator.progress())
+                        * deflection_segment.length_metres();
+                    Some((arm_index, lane_index, distance_to_yield_metres))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let Some((entry_arm_index, entry_lane_index, distance_to_yield_metres)) = yield_context {
+            if distance_to_yield_metres > 0.0 {
+                if let Ok(distance_to_yield) = Distance::try_new_metres(distance_to_yield_metres) {
+                    if let Ok(circulating_vehicles) = get_circulating_vehicles(
+                        id,
+                        entry_lane_index,
+                        entry_arm_index,
+                        roundabout_blueprint.number_of_arms(),
+                        &conflict_points,
+                        exit_deflection_segments,
+                        intra_arm_sectors,
+                        inter_arm_sectors,
+                        circulating_vehicles,
+                    ) {
+                        if should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap()) {
+                            let virtual_yield_vehicle = LeadVehicleInfo {
+                                vehicle_kind: VehicleKind::Virtual,
+                                distance: distance_to_yield,
+                                speed: Speed::ZERO,
+                            };
+
+                            lead_vehicle_info = match lead_vehicle_info {
+                                Some(lead_vehicle_info)
+                                    if *lead_vehicle_info.distance < *distance_to_yield =>
+                                {
+                                    Some(lead_vehicle_info)
+                                }
+                                _ => Some(virtual_yield_vehicle),
+                            };
+                        }
                     }
-                    _ => Some(virtual_lead_vehicle),
                 }
             }
         }

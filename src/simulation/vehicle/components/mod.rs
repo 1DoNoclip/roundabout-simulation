@@ -35,7 +35,7 @@ impl IdmDriver {
     /// ### Arguments
     /// * `current_speed` - Speed of this vehicle.
     /// * `target_speed` - The speed that this vehicle achieves on an empty, straight road.
-    /// * `lead_vehicle_info` - The information about the vehicle ahead (or a virtual yield vehicle).
+    /// * `lead_vehicle_info` - The information about the vehicle ahead (or a virtual yield line vehicle).
     pub fn calculate_acceleration(
         &self,
         current_speed: Speed,
@@ -62,8 +62,15 @@ impl IdmDriver {
             let delta_v = v - v_lead;
 
             let dynamic_gap = (v * delta_v) / (2.0 * (a * b).sqrt());
-            let s_star =
-                *self.minimum_gap + (v * self.time_headway.as_secs_f32()) + (dynamic_gap.max(0.0));
+            let s_star = (v * self.time_headway.as_secs_f32())
+                + (dynamic_gap.max(0.0))
+                // If the lead vehicle is actually a yield line, then allow
+                // this vehicle to pull right up to it, ignoring `minimum_gap`.
+                + if let VehicleKind::Virtual = lead_vehicle_info.vehicle_kind {
+                    0.0
+                } else {
+                    *self.minimum_gap
+                };
 
             (s_star / s.max(0.1)).powi(2)
         } else {
