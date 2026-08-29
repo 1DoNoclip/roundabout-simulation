@@ -87,39 +87,36 @@ pub(in crate::simulation) fn calculate_accelerations(
             None
         };
 
-        if let Some((entry_arm_index, entry_lane_index, distance_to_yield_metres)) = yield_context {
-            if distance_to_yield_metres > 0.0 {
-                if let Ok(distance_to_yield) = Distance::try_new_metres(distance_to_yield_metres) {
-                    if let Ok(circulating_vehicles) = get_circulating_vehicles(
-                        id,
-                        entry_lane_index,
-                        entry_arm_index,
-                        roundabout_blueprint.number_of_arms(),
-                        &conflict_points,
-                        exit_deflection_segments,
-                        intra_arm_sectors,
-                        inter_arm_sectors,
-                        circulating_vehicles,
-                    ) {
-                        if should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap()) {
-                            let virtual_yield_vehicle = LeadVehicleInfo {
-                                vehicle_kind: VehicleKind::Virtual,
-                                distance: distance_to_yield,
-                                speed: Speed::ZERO,
-                            };
+        if let Some((entry_arm_index, entry_lane_index, distance_to_yield_metres)) = yield_context
+            // Yield distance must be positive (else the vehicle is past the yield line)
+            // and therefore we completely disregard using a virtual lead vehicle.
+            && let Ok(distance_to_yield) = Distance::try_new_metres(distance_to_yield_metres)
+                && *distance_to_yield > 0.0
+                && let Ok(circulating_vehicles) = get_circulating_vehicles(
+                    id,
+                    entry_lane_index,
+                    entry_arm_index,
+                    roundabout_blueprint.number_of_arms(),
+                    &conflict_points,
+                    exit_deflection_segments,
+                    intra_arm_sectors,
+                    inter_arm_sectors,
+                    circulating_vehicles,
+                )
+        && should_yield_at_entry(&circulating_vehicles, idm_driver.critical_gap())
+        {
+            let virtual_yield_vehicle = LeadVehicleInfo {
+                vehicle_kind: VehicleKind::Virtual,
+                distance: distance_to_yield,
+                speed: Speed::ZERO,
+            };
 
-                            lead_vehicle_info = match lead_vehicle_info {
-                                Some(lead_vehicle_info)
-                                    if *lead_vehicle_info.distance < *distance_to_yield =>
-                                {
-                                    Some(lead_vehicle_info)
-                                }
-                                _ => Some(virtual_yield_vehicle),
-                            };
-                        }
-                    }
+            lead_vehicle_info = match lead_vehicle_info {
+                Some(lead_vehicle_info) if *lead_vehicle_info.distance < *distance_to_yield => {
+                    Some(lead_vehicle_info)
                 }
-            }
+                _ => Some(virtual_yield_vehicle),
+            };
         }
 
         let raw_acceleration = idm_driver.calculate_acceleration(
