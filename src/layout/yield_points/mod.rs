@@ -122,6 +122,14 @@ pub(crate) struct YieldPoint {
 
 impl YieldPoint {
     pub const YIELD_DISTANCE_FROM_CONFLICT_METRES: f32 = 5.0;
+
+    pub const fn progress(&self) -> f32 {
+        self.progress
+    }
+
+    pub const fn segment_id(&self) -> Entity {
+        self.segment_id
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Reflect)]
@@ -129,4 +137,13 @@ pub(crate) struct YieldPointIndex {
     arm_index: usize,
     /// The index of the entry (yielding) lane.
     lane_index: usize,
+}
+
+impl YieldPointIndex {
+    pub const fn new(arm_index: usize, lane_index: usize) -> Self {
+        YieldPointIndex {
+            arm_index,
+            lane_index,
+        }
+    }
 }

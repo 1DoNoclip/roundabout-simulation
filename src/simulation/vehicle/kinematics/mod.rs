@@ -20,8 +20,10 @@ impl Plugin for KinematicsPlugin {
 pub(in crate::simulation) fn calculate_accelerations(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
     conflict_points: Res<RoundaboutConflictPoints>,
+    yield_points: Res<RoundaboutYieldPoints>,
     segments: Query<&Segment>,
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+    entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
     exit_deflection_segments: Query<(), With<segment_type::ExitDeflection>>,
     intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
@@ -36,10 +38,36 @@ pub(in crate::simulation) fn calculate_accelerations(
         let current_segment_id = navigator.current_segment_id();
         // If the vehicle is on an entry line, then check if it needs to yield.
         if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
-            let distance_to_line = Distance::try_new_metres(
-                (1.0 - navigator.progress()) * entry_segment.length_metres(),
-            )
-            .expect("expected to be positive");
+            let (entry_deflection_segment_id, entry_deflection_segment) = entry_deflection_segments
+                .iter()
+                .find(|&(_, segment)| {
+                    segment.arm_id() == entry_segment.arm_id()
+                        && segment.lane_index() == entry_segment.lane_index()
+                })
+                .expect(&format!(
+                    "{current_segment_id:?} should have an entry deflection segment after"
+                ));
+            let yield_point = yield_points
+                .get(YieldPointIndex::new(
+                    entry_segment.arm_index(),
+                    entry_segment.lane_index(),
+                ))
+                .expect("expected to find a yield point for this entry");
+
+            // let distance_to_line = Distance::try_new_metres(
+            //     (1.0 - navigator.progress()) * entry_segment.length_metres(),
+            // )
+            // .expect("expected to be positive");
+            let distance_to_yield =
+                Distance::try_new_metres(if yield_point.segment_id() == current_segment_id {
+                    panic!()
+                } else if yield_point.segment_id() == entry_deflection_segment_id {
+                    (1.0 - navigator.progress()) * entry_segment.length_metres()
+                        + yield_point.progress() * entry_deflection_segment.length_metres()
+                } else {
+                    panic!("yield point is not on either entry line or deflection segment");
+                })
+                .expect("expected distance to be positive");
 
             let entry_arm_index = entry_segment.arm_index();
             let entry_lane_index = entry_segment.lane_index();
@@ -59,14 +87,14 @@ pub(in crate::simulation) fn calculate_accelerations(
                 // Virtual object at the yield line, forcing this vehicle to yield.
                 let virtual_lead_vehicle = LeadVehicleInfo {
                     vehicle_kind: VehicleKind::Virtual,
-                    distance: distance_to_line,
+                    distance: distance_to_yield,
                     speed: Speed::ZERO,
                 };
 
                 // Replace the actual lead vehicle with a virtual lead
-                // vehicle if the virtual is closer to the yield line.
+                // vehicle if the yield line is closer than the lead vehicle.
                 lead_vehicle_info = match lead_vehicle_info {
-                    Some(lead_vehicle_info) if *lead_vehicle_info.distance < *distance_to_line => {
+                    Some(lead_vehicle_info) if *lead_vehicle_info.distance < *distance_to_yield => {
                         Some(lead_vehicle_info)
                     }
                     _ => Some(virtual_lead_vehicle),
