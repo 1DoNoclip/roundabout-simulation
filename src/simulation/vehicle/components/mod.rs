@@ -52,25 +52,30 @@ impl IdmDriver {
         let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
 
         let intersection_term = if let Some(lead_vehicle_info) = lead_vehicle_info {
-            let s = *lead_vehicle_info.distance
-                // If the lead vehicle is virtual (a yield line), then do not add a safety buffer.
-                - match lead_vehicle_info.vehicle_kind {
-                    VehicleKind::Real { length_metres } => length_metres + Kinematics::LENGTH_SAFETY_BUFFER_METRES,
-                    VehicleKind::Virtual => 0.0,
-                };
+            // The actual distance to the lead vehicle's rear bumper.
+            // let s = *lead_vehicle_info.distance
+            //     // If the lead vehicle is virtual (a yield line), then do not add a safety buffer.
+            //     - match lead_vehicle_info.vehicle_kind {
+            //         VehicleKind::Real { length_metres } => length_metres,
+            //         VehicleKind::Virtual => 0.0,
+            //     };
+            let (s, minimum_gap) = match lead_vehicle_info.vehicle_kind {
+                VehicleKind::Real { length_metres } => (
+                    *lead_vehicle_info.distance - length_metres,
+                    *self.minimum_gap,
+                ),
+                VehicleKind::Virtual => (*lead_vehicle_info.distance, 0.0),
+            };
             let v_lead = *lead_vehicle_info.speed;
             let delta_v = v - v_lead;
 
             let dynamic_gap = (v * delta_v) / (2.0 * (a * b).sqrt());
+            // The desired distance for this vehicle to have to the lead vehicle.
             let s_star = (v * self.time_headway.as_secs_f32())
                 + (dynamic_gap.max(0.0))
                 // If the lead vehicle is actually a yield line, then allow
                 // this vehicle to pull right up to it, ignoring `minimum_gap`.
-                + if let VehicleKind::Virtual = lead_vehicle_info.vehicle_kind {
-                    0.0
-                } else {
-                    *self.minimum_gap
-                };
+                + minimum_gap;
 
             (s_star / s.max(0.1)).powi(2)
         } else {
@@ -134,9 +139,6 @@ pub(crate) struct Kinematics {
 }
 
 impl Kinematics {
-    /// Behind vehicles will give an additional distance instead of drive into the lead vehicle's bumper.
-    pub const LENGTH_SAFETY_BUFFER_METRES: f32 = 1.0;
-
     pub const fn new(
         target_speed: Speed,
         max_acceleration: Acceleration,
