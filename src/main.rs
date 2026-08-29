@@ -1,16 +1,6 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use roundabout_simulation::*;
 
 fn main() {
-    App::new()
-        // Core Bevy & third-party plugins.
-        .add_plugins((
-            DefaultPlugins,
-            EguiPlugin::default(),
-            WorldInspectorPlugin::default(),
-        ))
-        // Domain plugins.
-        .add_plugins(AppSetupPlugin)
-        .run();
+    App::new().add_plugins(AppSetupPlugin).run();
 }
