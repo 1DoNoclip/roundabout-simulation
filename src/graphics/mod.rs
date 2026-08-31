@@ -20,6 +20,31 @@ impl Plugin for GraphicsPlugin {
     }
 }
 
+/// Displays "RENDERING DISABLED" on the screen when `--no-render` is used.
+pub(super) fn setup_no_render_overlay(mut commands: Commands) {
+    const MESSAGE: &str = "RENDERING DISABLED";
+    const LENGTH: usize = MESSAGE.len();
+
+    commands.spawn((
+        Text::new(MESSAGE),
+        TextFont {
+            // Use 75% of the screen width.
+            font_size: FontSize::Vw(75.0 / LENGTH as f32),
+            ..default()
+        },
+        TextColor(Color::srgb_u8(200, 50, 50)),
+        TextLayout::justify(Justify::Center),
+        Node {
+            position_type: PositionType::Absolute,
+            // The width of the box.
+            width: Val::Percent(75.0),
+            left: Val::Percent(12.5),
+            top: Val::Percent(55.0),
+            ..default()
+        },
+    ));
+}
+
 fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
     segments
         .iter()

@@ -1,12 +1,4 @@
-use bevy::{
-    ecs::entity::EntityHashMap,
-    math::cubic_splines::LinearSpline,
-    prelude::*,
-    render::{
-        RenderPlugin,
-        settings::{Backends, RenderCreation, WgpuSettings},
-    },
-};
+use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
 use std::time::Duration;
@@ -31,37 +23,20 @@ impl Plugin for AppSetupPlugin {
         let cli_args = CliArgs::parse();
 
         if cli_args.no_render {
-            app.add_plugins(
-                DefaultPlugins
-                    .set(RenderPlugin {
-                        render_creation: RenderCreation::Automatic(Box::new(WgpuSettings {
-                            backends: Some(Backends::empty()), // Destroys active GPU driver attachments
-                            ..default()
-                        })),
-                        ..default()
-                    })
-                    // Keep the OS canvas hidden from desktop presentation views.
-                    .set(WindowPlugin {
-                        primary_window: Some(Window {
-                            title: "Simulation (Headless Keyboard Focus)".into(),
-                            visible: false,
-                            ..default()
-                        }),
-                        ..default()
-                    }),
-            );
+            app.add_systems(Startup, setup_no_render_overlay);
         } else {
-            // Normal visual display loop mode.
-            app.add_plugins((
-                DefaultPlugins,
-                GraphicsPlugin,
-                EguiPlugin::default(),
-                WorldInspectorPlugin::default(),
-            ));
+            app.add_plugins(GraphicsPlugin);
         }
 
-        // Register simulation code.
-        app.add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin))
+        // Core Bevy & third-party plugins.
+        app.insert_resource(cli_args)
+            .add_plugins((
+                DefaultPlugins,
+                EguiPlugin::default(),
+                WorldInspectorPlugin::default(),
+            ))
+            // Register simulation domain plugins.
+            .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin))
             .add_systems(
                 Startup,
                 (setup_roundabout_layout, setup_world, setup_simulation_time),
@@ -72,30 +47,31 @@ impl Plugin for AppSetupPlugin {
                     handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
                     set_time_speed,
                 ),
-            )
-            .insert_resource(cli_args);
+            );
     }
 }
 
 #[derive(Parser, Debug, Resource)]
 #[command(author, version, about)]
 struct CliArgs {
-    // Can use -p or --paused.
-    // Automatically parses into false.
+    // Can use `-p` or `--paused`.
+    // Automatically parses into false if omitted.
     /// Start the simulation paused.
     #[arg(short, long, default_value_t = false)]
     paused: bool,
 
-    // Use --run-after=<SECONDS>.
+    // Use `--run-after=<SECONDS>`.
     // Automatically parses into None if omitted.
     /// Initially pauses and delays playing the simulation by N real-world seconds.
     #[arg(long, value_name = "SECONDS")]
     run_after: Option<f32>,
 
-    // Use --no-render.
+    // Use `--nr` or `--no-render`.
     // Automatically parses into false if omitted.
-    /// Run the simulation in headless mode, preventing rendering.
-    #[arg(long, default_value_t = false)]
+    /// Run the simulation without rendering graphics.
+    ///
+    /// A blank window will still open to enable user input.
+    #[arg(long, alias = "nr", default_value_t = false)]
     no_render: bool,
 }
 
