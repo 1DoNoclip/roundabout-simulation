@@ -22,6 +22,10 @@ impl Plugin for AppSetupPlugin {
     fn build(&self, app: &mut App) {
         let cli_args = CliArgs::parse();
 
+        if !cli_args.no_inspector {
+            app.add_plugins((EguiPlugin::default(), WorldInspectorPlugin::default()));
+        }
+
         if cli_args.no_render {
             app.add_systems(Startup, setup_no_render_overlay);
         } else {
@@ -30,11 +34,7 @@ impl Plugin for AppSetupPlugin {
 
         // Core Bevy & third-party plugins.
         app.insert_resource(cli_args)
-            .add_plugins((
-                DefaultPlugins,
-                EguiPlugin::default(),
-                WorldInspectorPlugin::default(),
-            ))
+            .add_plugins(DefaultPlugins)
             // Register simulation domain plugins.
             .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin))
             .add_systems(
@@ -65,6 +65,10 @@ struct CliArgs {
     /// Initially pauses and delays playing the simulation by N real-world seconds.
     #[arg(long, value_name = "SECONDS")]
     run_after: Option<f32>,
+
+    /// Disables the `bevy_inspector_egui` crate's plugins.
+    #[arg(long, alias = "ni", default_value_t = false)]
+    no_inspector: bool,
 
     // Use `--nr` or `--no-render`.
     // Automatically parses into false if omitted.
