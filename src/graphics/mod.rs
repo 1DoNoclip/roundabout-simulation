@@ -73,13 +73,20 @@ fn draw_yield_points(mut gizmos: Gizmos, yield_points: Res<RoundaboutYieldPoints
     }
 }
 
-fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<&Transform, With<Navigator>>) {
-    for transform in vehicles.iter() {
-        // Draws a bright cyan circle with a 1.0 pixel radius
-        // at the vehicle's current coordinates.
-        gizmos.circle_2d(
-            transform.translation.truncate(),
-            1.0,
+fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>) {
+    for (kinematics, transform) in vehicles.iter() {
+        // // Draws a bright cyan circle with a 1.0 pixel radius
+        // // at the vehicle's current coordinates.
+        // gizmos.circle_2d(
+        //     transform.translation.truncate(),
+        //     1.0,
+        //     Color::linear_rgb(255.0, 100.0, 0.0),
+        // );
+        let start_position = transform.translation;
+        let end_position = start_position + kinematics.vehicle_length_metres();
+        gizmos.line(
+            start_position,
+            end_position,
             Color::linear_rgb(255.0, 100.0, 0.0),
         );
     }
