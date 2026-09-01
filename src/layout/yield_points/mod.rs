@@ -59,7 +59,7 @@ impl RoundaboutYieldPoints {
             // This yield point is valid.
             if deflection_yield_point_progress >= 0.0 {
                 let yield_location =
-                    entry_deflection_segment.sample_clamped(deflection_yield_point_progress);
+                    entry_deflection_segment.progress_at(deflection_yield_point_progress);
                 yield_points.insert(
                     YieldPointIndex {
                         arm_index: entry_deflection_segment.arm_index(),
@@ -85,7 +85,7 @@ impl RoundaboutYieldPoints {
                     remaining_progress * entry_deflection_segment.length_metres();
                 let entry_line_progress =
                     1.0 - (remaining_distance_metres / entry_line_segment.length_metres());
-                let yield_location = entry_line_segment.sample_clamped(entry_line_progress);
+                let yield_location = entry_line_segment.progress_at(entry_line_progress);
                 yield_points.insert(
                     YieldPointIndex {
                         arm_index: entry_line_segment.arm_index(),

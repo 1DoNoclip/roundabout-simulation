@@ -156,7 +156,7 @@ enum LaneType {
 pub(crate) struct StraightLinePoints(pub(crate) [Vec3; 2]);
 
 impl CurveLength for StraightLinePoints {
-    fn length(&self) -> f32 {
+    fn length_metres(&self) -> f32 {
         self.0
             .windows(2)
             .map(|pair| pair[0].distance(pair[1]))
@@ -164,20 +164,28 @@ impl CurveLength for StraightLinePoints {
     }
 }
 
-impl IntoEvaluator for StraightLinePoints {
-    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
+impl IntoEvaluators for StraightLinePoints {
+    fn into_evaluators(self) -> Evaluators {
         let linear_spline = LinearSpline::new(self.0);
         let curve = linear_spline
             .to_curve()
             .expect("failed to convert LinearSpline into CubicCurve");
-        Box::new(move |time| curve.sample_clamped(time))
+        let tangent_curve = curve.clone();
+
+        let position_evaluator = Box::new(move |time| curve.sample_clamped(time));
+        let tangent_evaluator =
+            Box::new(move |time| tangent_curve.velocity(time).normalize_or_zero());
+        // The curvature of the straight line is always 0.0.
+        let curvature_evaluator = Box::new(move |_| 0.0);
+
+        Evaluators::new(position_evaluator, tangent_evaluator, curvature_evaluator)
     }
 }
 
 pub(crate) struct DeflectionCurvePoints(pub(crate) [Vec3; 4]);
 
 impl CurveLength for DeflectionCurvePoints {
-    fn length(&self) -> f32 {
+    fn length_metres(&self) -> f32 {
         const TOTAL_SAMPLES: usize = 1_000;
 
         let cubic_bezier = CubicBezier::new([self.0]);
@@ -196,13 +204,33 @@ impl CurveLength for DeflectionCurvePoints {
     }
 }
 
-impl IntoEvaluator for DeflectionCurvePoints {
-    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
+impl IntoEvaluators for DeflectionCurvePoints {
+    fn into_evaluators(self) -> Evaluators {
         let cubic_bezier = CubicBezier::new([self.0]);
         let curve = cubic_bezier
             .to_curve()
             .expect("failed to convert CubicBezier into CubicCurve");
-        Box::new(move |time| curve.sample_clamped(time))
+        let tangent_curve = curve.clone();
+        let curvature_curve = curve.clone();
+
+        let position_evaluator = Box::new(move |time| curve.sample_clamped(time));
+        let tangent_evaluator =
+            Box::new(move |time| tangent_curve.velocity(time).normalize_or_zero());
+        let curvature_evaluator = Box::new(move |time| {
+            let d1 = curvature_curve.velocity(time);
+            let d2 = curvature_curve.acceleration(time);
+
+            let numerator = (d1.x * d2.y - d1.y * d2.x).abs();
+            let denominator = (d1.x.powi(2) + d1.y.powi(2)).powf(1.5);
+
+            if denominator < 1e-6 {
+                0.0
+            } else {
+                numerator / denominator
+            }
+        });
+
+        Evaluators::new(position_evaluator, tangent_evaluator, curvature_evaluator)
     }
 }
 
@@ -285,17 +313,32 @@ impl SectorGeometry {
 }
 
 impl CurveLength for SectorGeometry {
-    fn length(&self) -> f32 {
+    fn length_metres(&self) -> f32 {
         self.radius * (self.start_angle - self.end_angle)
     }
 }
 
-impl IntoEvaluator for SectorGeometry {
-    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static> {
-        Box::new(move |time| {
-            let angle = self.start_angle + time * (self.end_angle - self.start_angle);
-            Vec3::new(self.radius * angle.cos(), self.radius * angle.sin(), 0.0)
-        })
+impl IntoEvaluators for SectorGeometry {
+    fn into_evaluators(self) -> Evaluators {
+        let start_angle = self.start_angle;
+        let delta_angle = self.end_angle - self.start_angle;
+        let radius = self.radius;
+
+        let position_evaluator = Box::new(move |time| {
+            let angle: f32 = start_angle + time * delta_angle;
+            Vec3::new(radius * angle.cos(), radius * angle.sin(), 0.0)
+        });
+
+        let tangent_evaluator = Box::new(move |time| {
+            let angle: f32 = start_angle + time * delta_angle;
+            // The tangent derivative of (cos(theta), sin(theta)) is (-sin(theta), cos(theta)).
+            // We scale by signum of delta_angle to preserve direction (clockwise or anti-clockwise).
+            (Vec3::new(-angle.sin(), angle.cos(), 0.0) * delta_angle.signum()).normalize_or_zero()
+        });
+
+        let curvature_evaluator = Box::new(move |_| if radius > 1e-6 { 1.0 / radius } else { 0.0 });
+
+        Evaluators::new(position_evaluator, tangent_evaluator, curvature_evaluator)
     }
 }
 

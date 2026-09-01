@@ -75,13 +75,7 @@ fn draw_yield_points(mut gizmos: Gizmos, yield_points: Res<RoundaboutYieldPoints
 
 fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>) {
     for (kinematics, transform) in vehicles.iter() {
-        // // Draws a bright cyan circle with a 1.0 pixel radius
-        // // at the vehicle's current coordinates.
-        // gizmos.circle_2d(
-        //     transform.translation.truncate(),
-        //     1.0,
-        //     Color::linear_rgb(255.0, 100.0, 0.0),
-        // );
+        // Todo: Write a comment here.
         let start_position = transform.translation;
         let end_position = start_position + kinematics.vehicle_length_metres();
         gizmos.line(
@@ -130,10 +124,10 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
     let gizmo_colors =
         color_override.unwrap_or_else(|| GizmoColors::get_colors(segment.connection()));
 
-    let mut previous_point = segment.sample_clamped(0.0);
+    let mut previous_point = segment.progress_at(0.0);
     for step in 1..=NUMBER_OF_SAMPLES {
         let time = step as f32 / NUMBER_OF_SAMPLES as f32;
-        let current_point = segment.sample_clamped(time);
+        let current_point = segment.progress_at(time);
         gizmos.line(previous_point, current_point, gizmo_colors.segment);
         previous_point = current_point;
     }

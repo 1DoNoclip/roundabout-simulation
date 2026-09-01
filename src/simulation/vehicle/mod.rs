@@ -54,7 +54,7 @@ impl VehicleBundle {
             current_speed,
             current_acceleration,
             next_acceleration: NextAcceleration::from_acceleration(current_acceleration),
-            transform: Transform::from_translation(start_segment.sample_clamped(0.0)),
+            transform: Transform::from_translation(start_segment.progress_at(0.0)),
         })
     }
 }

@@ -89,10 +89,9 @@ impl Arm {
 #[derive(Component, Reflect)]
 #[reflect(Component, Default)]
 pub(crate) struct Segment {
-    /// The shape of the curve, where the f32 is the progress along the
-    /// curve (between 0.0 and 1.0) and Vec3 is the result position.
+    /// The position, tangent and curvature evaluator functions.
     #[reflect(ignore)]
-    evaluator: Box<dyn Fn(f32) -> Vec3 + Send + Sync>,
+    evaluators: Evaluators,
 
     /// While the start position can be calculated automatically with `self.sample_clamped(0.0)`,
     /// this is ran multiple times per second when spawning vehicles and always gives the same result.
@@ -130,11 +129,11 @@ impl Segment {
         connection: Connection,
         speed_limit: Speed,
     ) -> Self {
-        let length_metres = curve.length();
-        let evaluator = curve.into_evaluator();
-        let start_position = evaluator(0.0);
+        let length_metres = curve.length_metres();
+        let evaluators = curve.into_evaluators();
+        let start_position = evaluators.progress_at(0.0);
         Segment {
-            evaluator,
+            evaluators,
             start_position,
             arm_id,
             arm_index,
@@ -145,8 +144,8 @@ impl Segment {
         }
     }
 
-    pub fn sample_clamped(&self, time: f32) -> Vec3 {
-        (self.evaluator)(time)
+    pub fn progress_at(&self, time: f32) -> Vec3 {
+        self.evaluators.progress_at(time)
     }
 
     pub const fn start_position(&self) -> Vec3 {
@@ -174,12 +173,12 @@ impl Segment {
     }
 }
 
-// Default is required by reflect, should not be used manually.
+// Default is required by Reflect, should not be used manually.
 impl Default for Segment {
     fn default() -> Self {
         Self {
             // The evaluator's type does not implement Default, so cannot derive Default.
-            evaluator: Box::new(|_| Vec3::ZERO),
+            evaluators: Evaluators::dummy(),
             ..default()
         }
     }

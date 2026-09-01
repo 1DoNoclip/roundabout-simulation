@@ -176,7 +176,7 @@ pub(in crate::simulation) fn move_vehicles(
         let delta_progress = (*speed * delta_seconds) / current_segment.length_metres();
         match navigator.add_progress(delta_progress) {
             Ok(_) => {
-                transform.translation = current_segment.sample_clamped(navigator.progress());
+                transform.translation = current_segment.progress_at(navigator.progress());
             }
             Err(_overflow_progress) => match navigator.increment_current_segment_index() {
                 // The vehicle moves onto the next segment.

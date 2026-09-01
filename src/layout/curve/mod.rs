@@ -9,19 +9,65 @@ impl Plugin for CurvePlugin {
 }
 
 /// A curve type used for segment evaluators.
-pub(crate) trait SegmentCurve: CurveLength + IntoEvaluator + Send + Sync + 'static {}
+pub(crate) trait SegmentCurve: CurveLength + IntoEvaluators + Send + Sync + 'static {}
 // Blanket implementation.
-impl<T> SegmentCurve for T where T: CurveLength + IntoEvaluator + Send + Sync + 'static {}
+impl<T> SegmentCurve for T where T: CurveLength + IntoEvaluators + Send + Sync + 'static {}
 
 /// The ability to get a length of a curve.
 pub(crate) trait CurveLength {
-    fn length(&self) -> f32;
+    fn length_metres(&self) -> f32;
 }
 
-/// The ability to convert a curve into an evaluator function.
-pub(crate) trait IntoEvaluator {
-    fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>;
+pub(crate) trait IntoEvaluators {
+    fn into_evaluators(self) -> Evaluators;
 }
+
+pub(crate) struct Evaluators {
+    position: Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>,
+    tangent: Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>,
+    curvature: Box<dyn Fn(f32) -> f32 + Send + Sync + 'static>,
+}
+
+impl Evaluators {
+    pub const fn new(
+        position: Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>,
+        tangent: Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>,
+        curvature: Box<dyn Fn(f32) -> f32 + Send + Sync + 'static>,
+    ) -> Self {
+        Evaluators {
+            position,
+            tangent,
+            curvature,
+        }
+    }
+
+    /// Used exclusively for the `Default` impl for `Segment`.
+    pub fn dummy() -> Self {
+        Evaluators {
+            position: Box::new(|_| Vec3::ZERO),
+            tangent: Box::new(|_| Vec3::ZERO),
+            curvature: Box::new(|_| 0.0),
+        }
+    }
+
+    /// Equivalent to `sample_clamped(time: f32)` of the original function.
+    pub fn progress_at(&self, progress: f32) -> Vec3 {
+        (self.position)(progress)
+    }
+
+    pub fn tangent_at(&self, progress: f32) -> Vec3 {
+        (self.tangent)(progress)
+    }
+
+    pub fn curvature_at(&self, progress: f32) -> f32 {
+        (self.curvature)(progress)
+    }
+}
+
+// /// The ability to convert a curve into an evaluator function.
+// pub(crate) trait IntoEvaluator {
+//     fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>;
+// }
 
 #[cfg(test)]
 mod tests {
@@ -32,7 +78,7 @@ mod tests {
         let points = [Vec3::new(0.0, 0.0, 0.0), Vec3::new(3.0, 4.0, 0.0)];
         let curve = StraightLinePoints(points);
 
-        let calculated_length = curve.length();
+        let calculated_length = curve.length_metres();
         let expected_length = 5.0;
 
         let epsilon = 0.001;
@@ -54,7 +100,7 @@ mod tests {
         ];
         let curve = DeflectionCurvePoints(points);
 
-        let calculated_length = curve.length();
+        let calculated_length = curve.length_metres();
         let expected_length = 10.0;
 
         let epsilon = 0.001;
@@ -76,7 +122,7 @@ mod tests {
         ];
         let curve = DeflectionCurvePoints(points);
 
-        let calculated_length = curve.length();
+        let calculated_length = curve.length_metres();
         let expected_length = 15.864;
 
         let epsilon = 0.005;
