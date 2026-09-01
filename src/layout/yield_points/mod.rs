@@ -25,7 +25,7 @@ impl RoundaboutYieldPoints {
         conflict_points: Res<RoundaboutConflictPoints>,
         roundabout_blueprint: Res<RoundaboutBlueprint>,
         entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
-        entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+        entry_line_segments: Query<(Entity, &Segment), With<segment_type::EntryLine>>,
     ) {
         let number_of_lanes = roundabout_blueprint.number_of_lanes();
 
@@ -74,7 +74,29 @@ impl RoundaboutYieldPoints {
             }
             // This yield point is invalid, so use the entry line instead.
             else {
-                todo!();
+                let (entry_line_segment_id, entry_line_segment) = entry_line_segments
+                    .iter()
+                    .find(|&(_, segment)| segment.arm_id() == entry_deflection_segment.arm_id()
+                        && segment.lane_index() == entry_deflection_segment.lane_index())
+                    .expect("expected to find matching entry line segment before entry deflection segment");
+
+                let remaining_progress = 1.0 + deflection_yield_point_progress;
+                let remaining_distance_metres =
+                    remaining_progress * entry_deflection_segment.length_metres();
+                let entry_line_progress =
+                    1.0 - (remaining_distance_metres / entry_line_segment.length_metres());
+                let yield_location = entry_line_segment.sample_clamped(entry_line_progress);
+                yield_points.insert(
+                    YieldPointIndex {
+                        arm_index: entry_line_segment.arm_index(),
+                        lane_index: entry_line_segment.lane_index(),
+                    },
+                    YieldPoint {
+                        location: yield_location,
+                        progress: entry_line_progress,
+                        segment_id: entry_line_segment_id,
+                    },
+                );
             }
         }
 

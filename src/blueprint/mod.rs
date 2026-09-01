@@ -132,38 +132,44 @@ impl ArmBlueprint {
 pub(crate) struct CircleBlueprint {
     /// Radius of the inner roundabout circle in metres.
     /// The distance between the centre and the centre of the inner circulating lane.
-    radius: f32,
+    radius_metres: f32,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
     /// Increases capacity and reduces safety by increasing entry speeds.
-    deflection_radius: f32,
+    deflection_radius_metres: f32,
 }
 
 impl CircleBlueprint {
-    pub fn try_new(radius: f32, deflection_radius: f32) -> Result<Self, String> {
-        if radius <= 0.0 || radius.is_nan() {
-            Err(format!("radius must be positive, found {radius}"))
-        } else if deflection_radius <= 0.0 || deflection_radius.is_nan() {
+    pub fn try_new(radius_metres: f32, deflection_radius_metres: f32) -> Result<Self, String> {
+        if radius_metres.is_nan() || deflection_radius_metres.is_nan() {
             Err(format!(
-                "deflection_radius must be positive, found {deflection_radius}"
+                "radius_metres ({radius_metres}) or deflection_radius_metres ({deflection_radius_metres}) is NaN"
             ))
-        } else if deflection_radius > radius {
+        }
+        // Note: Jank is still possible due to 5.0m not being a special value.
+        // If there are too many lanes and too small deflection radius, then the deflections
+        // will loop back on themselves to fit into their predetermined end points.
+        else if deflection_radius_metres < 5.0 {
             Err(format!(
-                "deflection_radius ({deflection_radius}) cannot exceed radius ({radius})"
+                "deflection_radius_metres must be < 5.0, found {deflection_radius_metres}"
+            ))
+        } else if deflection_radius_metres > radius_metres {
+            Err(format!(
+                "deflection_radius_metres ({deflection_radius_metres}) cannot exceed radius_metres ({radius_metres})"
             ))
         } else {
             Ok(CircleBlueprint {
-                radius,
-                deflection_radius,
+                radius_metres,
+                deflection_radius_metres,
             })
         }
     }
 
     pub const fn radius(&self) -> f32 {
-        self.radius
+        self.radius_metres
     }
 
     pub const fn deflection_radius(&self) -> f32 {
-        self.deflection_radius
+        self.deflection_radius_metres
     }
 }
 
