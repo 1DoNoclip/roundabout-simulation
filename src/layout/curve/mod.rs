@@ -51,7 +51,7 @@ impl Evaluators {
     }
 
     /// Equivalent to `sample_clamped(time: f32)` of the original function.
-    pub fn progress_at(&self, progress: f32) -> Vec3 {
+    pub fn position_at(&self, progress: f32) -> Vec3 {
         (self.position)(progress)
     }
 

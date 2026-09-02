@@ -176,7 +176,17 @@ pub(in crate::simulation) fn move_vehicles(
         let delta_progress = (*speed * delta_seconds) / current_segment.length_metres();
         match navigator.add_progress(delta_progress) {
             Ok(_) => {
-                transform.translation = current_segment.progress_at(navigator.progress());
+                let progress = navigator.progress();
+
+                let position = current_segment.position_at(progress);
+                transform.translation = position;
+
+                // Note: This does come at a small unnecessary cost if rendering is disabled
+                // as the vehicle rotation does not matter apart from when rendering it.
+                let tangent = current_segment.tangent_at(progress);
+                // For 2D (XY) plane, calculate the angle from the tangent vector.
+                let angle = tangent.y.atan2(tangent.x);
+                transform.rotation = Quat::from_rotation_z(angle);
             }
             Err(_overflow_progress) => match navigator.increment_current_segment_index() {
                 // The vehicle moves onto the next segment.

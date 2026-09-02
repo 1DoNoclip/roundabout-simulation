@@ -6,6 +6,8 @@ impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SegmentInspectorState>()
             .register_type::<SegmentInspectorState>()
+            .init_gizmo_group::<VehicleGizmos>()
+            .add_systems(Startup, setup_gizmos)
             .add_systems(
                 Update,
                 (
@@ -45,6 +47,11 @@ pub(super) fn setup_no_render_overlay(mut commands: Commands) {
     ));
 }
 
+fn setup_gizmos(mut config_store: ResMut<GizmoConfigStore>) {
+    let (config, _) = config_store.config_mut::<VehicleGizmos>();
+    config.line.width = 4.0;
+}
+
 fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
     segments
         .iter()
@@ -73,15 +80,22 @@ fn draw_yield_points(mut gizmos: Gizmos, yield_points: Res<RoundaboutYieldPoints
     }
 }
 
-fn draw_vehicles(mut gizmos: Gizmos, vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>) {
+/// Used to draw vehicles with a different line width.
+#[derive(Default, GizmoConfigGroup, Reflect)]
+struct VehicleGizmos;
+
+fn draw_vehicles(mut gizmos: Gizmos<VehicleGizmos>, vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>) {
     for (kinematics, transform) in vehicles.iter() {
-        // Todo: Write a comment here.
+        let direction = transform.rotation * Vec3::X;
+        let length = kinematics.vehicle_length_metres();
+
         let start_position = transform.translation;
-        let end_position = start_position + kinematics.vehicle_length_metres();
+        let end_position = start_position + (direction * length);
+
         gizmos.line(
             start_position,
             end_position,
-            Color::linear_rgb(255.0, 100.0, 0.0),
+            Color::linear_rgb(255.0, 0.0, 255.0),
         );
     }
 }
@@ -124,10 +138,10 @@ fn draw_segment(gizmos: &mut Gizmos, segment: &Segment, color_override: Option<G
     let gizmo_colors =
         color_override.unwrap_or_else(|| GizmoColors::get_colors(segment.connection()));
 
-    let mut previous_point = segment.progress_at(0.0);
+    let mut previous_point = segment.position_at(0.0);
     for step in 1..=NUMBER_OF_SAMPLES {
         let time = step as f32 / NUMBER_OF_SAMPLES as f32;
-        let current_point = segment.progress_at(time);
+        let current_point = segment.position_at(time);
         gizmos.line(previous_point, current_point, gizmo_colors.segment);
         previous_point = current_point;
     }
@@ -172,7 +186,7 @@ impl GizmoColors {
             Connection::Direct { .. } => {
                 //| Connection::Diverge { .. } => {
                 // White / grey.
-                GizmoColors::srgb_u8([203, 203, 203], [142, 142, 142])
+                GizmoColors::srgb_u8([100, 100, 100], [100, 100, 100])
             }
             Connection::Diverge { .. } => {
                 // Grey / grey.

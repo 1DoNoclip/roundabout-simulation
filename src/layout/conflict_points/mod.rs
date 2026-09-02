@@ -103,7 +103,7 @@ impl ConflictPoint {
     ) -> Option<Self> {
         let (conflict_location, entry_deflection_progress, intra_arm_sector_progress) = if is_merge
         {
-            (intra_arm_sector.progress_at(1.0), 1.0, 1.0)
+            (intra_arm_sector.position_at(1.0), 1.0, 1.0)
         } else {
             ConflictPoint::get_entry_deflection_intra_arm_conflict_progresses(
                 entry_deflection,
@@ -140,13 +140,13 @@ impl ConflictPoint {
         // to 3D as distance here does not need height differences.
         let entry_deflection_data: [(f32, Vec2); COARSE_STEPS] = std::array::from_fn(|index| {
             let progress = index as f32 / (COARSE_STEPS - 1) as f32;
-            let position_3d = entry_deflection.progress_at(progress);
+            let position_3d = entry_deflection.position_at(progress);
             let position_2d = Vec2::new(position_3d.x, position_3d.y);
             (progress, position_2d)
         });
         let sector_data: [(f32, Vec2); COARSE_STEPS] = std::array::from_fn(|index| {
             let progress = index as f32 / (COARSE_STEPS - 1) as f32;
-            let position_3d = intra_arm_sector.progress_at(progress);
+            let position_3d = intra_arm_sector.position_at(progress);
             let position_2d = Vec2::new(position_3d.x, position_3d.y);
             (progress, position_2d)
         });
@@ -187,13 +187,13 @@ impl ConflictPoint {
             for entry_offset in offsets {
                 let test_entry_progress =
                     (best_entry_progress + entry_offset * entry_step).clamp(0.0, 1.0);
-                let entry_position_3d = entry_deflection.progress_at(test_entry_progress);
+                let entry_position_3d = entry_deflection.position_at(test_entry_progress);
                 let entry_position_2d = Vec2::new(entry_position_3d.x, entry_position_3d.y);
 
                 for sector_offset in offsets {
                     let sector_test_progress =
                         (best_sector_progress + sector_offset * sector_step).clamp(0.0, 1.0);
-                    let sector_position_3d = intra_arm_sector.progress_at(sector_test_progress);
+                    let sector_position_3d = intra_arm_sector.position_at(sector_test_progress);
                     let sector_position_2d = Vec2::new(sector_position_3d.x, sector_position_3d.y);
 
                     let distance_squared = entry_position_2d.distance_squared(sector_position_2d);

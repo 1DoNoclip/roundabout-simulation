@@ -131,7 +131,7 @@ impl Segment {
     ) -> Self {
         let length_metres = curve.length_metres();
         let evaluators = curve.into_evaluators();
-        let start_position = evaluators.progress_at(0.0);
+        let start_position = evaluators.position_at(0.0);
         Segment {
             evaluators,
             start_position,
@@ -144,8 +144,16 @@ impl Segment {
         }
     }
 
-    pub fn progress_at(&self, time: f32) -> Vec3 {
-        self.evaluators.progress_at(time)
+    pub fn position_at(&self, progress: f32) -> Vec3 {
+        self.evaluators.position_at(progress)
+    }
+
+    pub fn tangent_at(&self, progress: f32) -> Vec3 {
+        self.evaluators.tangent_at(progress)
+    }
+
+    pub fn curvature_at(&self, progress: f32) -> f32 {
+        self.evaluators.curvature_at(progress)
     }
 
     pub const fn start_position(&self) -> Vec3 {
