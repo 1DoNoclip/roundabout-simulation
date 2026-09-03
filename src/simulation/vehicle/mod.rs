@@ -44,7 +44,7 @@ impl VehicleBundle {
         let start_segment = segments
             .get(navigator.current_segment_id())
             .expect("expected to find a Segment component");
-        let current_acceleration = Acceleration::new_metres_per_second_squared(0.0);
+        let current_acceleration = Acceleration::new(0.0);
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
             vehicle: Vehicle,
@@ -53,7 +53,7 @@ impl VehicleBundle {
             navigator,
             current_speed,
             current_acceleration,
-            next_acceleration: NextAcceleration::from_acceleration(current_acceleration),
+            next_acceleration: NextAcceleration::from(current_acceleration),
             transform: Transform::from_translation(start_segment.position_at(0.0)),
         })
     }
@@ -179,10 +179,10 @@ fn spawn_vehicle(
     commands.spawn(
         VehicleBundle::try_new(
             &segments,
-            Speed::try_miles_per_hour(5.0).expect("failed to create"),
-            Speed::try_miles_per_hour(60.0).expect("failed to create"),
-            Acceleration::new_metres_per_second_squared(3.0),
-            Acceleration::new_metres_per_second_squared(-8.0),
+            Speed::try_new(MilesPerHour(5.0)).expect("failed to create"),
+            Speed::try_new(MilesPerHour(60.0)).expect("failed to create"),
+            Acceleration::new(3.0),
+            Acceleration::new(-8.0),
             route,
         )
         .expect("failed to spawn VehicleBundle"),

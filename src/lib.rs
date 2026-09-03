@@ -36,7 +36,13 @@ impl Plugin for AppSetupPlugin {
         app.insert_resource(cli_args)
             .add_plugins(DefaultPlugins)
             // Register simulation domain plugins.
-            .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin, UiPlugin))
+            .add_plugins((
+                BlueprintPlugin,
+                LayoutPlugin,
+                SimulationPlugin,
+                UiPlugin,
+                UtilsPlugin,
+            ))
             .add_systems(
                 Startup,
                 (setup_roundabout_layout, setup_world, setup_simulation_time),
@@ -170,13 +176,14 @@ fn setup_roundabout_layout(mut commands: Commands) {
         ArmBlueprint::from_degrees(-180.0, None, 1.0),
         ArmBlueprint::from_degrees(-270.0, None, 0.15),
     ];
-    let circle_blueprint = CircleBlueprint::try_new(30.0, 15.0).expect("failed to create");
+    let circle_blueprint =
+        CircleBlueprint::try_new(Meters(30.0), Meters(15.0)).expect("failed to create");
     commands.insert_resource(
         RoundaboutBlueprint::try_new(
             arm_blueprints,
             circle_blueprint,
             2,
-            Speed::try_miles_per_hour(30.0).expect("failed to create"),
+            Speed::try_new(MilesPerHour(30.0)).expect("failed to create"),
         )
         .expect("failed to create"),
     );
@@ -197,14 +204,15 @@ mod tests {
             ArmBlueprint::from_degrees(120.0, None, 0.5),
             ArmBlueprint::from_degrees(240.0, None, 0.5),
         ];
-        let circle_blueprint = CircleBlueprint::try_new(20.0, 15.0).expect("failed to create");
+        let circle_blueprint =
+            CircleBlueprint::try_new(Meters(20.0), Meters(15.0)).expect("failed to create");
 
         app.insert_resource(
             RoundaboutBlueprint::try_new(
                 arm_blueprints,
                 circle_blueprint,
                 2,
-                Speed::try_miles_per_hour(30.0).expect("failed to create"),
+                Speed::try_new(MilesPerHour(30.0)).expect("failed to create"),
             )
             .expect("failed to create"),
         );

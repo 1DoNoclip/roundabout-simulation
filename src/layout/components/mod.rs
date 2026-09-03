@@ -112,9 +112,9 @@ pub(crate) struct Segment {
     /// While length can be calculated automatically with `self.length()`,
     /// this is computationally expensive so it is only run once and cached.
     ///
-    /// Performing `self.length_metres()` each frame for each segment is a
+    /// Performing `self.length()` each frame for each segment is a
     /// huge waste of resources when the length does not change after creation.
-    length_metres: f32,
+    length: Meters,
 
     /// The maximum speed allowed for vehicles to travel at.
     speed_limit: Speed,
@@ -129,7 +129,7 @@ impl Segment {
         connection: Connection,
         speed_limit: Speed,
     ) -> Self {
-        let length_metres = curve.length_metres();
+        let length = curve.length().into();
         let evaluators = curve.into_evaluators();
         let start_position = evaluators.position_at(0.0);
         Segment {
@@ -139,7 +139,7 @@ impl Segment {
             arm_index,
             lane_index,
             connection,
-            length_metres,
+            length,
             speed_limit,
         }
     }
@@ -176,8 +176,8 @@ impl Segment {
         &self.connection
     }
 
-    pub const fn length_metres(&self) -> f32 {
-        self.length_metres
+    pub const fn length(&self) -> Meters {
+        self.length
     }
 }
 

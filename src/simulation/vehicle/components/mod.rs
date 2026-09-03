@@ -42,11 +42,11 @@ impl IdmDriver {
         target_speed: Speed,
         lead_vehicle_info: Option<LeadVehicleInfo>,
     ) -> Acceleration {
-        let v = *current_speed;
+        let v = **current_speed;
         // Vehicles will drive at their desired_speed_percentage of the target speed.
-        let v_0 = self.desired_speed_percentage * *target_speed;
-        let a = *self.comfortable_acceleration;
-        let b = *self.comfortable_deceleration;
+        let v_0 = self.desired_speed_percentage * **target_speed;
+        let a = **self.comfortable_acceleration;
+        let b = **self.comfortable_deceleration;
 
         // Free road acceleration term.
         let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
@@ -61,12 +61,12 @@ impl IdmDriver {
             //     };
             let (s, minimum_gap) = match lead_vehicle_info.vehicle_kind {
                 VehicleKind::Real { length_metres } => (
-                    *lead_vehicle_info.distance - length_metres,
-                    *self.minimum_gap,
+                    **lead_vehicle_info.distance - length_metres,
+                    **self.minimum_gap,
                 ),
-                VehicleKind::Virtual => (*lead_vehicle_info.distance, 0.0),
+                VehicleKind::Virtual => (**lead_vehicle_info.distance, 0.0),
             };
-            let v_lead = *lead_vehicle_info.speed;
+            let v_lead = **lead_vehicle_info.speed;
             let delta_v = v - v_lead;
 
             let dynamic_gap = (v * delta_v) / (2.0 * (a * b).sqrt());
@@ -82,9 +82,7 @@ impl IdmDriver {
             0.0
         };
 
-        Acceleration::new_metres_per_second_squared(
-            *self.comfortable_acceleration * (free_road_term - intersection_term),
-        )
+        Acceleration::new(**self.comfortable_acceleration * (free_road_term - intersection_term))
     }
 
     pub const fn critical_gap(&self) -> Duration {
@@ -96,9 +94,9 @@ impl Default for IdmDriver {
     fn default() -> Self {
         IdmDriver {
             desired_speed_percentage: 0.95,
-            comfortable_acceleration: Acceleration::new_metres_per_second_squared(2.5),
-            comfortable_deceleration: Acceleration::new_metres_per_second_squared(-2.0),
-            minimum_gap: Distance::try_new_metres(2.0).expect("failed to create"),
+            comfortable_acceleration: Acceleration::new(2.5),
+            comfortable_deceleration: Acceleration::new(-2.0),
+            minimum_gap: Distance::try_new(Meters(2.0)).expect("failed to create"),
             time_headway: Duration::from_secs_f32(1.5),
             critical_gap: Duration::from_secs_f32(3.5),
             exponent: 4.0,

@@ -5,15 +5,15 @@ pub(super) struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(MapSettings::default())
-            .insert_resource(SimulationSettings::default());
+        // app.insert_resource(MapSettings::default())
+        //     .insert_resource(SimulationSettings::default());
     }
 }
 
 #[derive(Resource)]
 struct MapSettings {
     number_of_lanes: usize,
-    speed_limit_metres_per_second: MetresPerSecond,
+    speed_limit_metres_per_second: MetersPerSecond,
     radius_metres: f32,
     deflection_radius_metres: f32,
     arms: Vec<ArmSettings>,

@@ -8,8 +8,8 @@ impl Plugin for GeometryPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
-/// The width of a singular lane of roads and roundabout in metres.
-pub(crate) const LANE_WIDTH: f32 = 3.5;
+/// The width of a singular lane of roads and roundabout in meters.
+pub(crate) const LANE_WIDTH: Meters = Meters(3.5);
 
 /// Defines the geometry of a singular lane that approaches or exits the roundabout.
 /// At least one entry and one exit `LaneGeometry` is required to make up an arm.
@@ -24,8 +24,8 @@ impl LaneGeometry {
     pub fn generate_entry(
         arm_angle: Rot2,
         lane_index: usize,
-        roundabout_radius: f32,
-        deflection_radius: f32,
+        roundabout_radius: impl Into<Meters>,
+        deflection_radius: impl Into<Meters>,
     ) -> Self {
         LaneGeometry::generate(
             LaneType::Entry,
@@ -39,8 +39,8 @@ impl LaneGeometry {
     pub fn generate_exit(
         arm_angle: Rot2,
         lane_index: usize,
-        roundabout_radius: f32,
-        deflection_radius: f32,
+        roundabout_radius: impl Into<Meters>,
+        deflection_radius: impl Into<Meters>,
     ) -> Self {
         LaneGeometry::generate(
             LaneType::Exit,
@@ -59,16 +59,19 @@ impl LaneGeometry {
         geometry_type: LaneType,
         arm_angle: Rot2,
         lane_index: usize,
-        roundabout_radius: f32,
-        deflection_radius: f32,
+        roundabout_radius: impl Into<Meters>,
+        deflection_radius: impl Into<Meters>,
     ) -> Self {
-        // The radius to the centre of the target circulating lane.
-        let target_ring_radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
-        // The offset of the lane from the inner lane.
-        let lane_offset = (LANE_WIDTH / 2.0) + (lane_index as f32 * LANE_WIDTH);
-        let deflection_start_distance = roundabout_radius + deflection_radius;
+        let roundabout_radius = roundabout_radius.into();
+        let deflection_radius = deflection_radius.into();
 
-        let angular_displacement = deflection_radius / roundabout_radius;
+        // The radius to the centre of the target circulating lane.
+        let target_ring_radius = Meters(*roundabout_radius + (lane_index as f32 * *LANE_WIDTH));
+        // The offset of the lane from the inner lane.
+        let lane_offset = Meters((*LANE_WIDTH / 2.0) + (lane_index as f32 * *LANE_WIDTH));
+        let deflection_start_distance = Meters(*roundabout_radius + *deflection_radius);
+
+        let angular_displacement = *deflection_radius / *roundabout_radius;
 
         let arm_vector = Vec3::new(arm_angle.cos, arm_angle.sin, 0.0);
         let perpendicular_vector = Vec3::new(-arm_angle.sin, arm_angle.cos, 0.0);
@@ -76,8 +79,8 @@ impl LaneGeometry {
         match geometry_type {
             LaneType::Entry => {
                 // Entry sits on the left side of the arm centerline (-perpendicular).
-                let deflection_start =
-                    (arm_vector * deflection_start_distance) - (perpendicular_vector * lane_offset);
+                let deflection_start = (arm_vector * *deflection_start_distance)
+                    - (perpendicular_vector * *lane_offset);
 
                 // Entry starts 100m out and travels in towards deflection_start.
                 let spawn_point_start = deflection_start + (arm_vector * 100.0);
@@ -85,8 +88,8 @@ impl LaneGeometry {
                 // Entry joins the ring slightly before the arm angle (angular_displacement).
                 let entry_angle = arm_angle * Rot2::radians(-angular_displacement);
                 let deflection_end = Vec3::new(
-                    target_ring_radius * entry_angle.cos,
-                    target_ring_radius * entry_angle.sin,
+                    *target_ring_radius * entry_angle.cos,
+                    *target_ring_radius * entry_angle.sin,
                     0.0,
                 );
 
@@ -111,8 +114,8 @@ impl LaneGeometry {
             }
             LaneType::Exit => {
                 // Exit sits on the right side of the arm centerline (+perpendicular).
-                let deflection_end =
-                    (arm_vector * deflection_start_distance) + (perpendicular_vector * lane_offset);
+                let deflection_end = (arm_vector * *deflection_start_distance)
+                    + (perpendicular_vector * *lane_offset);
 
                 // Exit straight travels from deflection end outwards (+arm_vector).
                 let end_point_end = deflection_end + (arm_vector * 100.0);
@@ -120,8 +123,8 @@ impl LaneGeometry {
                 // Exit leaves the ring slightly after the arm angle (angular_displacement).
                 let exit_angle = arm_angle * Rot2::radians(angular_displacement);
                 let deflection_start = Vec3::new(
-                    target_ring_radius * exit_angle.cos,
-                    target_ring_radius * exit_angle.sin,
+                    *target_ring_radius * exit_angle.cos,
+                    *target_ring_radius * exit_angle.sin,
                     0.0,
                 );
 
@@ -156,11 +159,13 @@ enum LaneType {
 pub(crate) struct StraightLinePoints(pub(crate) [Vec3; 2]);
 
 impl CurveLength for StraightLinePoints {
-    fn length_metres(&self) -> f32 {
-        self.0
-            .windows(2)
-            .map(|pair| pair[0].distance(pair[1]))
-            .sum()
+    fn length(&self) -> impl Into<Meters> {
+        Meters(
+            self.0
+                .windows(2)
+                .map(|pair| pair[0].distance(pair[1]))
+                .sum(),
+        )
     }
 }
 
@@ -185,20 +190,22 @@ impl IntoEvaluators for StraightLinePoints {
 pub(crate) struct DeflectionCurvePoints(pub(crate) [Vec3; 4]);
 
 impl CurveLength for DeflectionCurvePoints {
-    fn length_metres(&self) -> f32 {
+    fn length(&self) -> impl Into<Meters> {
         const TOTAL_SAMPLES: usize = 1_000;
 
         let cubic_bezier = CubicBezier::new([self.0]);
         match cubic_bezier.to_curve() {
-            Ok(curve) => curve
-                .iter_positions(TOTAL_SAMPLES)
-                .collect::<Vec<_>>()
-                .windows(2)
-                .map(|pair| pair[0].distance(pair[1]))
-                .sum(),
+            Ok(curve) => Meters(
+                curve
+                    .iter_positions(TOTAL_SAMPLES)
+                    .collect::<Vec<_>>()
+                    .windows(2)
+                    .map(|pair| pair[0].distance(pair[1]))
+                    .sum(),
+            ),
             Err(error) => {
                 warn!("failed to convert CubicBezier into CubicCurve: {error}");
-                0.0
+                Meters(0.0)
             }
         }
     }
@@ -237,7 +244,7 @@ impl IntoEvaluators for DeflectionCurvePoints {
 /// Defines a singular sector on the circulating part of the roundabout.
 pub(crate) struct SectorGeometry {
     /// The radius of the sector.
-    radius: f32,
+    radius: Meters,
     /// The angle where the sector begins.
     start_angle: f32,
     /// The angle where the sector ends.
@@ -248,8 +255,8 @@ impl SectorGeometry {
     pub fn generate_intra_arm(
         arm_angle: Rot2,
         lane_index: usize,
-        roundabout_radius: f32,
-        deflection_radius: f32,
+        roundabout_radius: impl Into<Meters>,
+        deflection_radius: impl Into<Meters>,
     ) -> Self {
         SectorGeometry::generate(
             SectorType::IntraArm,
@@ -264,8 +271,8 @@ impl SectorGeometry {
         arm_angle: Rot2,
         next_arm_angle: Rot2,
         lane_index: usize,
-        roundabout_radius: f32,
-        deflection_radius: f32,
+        roundabout_radius: impl Into<Meters>,
+        deflection_radius: impl Into<Meters>,
     ) -> Self {
         SectorGeometry::generate(
             SectorType::InterArm { next_arm_angle },
@@ -280,12 +287,15 @@ impl SectorGeometry {
         sector_type: SectorType,
         arm_angle: Rot2,
         lane_index: usize,
-        roundabout_radius: f32,
-        deflection_radius: f32,
+        roundabout_radius: impl Into<Meters>,
+        deflection_radius: impl Into<Meters>,
     ) -> Self {
+        let roundabout_radius = roundabout_radius.into();
+        let deflection_radius = deflection_radius.into();
+
         // The radius of this circulating sector.
-        let radius = roundabout_radius + (lane_index as f32 * LANE_WIDTH);
-        let angular_displacement = deflection_radius / roundabout_radius;
+        let radius = Meters(*roundabout_radius + (lane_index as f32 * *LANE_WIDTH));
+        let angular_displacement = *deflection_radius / *roundabout_radius;
 
         let (start_angle, raw_end_angle) = match sector_type {
             SectorType::IntraArm => {
@@ -313,8 +323,8 @@ impl SectorGeometry {
 }
 
 impl CurveLength for SectorGeometry {
-    fn length_metres(&self) -> f32 {
-        self.radius * (self.start_angle - self.end_angle)
+    fn length(&self) -> impl Into<Meters> {
+        Meters(*self.radius * (self.start_angle - self.end_angle))
     }
 }
 
@@ -326,7 +336,7 @@ impl IntoEvaluators for SectorGeometry {
 
         let position_evaluator = Box::new(move |time| {
             let angle: f32 = start_angle + time * delta_angle;
-            Vec3::new(radius * angle.cos(), radius * angle.sin(), 0.0)
+            Vec3::new(*radius * angle.cos(), *radius * angle.sin(), 0.0)
         });
 
         let tangent_evaluator = Box::new(move |time| {
@@ -336,7 +346,8 @@ impl IntoEvaluators for SectorGeometry {
             (Vec3::new(-angle.sin(), angle.cos(), 0.0) * delta_angle.signum()).normalize_or_zero()
         });
 
-        let curvature_evaluator = Box::new(move |_| if radius > 1e-6 { 1.0 / radius } else { 0.0 });
+        let curvature_evaluator =
+            Box::new(move |_| if *radius > 1e-6 { 1.0 / *radius } else { 0.0 });
 
         Evaluators::new(position_evaluator, tangent_evaluator, curvature_evaluator)
     }

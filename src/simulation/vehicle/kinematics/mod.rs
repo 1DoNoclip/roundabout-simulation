@@ -3,16 +3,10 @@
 use crate::*;
 use bimap::BiHashMap;
 
-pub(crate) mod types;
-
-pub(crate) use types::*;
-
 pub(super) struct KinematicsPlugin;
 
 impl Plugin for KinematicsPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_plugins(TypesPlugin);
-    }
+    fn build(&self, _app: &mut App) {}
 }
 
 /// Calculates vehicles' accelerations due to the IDM model, road geometry (coming soon), and yield logic.
@@ -51,17 +45,17 @@ pub(in crate::simulation) fn calculate_accelerations(
             if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
             {
                 // If the yield point is on the entry line.
-                let distance_to_yield_metres = if yield_point.segment_id() == current_segment_id {
-                    (yield_point.progress() - navigator.progress()) * entry_segment.length_metres()
+                let distance_to_yield = Meters(if yield_point.segment_id() == current_segment_id {
+                    (yield_point.progress() - navigator.progress()) * *entry_segment.length()
                 }
                 // If the yield point is on the entry deflection.
                 else if yield_point.segment_id() == deflection_id {
-                    (1.0 - navigator.progress()) * entry_segment.length_metres()
-                        + yield_point.progress() * deflection_segment.length_metres()
+                    (1.0 - navigator.progress()) * *entry_segment.length()
+                        + yield_point.progress() * *deflection_segment.length()
                 } else {
                     -1.0
-                };
-                Some((arm_index, lane_index, distance_to_yield_metres))
+                });
+                Some((arm_index, lane_index, distance_to_yield))
             } else {
                 None
             }
@@ -74,9 +68,11 @@ pub(in crate::simulation) fn calculate_accelerations(
             if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
             {
                 if yield_point.segment_id() == deflection_id {
-                    let distance_to_yield_metres = (yield_point.progress() - navigator.progress())
-                        * deflection_segment.length_metres();
-                    Some((arm_index, lane_index, distance_to_yield_metres))
+                    let distance_to_yield = Meters(
+                        yield_point.progress()
+                            - navigator.progress() * *deflection_segment.length(),
+                    );
+                    Some((arm_index, lane_index, distance_to_yield))
                 } else {
                     None
                 }
@@ -87,11 +83,11 @@ pub(in crate::simulation) fn calculate_accelerations(
             None
         };
 
-        if let Some((entry_arm_index, entry_lane_index, distance_to_yield_metres)) = yield_context
+        if let Some((entry_arm_index, entry_lane_index, distance_to_yield)) = yield_context
             // Yield distance must be positive (else the vehicle is past the yield line)
             // and therefore we completely disregard using a virtual lead vehicle.
-            && let Ok(distance_to_yield) = Distance::try_new_metres(distance_to_yield_metres)
-                && *distance_to_yield > 0.0
+            && let Ok(distance_to_yield) = Distance::try_new(distance_to_yield)
+                && **distance_to_yield > 0.0
                 && let Ok(circulating_vehicles) = get_circulating_vehicles(
                     id,
                     entry_lane_index,
@@ -112,7 +108,7 @@ pub(in crate::simulation) fn calculate_accelerations(
             };
 
             lead_vehicle_info = match lead_vehicle_info {
-                Some(lead_vehicle_info) if *lead_vehicle_info.distance < *distance_to_yield => {
+                Some(lead_vehicle_info) if **lead_vehicle_info.distance < **distance_to_yield => {
                     Some(lead_vehicle_info)
                 }
                 _ => Some(virtual_yield_vehicle),
@@ -127,13 +123,13 @@ pub(in crate::simulation) fn calculate_accelerations(
             lead_vehicle_info,
         );
 
-        let new_acceleration = Acceleration::new_metres_per_second_squared(raw_acceleration.clamp(
-            *kinematics.max_deceleration(),
-            *kinematics.max_acceleration(),
+        let new_acceleration = Acceleration::new(raw_acceleration.clamp(
+            **kinematics.max_deceleration(),
+            **kinematics.max_acceleration(),
         ));
 
         if let Ok(mut next_acceleration) = next_accelerations.get_mut(id) {
-            *next_acceleration = NextAcceleration::from_acceleration(new_acceleration);
+            *next_acceleration = NextAcceleration::from(new_acceleration);
         }
     }
 }
@@ -152,7 +148,7 @@ pub(in crate::simulation) fn apply_accelerations(
 ) {
     let delta_seconds = time.delta_secs();
     for (mut speed, &acceleration) in query {
-        **speed += *acceleration * delta_seconds;
+        ***speed += **acceleration * delta_seconds;
     }
 }
 
@@ -173,7 +169,7 @@ pub(in crate::simulation) fn move_vehicles(
             warn!("Found no segment associated with segment entity.");
             continue;
         };
-        let delta_progress = (*speed * delta_seconds) / current_segment.length_metres();
+        let delta_progress = (**speed * delta_seconds) / *current_segment.length();
         match navigator.add_progress(delta_progress) {
             Ok(_) => {
                 let progress = navigator.progress();
@@ -282,8 +278,8 @@ fn get_circulating_vehicles(
                         format!("expected Segment for intra arm Entity {intra_arm_sector_id:?}")
                     })?;
 
-                intra_arm_segment.length_metres() * conflict_point.intra_arm_sector_progress
-                    + inter_arm_segment.length_metres() * (1.0 - navigator.progress())
+                *intra_arm_segment.length() * conflict_point.intra_arm_sector_progress
+                    + *inter_arm_segment.length() * (1.0 - navigator.progress())
             // If on the intra arm segment.
             } else {
                 let (_, intra_arm_segment) = intra_arm_sectors_query
@@ -292,7 +288,7 @@ fn get_circulating_vehicles(
                         format!("expected Segment for intra arm Entity {current_segment_id:?}")
                     })?;
 
-                intra_arm_segment.length_metres()
+                *intra_arm_segment.length()
                     * (conflict_point.intra_arm_sector_progress - navigator.progress())
             };
 
@@ -422,37 +418,39 @@ fn find_lead_vehicle(
     let (lead_index, lead_progress, lead_vehicle_id) =
         best_lead_vehicle.ok_or("failed to find a lead vehicle")?;
 
-    let total_distance = Distance::try_new_metres(if lead_index == 0 {
-        let segment_length = segments
-            .get(existing_route[0])
-            .map_err(|_| "expected to get segment component")?
-            .length_metres();
-        (lead_progress - this_progress) * segment_length
+    let total_distance = Distance::try_new(Meters(if lead_index == 0 {
+        let segment_length = Meters(
+            *segments
+                .get(existing_route[0])
+                .map_err(|_| "expected to get segment component")?
+                .length(),
+        );
+        (lead_progress - this_progress) * *segment_length
     } else {
         let mut total_distance = 0.0;
 
         let first_segment_length = segments
             .get(existing_route[0])
             .map_err(|_| "expected to get segment component")?
-            .length_metres();
-        total_distance += (1.0 - this_progress) * first_segment_length;
+            .length();
+        total_distance += (1.0 - this_progress) * *first_segment_length;
 
         for &id in existing_route.iter().take(lead_index).skip(1) {
             let segment_length = segments
                 .get(id)
                 .map_err(|_| "expected to get segment component")?
-                .length_metres();
-            total_distance += segment_length;
+                .length();
+            total_distance += *segment_length;
         }
 
         let last_segment_length = segments
             .get(existing_route[lead_index])
             .map_err(|_| "expected to get segment component")?
-            .length_metres();
-        total_distance += lead_progress * last_segment_length;
+            .length();
+        total_distance += lead_progress * *last_segment_length;
 
         total_distance
-    })?;
+    }))?;
 
     let (_, kinematics, _, lead_speed) = vehicles
         .get(lead_vehicle_id)
@@ -465,6 +463,19 @@ fn find_lead_vehicle(
         distance: total_distance,
         speed: *lead_speed,
     })
+}
+
+/// A vehicle's acceleration in the next frame.
+/// Used to prevent runtime panics from mutable and immutable borrows of `Acceleration`.
+///
+/// `Acceleration` is updated to the value of `NextAcceleration` each frame.
+#[derive(Clone, Component, Copy, Debug, Deref, DerefMut, Reflect)]
+pub(crate) struct NextAcceleration(Acceleration);
+
+impl From<Acceleration> for NextAcceleration {
+    fn from(value: Acceleration) -> Self {
+        NextAcceleration(value)
+    }
 }
 
 fn should_yield_at_entry(
@@ -482,7 +493,7 @@ fn should_yield_at_entry(
         }
         // If the vehicle is queued near the conflict zone then prevent entry.
         else if circulating_vehicle.distance_to_conflict_metres <= 8.0
-            && *circulating_vehicle.speed < 0.5
+            && **circulating_vehicle.speed < 0.5
         {
             return true;
         }
@@ -699,11 +710,11 @@ mod tests {
         /// Helper to construct a `CirculatingVehicleInfo` instance.
         fn create_circulating_vehicle(
             distance_metres: f32,
-            speed_metres_per_second: f32,
+            speed: MetersPerSecond,
         ) -> CirculatingVehicleInfo {
             CirculatingVehicleInfo {
                 distance_to_conflict_metres: distance_metres,
-                speed: Speed::try_new_metres_per_second(speed_metres_per_second).unwrap(),
+                speed: Speed::try_new(speed).unwrap(),
                 vehicle_length_metres: 4.5,
             }
         }
@@ -711,7 +722,8 @@ mod tests {
         #[test]
         fn yields_when_time_difference_is_within_critical_gap() {
             // Distance 15m @ 10 m/s -> TTA = 1.5s (< 3.0s critical gap) -> Must yield.
-            let circulating_vehicles = vec![create_circulating_vehicle(15.0, 10.0)];
+            let circulating_vehicles =
+                vec![create_circulating_vehicle(15.0, MetersPerSecond(10.0))];
 
             let should_yield = should_yield_at_entry(&circulating_vehicles, DEFAULT_CRITICAL_GAP);
 
@@ -721,7 +733,8 @@ mod tests {
         #[test]
         fn does_not_yield_when_time_difference_exceeds_critical_gap() {
             // Distance 40m @ 10 m/s -> TTA = 4.0s (>= 3.0s critical gap) -> Safe to proceed.
-            let circulating_vehicles = vec![create_circulating_vehicle(40.0, 10.0)];
+            let circulating_vehicles =
+                vec![create_circulating_vehicle(40.0, MetersPerSecond(10.0))];
 
             let should_yield = should_yield_at_entry(&circulating_vehicles, DEFAULT_CRITICAL_GAP);
 
@@ -731,7 +744,8 @@ mod tests {
         #[test]
         fn ignores_circulating_vehicles_that_have_cleared_the_conflict_point() {
             // Distance < 0.0 indicates the vehicle has already cleared the conflict point.
-            let circulating_vehicles = vec![create_circulating_vehicle(-5.0, 10.0)];
+            let circulating_vehicles =
+                vec![create_circulating_vehicle(-5.0, MetersPerSecond(10.0))];
 
             let should_yield = should_yield_at_entry(&circulating_vehicles, DEFAULT_CRITICAL_GAP);
 
@@ -741,7 +755,7 @@ mod tests {
         #[test]
         fn yields_when_vehicle_is_queued_near_conflict_zone() {
             // Distance < 12.0m and speed < 0.5 m/s -> Queued vehicle near conflict point -> Must yield.
-            let circulating_vehicles = vec![create_circulating_vehicle(8.0, 0.2)];
+            let circulating_vehicles = vec![create_circulating_vehicle(8.0, MetersPerSecond(0.2))];
 
             let should_yield = should_yield_at_entry(&circulating_vehicles, DEFAULT_CRITICAL_GAP);
 
