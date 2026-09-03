@@ -20,14 +20,19 @@ pub(crate) struct Vehicle;
 pub(crate) struct IdmDriver {
     /// The desired speed of this vehicle out of the speed limit.
     desired_speed_percentage: f32,
+    #[reflect(ignore)]
     comfortable_acceleration: Acceleration,
+    #[reflect(ignore)]
     comfortable_deceleration: Acceleration,
     /// The minimum distance a vehicle will leave when stopping behind another stationary vehicle.
+    #[reflect(ignore)]
     minimum_gap: Distance,
     /// The time difference when following a vehicle.
-    time_headway: Duration,
+    #[reflect(ignore)]
+    time_headway: UomTime,
     /// The minimum time gap the driver will enter the roundabout in.
-    critical_gap: Duration,
+    #[reflect(ignore)]
+    critical_gap: UomTime,
     exponent: f32,
 }
 
@@ -38,15 +43,19 @@ impl IdmDriver {
     /// * `lead_vehicle_info` - The information about the vehicle ahead (or a virtual yield line vehicle).
     pub fn calculate_acceleration(
         &self,
-        current_speed: Speed,
-        target_speed: Speed,
+        current_speed: Velocity,
+        target_speed: Velocity,
         lead_vehicle_info: Option<LeadVehicleInfo>,
     ) -> Acceleration {
-        let v = **current_speed;
+        let v = current_speed.get::<meter_per_second>();
         // Vehicles will drive at their desired_speed_percentage of the target speed.
-        let v_0 = self.desired_speed_percentage * **target_speed;
-        let a = **self.comfortable_acceleration;
-        let b = **self.comfortable_deceleration;
+        let v_0 = self.desired_speed_percentage * target_speed.get::<meter_per_second>();
+        let a = self
+            .comfortable_acceleration
+            .get::<meter_per_second_squared>();
+        let b = self
+            .comfortable_deceleration
+            .get::<meter_per_second_squared>();
 
         // Free road acceleration term.
         let free_road_term = 1.0 - (v / v_0).powf(self.exponent);
@@ -60,32 +69,32 @@ impl IdmDriver {
             //         VehicleKind::Virtual => 0.0,
             //     };
             let (s, minimum_gap) = match lead_vehicle_info.vehicle_kind {
-                VehicleKind::Real { length_metres } => (
-                    **lead_vehicle_info.distance - length_metres,
-                    **self.minimum_gap,
+                VehicleKind::Real(length) => (
+                    (*lead_vehicle_info.distance - length).get::<meter>(),
+                    self.minimum_gap,
                 ),
-                VehicleKind::Virtual => (**lead_vehicle_info.distance, 0.0),
+                VehicleKind::Virtual => (lead_vehicle_info.distance.get::<meter>(), Distance::ZERO),
             };
-            let v_lead = **lead_vehicle_info.speed;
+            let v_lead = lead_vehicle_info.speed.get::<meter_per_second>();
             let delta_v = v - v_lead;
 
             let dynamic_gap = (v * delta_v) / (2.0 * (a * b).sqrt());
             // The desired distance for this vehicle to have to the lead vehicle.
-            let s_star = (v * self.time_headway.as_secs_f32())
+            let s_star = (v * self.time_headway.get::<second>())
                 + (dynamic_gap.max(0.0))
                 // If the lead vehicle is actually a yield line, then allow
                 // this vehicle to pull right up to it, ignoring `minimum_gap`.
-                + minimum_gap;
+                + minimum_gap.get::<meter>();
 
             (s_star / s.max(0.1)).powi(2)
         } else {
             0.0
         };
 
-        Acceleration::new(**self.comfortable_acceleration * (free_road_term - intersection_term))
+        self.comfortable_acceleration * (free_road_term - intersection_term)
     }
 
-    pub const fn critical_gap(&self) -> Duration {
+    pub const fn critical_gap(&self) -> UomTime {
         self.critical_gap
     }
 }
@@ -94,11 +103,11 @@ impl Default for IdmDriver {
     fn default() -> Self {
         IdmDriver {
             desired_speed_percentage: 0.95,
-            comfortable_acceleration: Acceleration::new(2.5),
-            comfortable_deceleration: Acceleration::new(-2.0),
-            minimum_gap: Distance::try_new(Meters(2.0)).expect("failed to create"),
-            time_headway: Duration::from_secs_f32(1.5),
-            critical_gap: Duration::from_secs_f32(3.5),
+            comfortable_acceleration: Acceleration::new::<meter_per_second_squared>(2.5),
+            comfortable_deceleration: Acceleration::new::<meter_per_second_squared>(-2.0),
+            minimum_gap: Distance::try_new(Length::new::<meter>(2.0)).expect("failed to create"),
+            time_headway: UomTime::new::<second>(1.5),
+            critical_gap: UomTime::new::<second>(3.5),
             exponent: 4.0,
         }
     }
@@ -115,9 +124,7 @@ pub(crate) struct LeadVehicleInfo {
 
 pub(crate) enum VehicleKind {
     /// The positive length of the vehicle behind its front position (progress).
-    Real {
-        length_metres: f32,
-    },
+    Real(Length),
     Virtual,
 }
 
@@ -127,17 +134,20 @@ pub(crate) struct Kinematics {
     /// Target speed that the driver would aim for on an empty road.
     target_speed: Speed,
     /// The maximum acceleration possible.
+    #[reflect(ignore)]
     max_acceleration: Acceleration,
     /// The maximum deceleration possible by braking.
     ///
     /// Use negative values as it is represented as an `Acceleration`.
+    #[reflect(ignore)]
     max_deceleration: Acceleration,
     /// The length of the vehicle behind its front position (progress).
-    vehicle_length_metres: f32,
+    #[reflect(ignore)]
+    vehicle_length: Length,
 }
 
 impl Kinematics {
-    pub const fn new(
+    pub fn new(
         target_speed: Speed,
         max_acceleration: Acceleration,
         max_deceleration: Acceleration,
@@ -146,7 +156,7 @@ impl Kinematics {
             target_speed,
             max_acceleration,
             max_deceleration,
-            vehicle_length_metres: 4.4,
+            vehicle_length: Length::new::<meter>(4.4),
         }
     }
 
@@ -162,8 +172,8 @@ impl Kinematics {
         self.max_deceleration
     }
 
-    pub const fn vehicle_length_metres(&self) -> f32 {
-        self.vehicle_length_metres
+    pub const fn vehicle_length(&self) -> Length {
+        self.vehicle_length
     }
 }
 

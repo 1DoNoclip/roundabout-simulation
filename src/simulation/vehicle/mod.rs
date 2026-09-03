@@ -9,6 +9,7 @@ pub(crate) use components::*;
 pub(crate) use kinematics::*;
 use pathfinding::*;
 use rand_distr::{Distribution, Poisson};
+use uom::ConstZero;
 
 pub(super) struct VehiclePlugin;
 
@@ -26,7 +27,7 @@ struct VehicleBundle {
     kinematics: Kinematics,
     navigator: Navigator,
     current_speed: Speed,
-    current_acceleration: Acceleration,
+    current_acceleration: AccelerationComponent,
     next_acceleration: NextAcceleration,
     transform: Transform,
 }
@@ -44,7 +45,7 @@ impl VehicleBundle {
         let start_segment = segments
             .get(navigator.current_segment_id())
             .expect("expected to find a Segment component");
-        let current_acceleration = Acceleration::new(0.0);
+        let current_acceleration = AccelerationComponent::new(Acceleration::ZERO);
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
             vehicle: Vehicle,
@@ -53,7 +54,7 @@ impl VehicleBundle {
             navigator,
             current_speed,
             current_acceleration,
-            next_acceleration: NextAcceleration::from(current_acceleration),
+            next_acceleration: NextAcceleration::from(*current_acceleration),
             transform: Transform::from_translation(start_segment.position_at(0.0)),
         })
     }
@@ -179,8 +180,8 @@ fn spawn_vehicle(
     commands.spawn(
         VehicleBundle::try_new(
             &segments,
-            Speed::try_new(MilesPerHour(5.0)).expect("failed to create"),
-            Speed::try_new(MilesPerHour(60.0)).expect("failed to create"),
+            Speed::try_new(Velocity::new::<mile_per_hour>(5.0)).expect("failed to create"),
+            Speed::try_new(Velocity::new::<mile_per_hour>(60.0)).expect("failed to create"),
             Acceleration::new(3.0),
             Acceleration::new(-8.0),
             route,

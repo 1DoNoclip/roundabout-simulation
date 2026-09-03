@@ -90,10 +90,10 @@ fn draw_vehicles(
 ) {
     for (kinematics, transform) in vehicles.iter() {
         let direction = transform.rotation * Vec3::X;
-        let length = kinematics.vehicle_length_metres();
+        let length = kinematics.vehicle_length();
 
         let start_position = transform.translation;
-        let end_position = start_position + (direction * length);
+        let end_position = start_position + (direction * length.get::<meter>());
 
         gizmos.line(
             start_position,

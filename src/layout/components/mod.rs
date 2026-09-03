@@ -114,7 +114,8 @@ pub(crate) struct Segment {
     ///
     /// Performing `self.length()` each frame for each segment is a
     /// huge waste of resources when the length does not change after creation.
-    length: Meters,
+    #[reflect(ignore)]
+    length: Length,
 
     /// The maximum speed allowed for vehicles to travel at.
     speed_limit: Speed,
@@ -129,7 +130,7 @@ impl Segment {
         connection: Connection,
         speed_limit: Speed,
     ) -> Self {
-        let length = curve.length().into();
+        let length = curve.length();
         let evaluators = curve.into_evaluators();
         let start_position = evaluators.position_at(0.0);
         Segment {
@@ -176,7 +177,7 @@ impl Segment {
         &self.connection
     }
 
-    pub const fn length(&self) -> Meters {
+    pub const fn length(&self) -> Length {
         self.length
     }
 }

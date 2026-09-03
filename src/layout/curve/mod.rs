@@ -15,7 +15,7 @@ impl<T> SegmentCurve for T where T: CurveLength + IntoEvaluators + Send + Sync +
 
 /// The ability to get a length of a curve.
 pub(crate) trait CurveLength {
-    fn length(&self) -> impl Into<Meters>;
+    fn length(&self) -> Length;
 }
 
 pub(crate) trait IntoEvaluators {
@@ -78,12 +78,12 @@ mod tests {
         let points = [Vec3::new(0.0, 0.0, 0.0), Vec3::new(3.0, 4.0, 0.0)];
         let curve = StraightLinePoints(points);
 
-        let calculated_length: Meters = curve.length().into();
-        let expected_length = Meters(5.0);
+        let calculated_length = curve.length();
+        let expected_length = Length::new::<meter>(5.0);
 
         let epsilon = 0.001;
         assert!(
-            (*calculated_length - *expected_length).abs() < epsilon,
+            (calculated_length - expected_length).abs().value < epsilon,
             "Expected length to be roughly {expected_length:?}, got {calculated_length:?}"
         );
     }
@@ -100,12 +100,12 @@ mod tests {
         ];
         let curve = DeflectionCurvePoints(points);
 
-        let calculated_length = curve.length().into();
-        let expected_length = Meters(10.0);
+        let calculated_length = curve.length();
+        let expected_length = Length::new::<meter>(10.0);
 
         let epsilon = 0.001;
         assert!(
-            (*calculated_length - *expected_length).abs() < epsilon,
+            (calculated_length - expected_length).abs().value < epsilon,
             "Expected Bézier length to be roughly {expected_length:?}, got {calculated_length:?}"
         );
     }
@@ -122,18 +122,18 @@ mod tests {
         ];
         let curve = DeflectionCurvePoints(points);
 
-        let calculated_length = curve.length().into();
-        let expected_length = Meters(15.864);
+        let calculated_length = curve.length();
+        let expected_length = Length::new::<meter>(15.864);
 
         let epsilon = 0.005;
         assert!(
-            (*calculated_length - *expected_length).abs() < epsilon,
+            (calculated_length - expected_length).abs().value < epsilon,
             "Expected curved Bézier length to be roughly {expected_length:?}, got {calculated_length:?}"
         );
 
         // The smoothed curve must cut the corner and be shorter than the raw path bounding box lines (20.0).
         assert!(
-            *calculated_length < 20.0,
+            calculated_length < Length::new::<meter>(20.0),
             "A smoothed Bézier must cut the corner and be shorter than the raw control point distance."
         );
     }

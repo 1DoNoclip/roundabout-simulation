@@ -13,9 +13,9 @@ impl Plugin for UiPlugin {
 #[derive(Resource)]
 struct MapSettings {
     number_of_lanes: usize,
-    speed_limit_metres_per_second: MetersPerSecond,
-    radius_metres: f32,
-    deflection_radius_metres: f32,
+    speed_limit: Speed,
+    radius: Length,
+    deflection_radius: Length,
     arms: Vec<ArmSettings>,
 }
 

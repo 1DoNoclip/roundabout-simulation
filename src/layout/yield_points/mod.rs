@@ -1,5 +1,7 @@
 //! Defines yield points for entering vehicles.
 
+use std::marker::PhantomData;
+
 use crate::*;
 use bevy::platform::collections::HashMap;
 
@@ -54,7 +56,8 @@ impl RoundaboutYieldPoints {
             // If this progress is negative, then the yield point will be on the
             // entry line instead of the entry deflection curve.
             let deflection_yield_point_progress = conflict_point.entry_deflection_progress
-                - (*YieldPoint::YIELD_DISTANCE_FROM_CONFLICT / *entry_deflection_segment.length());
+                - (YieldPoint::YIELD_DISTANCE_FROM_CONFLICT / entry_deflection_segment.length())
+                    .get::<uom::si::ratio::ratio>();
             // This yield point is valid.
             if deflection_yield_point_progress >= 0.0 {
                 let yield_location =
@@ -80,10 +83,10 @@ impl RoundaboutYieldPoints {
                     .expect("expected to find matching entry line segment before entry deflection segment");
 
                 let remaining_progress = 1.0 + deflection_yield_point_progress;
-                let remaining_distance =
-                    Meters(remaining_progress * *entry_deflection_segment.length());
-                let entry_line_progress =
-                    1.0 - (*remaining_distance / *entry_line_segment.length());
+                let remaining_distance = remaining_progress * entry_deflection_segment.length();
+                let entry_line_progress = 1.0
+                    - (remaining_distance / entry_line_segment.length())
+                        .get::<uom::si::ratio::ratio>();
                 let yield_location = entry_line_segment.position_at(entry_line_progress);
                 yield_points.insert(
                     YieldPointIndex {
@@ -142,7 +145,11 @@ pub(crate) struct YieldPoint {
 }
 
 impl YieldPoint {
-    pub const YIELD_DISTANCE_FROM_CONFLICT: Meters = Meters(5.0);
+    pub const YIELD_DISTANCE_FROM_CONFLICT: Length = Length {
+        dimension: PhantomData,
+        units: PhantomData,
+        value: 5.0,
+    };
 
     pub const fn progress(&self) -> f32 {
         self.progress

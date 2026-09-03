@@ -130,31 +130,27 @@ impl ArmBlueprint {
 /// Represents the circular part of the roundabout.
 #[derive(Reflect)]
 pub(crate) struct CircleBlueprint {
-    /// Radius of the inner roundabout circle in meters.
+    /// Radius of the inner roundabout circle.
     /// The distance between the centre and the centre of the inner circulating lane.
-    radius: Meters,
+    #[reflect(ignore)]
+    radius: Length,
     /// A greater deflection radius causes a smoother entry onto the roundabout.
     /// Increases capacity and reduces safety by increasing entry speeds.
-    deflection_radius: Meters,
+    #[reflect(ignore)]
+    deflection_radius: Length,
 }
 
 impl CircleBlueprint {
-    pub fn try_new(
-        radius: impl Into<Meters>,
-        deflection_radius: impl Into<Meters>,
-    ) -> Result<Self, &'static str> {
-        let radius = radius.into();
-        let deflection_radius = deflection_radius.into();
-
+    pub fn try_new(radius: Length, deflection_radius: Length) -> Result<Self, &'static str> {
         if radius.is_nan() || deflection_radius.is_nan() {
             Err("radius or deflection_radius is NaN")
         }
         // Note: Jank is still possible due to 5.0m not being a special value.
         // If there are too many lanes and too small deflection radius, then the deflections
         // will loop back on themselves to fit into their predetermined end points.
-        else if *deflection_radius < 5.0 {
-            Err("deflection_radius must be < 5.0")
-        } else if *deflection_radius > *radius {
+        else if deflection_radius < Length::new::<meter>(5.0) {
+            Err("deflection_radius must be < 5.0m")
+        } else if deflection_radius > radius {
             Err("deflection_radius cannot exceed radius")
         } else {
             Ok(CircleBlueprint {
@@ -164,11 +160,11 @@ impl CircleBlueprint {
         }
     }
 
-    pub const fn radius(&self) -> Meters {
+    pub const fn radius(&self) -> Length {
         self.radius
     }
 
-    pub const fn deflection_radius(&self) -> Meters {
+    pub const fn deflection_radius(&self) -> Length {
         self.deflection_radius
     }
 }
@@ -184,7 +180,8 @@ mod tests {
 
     #[test]
     fn try_new_roundabout_circle_blueprint() {
-        CircleBlueprint::try_new(Meters(30.0), Meters(15.0)).expect("failed to create");
+        CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
+            .expect("failed to create");
     }
 
     #[test]
@@ -195,9 +192,11 @@ mod tests {
             ArmBlueprint::from_degrees(180.0, None, 0.5),
         ];
         let circle_blueprint =
-            CircleBlueprint::try_new(Meters(30.0), Meters(15.0)).expect("failed to create");
+            CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
+                .expect("failed to create");
         let number_of_lanes = 2;
-        let speed_limit = Speed::try_new(MilesPerHour(30.0)).expect("failed to create");
+        let speed_limit =
+            Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create");
 
         RoundaboutBlueprint::try_new(arms, circle_blueprint, number_of_lanes, speed_limit)
             .expect("failed to create");

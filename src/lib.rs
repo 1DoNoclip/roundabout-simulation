@@ -1,7 +1,6 @@
 use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
-use std::time::Duration;
 
 mod blueprint;
 mod graphics;
@@ -177,13 +176,14 @@ fn setup_roundabout_layout(mut commands: Commands) {
         ArmBlueprint::from_degrees(-270.0, None, 0.15),
     ];
     let circle_blueprint =
-        CircleBlueprint::try_new(Meters(30.0), Meters(15.0)).expect("failed to create");
+        CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
+            .expect("failed to create");
     commands.insert_resource(
         RoundaboutBlueprint::try_new(
             arm_blueprints,
             circle_blueprint,
             2,
-            Speed::try_new(MilesPerHour(30.0)).expect("failed to create"),
+            Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create"),
         )
         .expect("failed to create"),
     );
@@ -205,14 +205,15 @@ mod tests {
             ArmBlueprint::from_degrees(240.0, None, 0.5),
         ];
         let circle_blueprint =
-            CircleBlueprint::try_new(Meters(20.0), Meters(15.0)).expect("failed to create");
+            CircleBlueprint::try_new(Length::new::<meter>(20.0), Length::new::<meter>(15.0))
+                .expect("failed to create");
 
         app.insert_resource(
             RoundaboutBlueprint::try_new(
                 arm_blueprints,
                 circle_blueprint,
                 2,
-                Speed::try_new(MilesPerHour(30.0)).expect("failed to create"),
+                Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create"),
             )
             .expect("failed to create"),
         );
