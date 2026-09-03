@@ -84,7 +84,10 @@ fn draw_yield_points(mut gizmos: Gizmos, yield_points: Res<RoundaboutYieldPoints
 #[derive(Default, GizmoConfigGroup, Reflect)]
 struct VehicleGizmos;
 
-fn draw_vehicles(mut gizmos: Gizmos<VehicleGizmos>, vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>) {
+fn draw_vehicles(
+    mut gizmos: Gizmos<VehicleGizmos>,
+    vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>,
+) {
     for (kinematics, transform) in vehicles.iter() {
         let direction = transform.rotation * Vec3::X;
         let length = kinematics.vehicle_length_metres();

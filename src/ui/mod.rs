@@ -5,8 +5,7 @@ pub(super) struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .insert_resource(MapSettings::default())
+        app.insert_resource(MapSettings::default())
             .insert_resource(SimulationSettings::default());
     }
 }
@@ -20,14 +19,14 @@ struct MapSettings {
     arms: Vec<ArmSettings>,
 }
 
-impl Default for MapSettings {
-    fn default() -> Self {
-        MapSettings {
-            number_of_lanes: 2,
-            speed_limit_metres_per_second:
-        }
-    }
-}
+// impl Default for MapSettings {
+//     fn default() -> Self {
+//         MapSettings {
+//             number_of_lanes: 2,
+//             speed_limit_metres_per_second:
+//         }
+//     }
+// }
 
 #[derive(Resource)]
 struct SimulationSettings {
@@ -36,9 +35,7 @@ struct SimulationSettings {
 
 impl Default for SimulationSettings {
     fn default() -> Self {
-        SimulationSettings {
-            time_speed: 1.0,
-        }
+        SimulationSettings { time_speed: 1.0 }
     }
 }
 

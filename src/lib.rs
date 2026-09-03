@@ -8,12 +8,14 @@ mod graphics;
 mod layout;
 mod simulation;
 mod ui;
+mod utils;
 
 use blueprint::*;
 use graphics::*;
 use layout::*;
 use simulation::*;
 use ui::*;
+use utils::*;
 
 /// Sets up the roundabout simulation.
 ///
