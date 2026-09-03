@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Note: Remove dynamic linking when publishing final build.
+# Note: Do not use dynamic linking when publishing release builds.
 bevy = { version = "0.19.0", features = ["dynamic_linking"] }
 bevy-inspector-egui = "0.37.0"
+bevy_egui = "0.42.0"
 bimap = "0.6.3"
 clap = { version = "4.6.6", features = ["derive"] }
 rand = "0.10.1"

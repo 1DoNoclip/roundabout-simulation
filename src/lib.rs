@@ -7,11 +7,13 @@ mod blueprint;
 mod graphics;
 mod layout;
 mod simulation;
+mod ui;
 
 use blueprint::*;
 use graphics::*;
 use layout::*;
 use simulation::*;
+use ui::*;
 
 /// Sets up the roundabout simulation.
 ///
@@ -32,7 +34,7 @@ impl Plugin for AppSetupPlugin {
         app.insert_resource(cli_args)
             .add_plugins(DefaultPlugins)
             // Register simulation domain plugins.
-            .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin))
+            .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin, UiPlugin))
             .add_systems(
                 Startup,
                 (setup_roundabout_layout, setup_world, setup_simulation_time),
