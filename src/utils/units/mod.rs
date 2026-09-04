@@ -8,7 +8,7 @@ pub(crate) use uom::si::{
     f32::{Acceleration, Length, Time as UomTime, Velocity},
     length::meter,
     time::second,
-    velocity::{kilometer_per_hour, meter_per_second, mile_per_hour},
+    velocity::{meter_per_second, mile_per_hour},
 };
 
 pub(super) struct UnitsPlugin;
@@ -29,7 +29,7 @@ mod distance {
         pub const ZERO: Self = Distance(Length::ZERO);
 
         pub fn try_new(length: Length) -> Result<Self, &'static str> {
-            if length.value >= 0.0 {
+            if length.get::<meter>() >= 0.0 {
                 Ok(Distance(length))
             } else {
                 Err("distance cannot be negative")
@@ -46,18 +46,29 @@ mod velocity {
     use super::*;
 
     /// A speed, can be used for vehicle speed and speed limit.
-    #[derive(Clone, Component, Copy, Debug, Deref, DerefMut, Reflect)]
+    #[derive(Clone, Component, Copy, Debug, Deref, Reflect)]
     pub(crate) struct Speed(#[reflect(ignore)] Velocity);
 
     impl Speed {
         pub const ZERO: Self = Speed(Velocity::ZERO);
 
         pub fn try_new(velocity: Velocity) -> Result<Self, &'static str> {
-            if velocity.value >= 0.0 {
+            if velocity.get::<meter_per_second>() >= 0.0 {
                 Ok(Speed(velocity))
             } else {
                 Err("speed cannot be negative")
             }
+        }
+
+        // /// Creates a new `Speed`, using `velocity` or clamping to `0.0` if `velocity` is negative.
+        // pub fn new_clamped(velocity: Velocity) -> Self {
+        //     Speed(velocity.max(Velocity::ZERO))
+        // }
+
+        /// Applies acceleration, ensuring that `self.0` always remains non-negative.
+        pub fn apply_acceleration(&mut self, acceleration: Acceleration, delta_time: UomTime) {
+            let new_velocity = self.0 + acceleration * delta_time;
+            self.0 = new_velocity.max(Velocity::ZERO)
         }
     }
 

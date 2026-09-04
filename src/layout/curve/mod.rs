@@ -83,7 +83,7 @@ mod tests {
 
         let epsilon = 0.001;
         assert!(
-            (calculated_length - expected_length).abs().value < epsilon,
+            (calculated_length - expected_length).abs().get::<meter>() < epsilon,
             "Expected length to be roughly {expected_length:?}, got {calculated_length:?}"
         );
     }
@@ -105,7 +105,7 @@ mod tests {
 
         let epsilon = 0.001;
         assert!(
-            (calculated_length - expected_length).abs().value < epsilon,
+            (calculated_length - expected_length).abs().get::<meter>() < epsilon,
             "Expected Bézier length to be roughly {expected_length:?}, got {calculated_length:?}"
         );
     }
@@ -127,7 +127,7 @@ mod tests {
 
         let epsilon = 0.005;
         assert!(
-            (calculated_length - expected_length).abs().value < epsilon,
+            (calculated_length - expected_length).abs().get::<meter>() < epsilon,
             "Expected curved Bézier length to be roughly {expected_length:?}, got {calculated_length:?}"
         );
 

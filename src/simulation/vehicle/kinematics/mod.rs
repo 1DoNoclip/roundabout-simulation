@@ -70,8 +70,8 @@ pub(in crate::simulation) fn calculate_accelerations(
             {
                 if yield_point.segment_id() == deflection_id {
                     let distance_to_yield = Length::new::<meter>(
-                        yield_point.progress()
-                            - navigator.progress() * deflection_segment.length().value,
+                        (yield_point.progress() - navigator.progress())
+                            * deflection_segment.length().get::<meter>(),
                     );
                     Some((arm_index, lane_index, distance_to_yield))
                 } else {
@@ -88,7 +88,7 @@ pub(in crate::simulation) fn calculate_accelerations(
             // Yield distance must be positive (else the vehicle is past the yield line)
             // and therefore we completely disregard using a virtual lead vehicle.
             && let Ok(distance_to_yield) = Distance::try_new(distance_to_yield)
-                && distance_to_yield.value > 0.0
+                && distance_to_yield.get::<meter>() > 0.0
                 && let Ok(circulating_vehicles) = get_circulating_vehicles(
                     id,
                     entry_lane_index,
@@ -117,16 +117,19 @@ pub(in crate::simulation) fn calculate_accelerations(
         }
 
         let raw_acceleration = idm_driver.calculate_acceleration(
-            *speed,
-            kinematics
-                .target_speed()
-                .min(*roundabout_blueprint.speed_limit()),
+            speed,
+            Speed::try_new(
+                kinematics
+                    .target_speed()
+                    .min(*roundabout_blueprint.speed_limit()),
+            )
+            .unwrap(),
             lead_vehicle_info,
         );
 
         let new_acceleration = raw_acceleration
-            .max(kinematics.max_acceleration())
-            .min(kinematics.max_deceleration());
+            .max(kinematics.max_deceleration())
+            .min(kinematics.max_acceleration());
 
         if let Ok(mut next_acceleration) = next_accelerations.get_mut(id) {
             *next_acceleration = NextAcceleration::from(new_acceleration);
@@ -148,13 +151,14 @@ pub(in crate::simulation) fn apply_accelerations(
 ) {
     let delta_time = UomTime::new::<second>(time.delta_secs());
     for (mut speed, &acceleration) in query {
-        **speed += *acceleration * delta_time;
+        speed.apply_acceleration(*acceleration, delta_time);
     }
 }
 
-/// Moves vehicles along their routes using their accelerations.
+/// Moves vehicles along their routes.
 ///
-/// Increments segments once a vehicle has reached the end of the current segment.
+/// Increments segments once a vehicle has reached the end of the current segment,
+/// or despawns them if they reach the end of the route.
 pub(in crate::simulation) fn move_vehicles(
     mut commands: Commands,
     time: Res<Time>,
@@ -713,7 +717,7 @@ mod tests {
         ) -> CirculatingVehicleInfo {
             CirculatingVehicleInfo {
                 distance_to_conflict: distance,
-                speed: Speed::try_new(velocity).unwrap(),
+                speed: Speed::try_new(velocity).expect("expected velocity to be positive or zero"),
                 vehicle_length: Length::new::<meter>(4.5),
             }
         }
