@@ -8,16 +8,10 @@ impl Plugin for GraphicsPlugin {
             .register_type::<SegmentInspectorState>()
             .init_gizmo_group::<VehicleGizmos>()
             .add_systems(Startup, setup_gizmos)
+            .add_systems(Update, (draw_layout, highlight_selected_segment).chain())
             .add_systems(
                 Update,
-                (
-                    draw_layout,
-                    draw_conflict_points,
-                    draw_yield_points,
-                    draw_vehicles,
-                    cycle_segment_gizmos,
-                )
-                    .chain(),
+                (draw_conflict_points, draw_yield_points, draw_vehicles),
             );
     }
 }
@@ -61,22 +55,16 @@ fn draw_layout(mut gizmos: Gizmos, segments: Query<&Segment>) {
 fn draw_conflict_points(mut gizmos: Gizmos, conflict_points: Res<RoundaboutConflictPoints>) {
     let conflict_points = conflict_points.points();
     for (_, conflict_point) in conflict_points {
-        gizmos.circle_2d(
-            conflict_point.location.xy(),
-            0.75,
-            Color::linear_rgb(0.0, 0.0, 255.0),
-        );
+        let location = conflict_point.location;
+        gizmos.circle(location, 0.75, Color::linear_rgb(0.0, 0.0, 255.0));
     }
 }
 
 fn draw_yield_points(mut gizmos: Gizmos, yield_points: Res<RoundaboutYieldPoints>) {
     let yield_points = yield_points.points();
     for (_, yield_point) in yield_points {
-        gizmos.circle_2d(
-            yield_point.location.xy(),
-            0.75,
-            Color::linear_rgb(17.0, 200.0, 182.0),
-        );
+        let location = yield_point.location;
+        gizmos.circle(location, 0.75, Color::linear_rgb(17.0, 200.0, 182.0));
     }
 }
 
@@ -89,11 +77,14 @@ fn draw_vehicles(
     vehicles: Query<(&Kinematics, &Transform), With<Vehicle>>,
 ) {
     for (kinematics, transform) in vehicles.iter() {
-        let direction = transform.rotation * Vec3::X;
+        let direction = (transform.rotation * Vec3::NEG_X).xy().normalize();
         let length = kinematics.vehicle_length();
 
-        let start_position = transform.translation;
-        let end_position = start_position + (direction * length.get::<meter>());
+        let start_position_2d = transform.translation.xy();
+        let end_position_2d = start_position_2d + direction * length.get::<meter>();
+
+        let start_position = start_position_2d.extend(0.0);
+        let end_position = end_position_2d.extend(0.0);
 
         gizmos.line(
             start_position,
@@ -103,7 +94,7 @@ fn draw_vehicles(
     }
 }
 
-fn cycle_segment_gizmos(
+fn highlight_selected_segment(
     mut gizmos: Gizmos,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<SegmentInspectorState>,
