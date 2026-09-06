@@ -19,6 +19,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     segments: Query<&Segment>,
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
     entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
+    // Only used to check if a segment is an entry deflection segment.
     exit_deflection_segments: Query<(), With<segment_type::ExitDeflection>>,
     intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
@@ -116,18 +117,34 @@ pub(in crate::simulation) fn calculate_accelerations(
             };
         }
 
-        let raw_acceleration = idm_driver.calculate_acceleration(
+        let kappa = get_kappa(speed, idm_driver, navigator, &segments);
+
+        let target_speed: Velocity = if kappa > 1e-5 {
+            let lateral_acceleration = idm_driver
+                .comfortable_lateral_acceleration()
+                .get::<meter_per_second_squared>();
+
+            let max_cornering_speed: Velocity =
+                Velocity::new::<meter_per_second>((lateral_acceleration / kappa).sqrt());
+
+            kinematics
+                .target_speed()
+                .min(*roundabout_blueprint.speed_limit())
+                .min(max_cornering_speed)
+        } else {
+            kinematics
+                .target_speed()
+                .min(*roundabout_blueprint.speed_limit())
+        };
+
+        let raw_acceleration: Acceleration = idm_driver.calculate_acceleration(
             speed,
-            Speed::try_new(
-                kinematics
-                    .target_speed()
-                    .min(*roundabout_blueprint.speed_limit()),
-            )
-            .unwrap(),
+            Speed::try_new(target_speed).unwrap(),
             lead_vehicle_info,
         );
 
-        let new_acceleration = raw_acceleration
+        // Clamp within max and min vehicle values.
+        let new_acceleration: Acceleration = raw_acceleration
             .max(kinematics.max_deceleration())
             .min(kinematics.max_acceleration());
 
@@ -166,7 +183,7 @@ pub(in crate::simulation) fn move_vehicles(
     segments: Query<&Segment>,
     vehicles: Query<(Entity, &mut Navigator, &mut Transform, &Speed), With<Vehicle>>,
 ) {
-    let delta_time = UomTime::new::<second>(time.delta_secs());
+    let delta_time: UomTime = UomTime::new::<second>(time.delta_secs());
     for (id, mut navigator, mut transform, &speed) in vehicles {
         let current_segment_id = navigator.current_segment_id();
         let Ok(current_segment) = segments.get(current_segment_id) else {
@@ -216,37 +233,43 @@ fn get_kappa(
     navigator: &Navigator,
     segments: &Query<&Segment>,
 ) -> f32 {
-    let lookahead_distance = idm_driver.geometry_time_headway() * *current_speed;
+    let lookahead_distance: Length = idm_driver.geometry_time_headway() * *current_speed;
     let current_segment = segments
         .get(navigator.current_segment_id())
         .expect("expected current segment ID to be valid");
     let current_progress = navigator.progress();
-    let distance_to_end = (1.0 - current_progress) * current_segment.length();
+    let distance_to_end: Length = (1.0 - current_progress) * current_segment.length();
     // Get the curvature of this segment.
-    let (progress, segment) = if distance_to_end > lookahead_distance {
-        let progress = (lookahead_distance / current_segment.length()).get::<uom::si::ratio::ratio>()
+    let (segment, progress) = if distance_to_end > lookahead_distance {
+        let progress = (lookahead_distance / current_segment.length())
+            .get::<uom::si::ratio::ratio>()
             + current_progress;
-        (progress, current_segment)
+        (current_segment, progress)
     }
     // We need to look at ahead segments until we get to the lookahead distance.
     else {
-        let mut current_segment = current_segment;
-        let mut remaining_distance = lookahead_distance;
+        let route = navigator.route();
+        let mut current_segment_index = navigator.current_segment_index();
+        let mut remaining_distance: Length = lookahead_distance - distance_to_end;
         loop {
-            let next_segment_id = match navigator.next_segment_id() {
-                Some(id) => id,
-                None => return 0.0,
+            current_segment_index += 1;
+            let Some(&current_segment_id) = route.get(current_segment_index) else {
+                return 0.0;
             };
-            current_segment = segments.get(next_segment_id).expect("expected next segment ID to be valid");
-            let progress = (remaining_distance / current_segment.length()).get::<uom::si::ratio::ratio>();
-            if progress <= 1.0 {
+            let current_segment = segments
+                .get(current_segment_id)
+                .expect("expected current segment ID to be valid");
 
+            let progress =
+                (remaining_distance / current_segment.length()).get::<uom::si::ratio::ratio>();
+            if progress <= 1.0 {
+                break (current_segment, progress);
             } else {
                 remaining_distance -= current_segment.length();
             }
         }
     };
-    segment.curvature_at(progress)
+    segment.curvature_at(progress).abs()
 }
 
 fn get_circulating_vehicles(

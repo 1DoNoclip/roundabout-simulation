@@ -15,13 +15,16 @@ impl Plugin for ComponentsPlugin {
 #[derive(Component, Reflect)]
 pub(crate) struct Vehicle;
 
-/// The IDM values for the vehicle.
+/// The IDM values for the vehicle's driver.
 #[derive(Component, Reflect)]
 pub(crate) struct IdmDriver {
-    /// The desired speed of this vehicle out of the speed limit.
-    desired_speed_percentage: f32,
+    /// The desired speed of this driver as a factor of the speed limit.
+    desired_speed_factor: f32,
     #[reflect(ignore)]
     comfortable_acceleration: Acceleration,
+    /// The maximum lateral acceleration the driver is willing to experience in curves.
+    #[reflect(ignore)]
+    comfortable_lateral_acceleration: Acceleration,
     #[reflect(ignore)]
     comfortable_deceleration: Acceleration,
     /// The minimum distance a vehicle will leave when stopping behind another stationary vehicle.
@@ -52,7 +55,7 @@ impl IdmDriver {
     ) -> Acceleration {
         let v = current_speed.get::<meter_per_second>();
         // Vehicles will drive at their desired_speed_percentage of the target speed.
-        let v_0 = self.desired_speed_percentage * target_speed.get::<meter_per_second>();
+        let v_0 = self.desired_speed_factor * target_speed.get::<meter_per_second>();
         let a = self
             .comfortable_acceleration
             .get::<meter_per_second_squared>();
@@ -97,6 +100,10 @@ impl IdmDriver {
         self.comfortable_acceleration * (free_road_term - intersection_term)
     }
 
+    pub const fn comfortable_lateral_acceleration(&self) -> Acceleration {
+        self.comfortable_lateral_acceleration
+    }
+
     pub const fn geometry_time_headway(&self) -> UomTime {
         self.geometry_time_headway
     }
@@ -109,8 +116,9 @@ impl IdmDriver {
 impl Default for IdmDriver {
     fn default() -> Self {
         IdmDriver {
-            desired_speed_percentage: 0.95,
+            desired_speed_factor: 0.95,
             comfortable_acceleration: Acceleration::new::<meter_per_second_squared>(2.5),
+            comfortable_lateral_acceleration: Acceleration::new::<meter_per_second_squared>(3.0),
             comfortable_deceleration: Acceleration::new::<meter_per_second_squared>(-2.0),
             minimum_gap: Distance::try_new(Length::new::<meter>(2.0)).expect("failed to create"),
             time_headway: UomTime::new::<second>(1.5),
@@ -138,9 +146,10 @@ pub(crate) enum VehicleKind {
     Virtual,
 }
 
-/// The motion characteristics for the vehicle.
+/// The characteristics for the vehicle.
 #[derive(Clone, Component, Copy, Reflect)]
 pub(crate) struct Kinematics {
+    // Note: Move this into IdmDriver as this is a driver characteristic.
     /// Target speed that the driver would aim for on an empty road.
     target_speed: Speed,
     /// The maximum acceleration possible.
@@ -255,6 +264,10 @@ impl Navigator {
     /// Sets `self.progress` to 0.0.
     pub const fn reset_progress(&mut self) {
         self.progress = 0.0;
+    }
+
+    pub const fn current_segment_index(&self) -> usize {
+        self.current_segment_index
     }
 
     pub fn route(&self) -> &[Entity] {
