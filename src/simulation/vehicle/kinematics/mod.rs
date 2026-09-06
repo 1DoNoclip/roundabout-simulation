@@ -209,6 +209,46 @@ pub(in crate::simulation) fn move_vehicles(
     }
 }
 
+/// Gets the curvature (kappa, `κ`) at the lookahead distance position.
+fn get_kappa(
+    current_speed: Speed,
+    idm_driver: &IdmDriver,
+    navigator: &Navigator,
+    segments: &Query<&Segment>,
+) -> f32 {
+    let lookahead_distance = idm_driver.geometry_time_headway() * *current_speed;
+    let current_segment = segments
+        .get(navigator.current_segment_id())
+        .expect("expected current segment ID to be valid");
+    let current_progress = navigator.progress();
+    let distance_to_end = (1.0 - current_progress) * current_segment.length();
+    // Get the curvature of this segment.
+    let (progress, segment) = if distance_to_end > lookahead_distance {
+        let progress = (lookahead_distance / current_segment.length()).get::<uom::si::ratio::ratio>()
+            + current_progress;
+        (progress, current_segment)
+    }
+    // We need to look at ahead segments until we get to the lookahead distance.
+    else {
+        let mut current_segment = current_segment;
+        let mut remaining_distance = lookahead_distance;
+        loop {
+            let next_segment_id = match navigator.next_segment_id() {
+                Some(id) => id,
+                None => return 0.0,
+            };
+            current_segment = segments.get(next_segment_id).expect("expected next segment ID to be valid");
+            let progress = (remaining_distance / current_segment.length()).get::<uom::si::ratio::ratio>();
+            if progress <= 1.0 {
+
+            } else {
+                remaining_distance -= current_segment.length();
+            }
+        }
+    };
+    segment.curvature_at(progress)
+}
+
 fn get_circulating_vehicles(
     entry_vehicle_id: Entity,
     entry_lane_index: usize,

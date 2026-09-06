@@ -30,6 +30,9 @@ pub(crate) struct IdmDriver {
     /// The time difference when following a vehicle.
     #[reflect(ignore)]
     time_headway: UomTime,
+    /// The lookahead time used when responding to geometry.
+    #[reflect(ignore)]
+    geometry_time_headway: UomTime,
     /// The minimum time gap the driver will enter the roundabout in.
     #[reflect(ignore)]
     critical_gap: UomTime,
@@ -91,15 +94,11 @@ impl IdmDriver {
             0.0
         };
 
-        // info!(
-        //     "free_road: {:.3}, inter: {:.3}, net_accel: {:.3?}, lead: {:?}",
-        //     free_road_term,
-        //     intersection_term,
-        //     self.comfortable_acceleration * (free_road_term - intersection_term),
-        //     lead_vehicle_info
-        // );
-
         self.comfortable_acceleration * (free_road_term - intersection_term)
+    }
+
+    pub const fn geometry_time_headway(&self) -> UomTime {
+        self.geometry_time_headway
     }
 
     pub const fn critical_gap(&self) -> UomTime {
@@ -115,6 +114,7 @@ impl Default for IdmDriver {
             comfortable_deceleration: Acceleration::new::<meter_per_second_squared>(-2.0),
             minimum_gap: Distance::try_new(Length::new::<meter>(2.0)).expect("failed to create"),
             time_headway: UomTime::new::<second>(1.5),
+            geometry_time_headway: UomTime::new::<second>(3.0),
             critical_gap: UomTime::new::<second>(3.5),
             exponent: 4.0,
         }

@@ -194,7 +194,7 @@ impl Default for Segment {
 }
 
 /// Where road segments connect together, allowing vehicles to choose the next segment to use, or exit the map.
-#[derive(Debug, Reflect)]
+#[derive(Clone, Copy, Debug, Reflect)]
 pub(crate) enum Connection {
     /// A direct connection from one segment to another.
     Direct { next_segment_id: Entity },
