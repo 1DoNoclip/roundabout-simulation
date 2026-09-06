@@ -43,6 +43,31 @@ pub(crate) struct IdmDriver {
 }
 
 impl IdmDriver {
+    #[cfg(test)]
+    pub fn new(
+        desired_speed_factor: f32,
+        comfortable_acceleration: Acceleration,
+        comfortable_lateral_acceleration: Acceleration,
+        comfortable_deceleration: Acceleration,
+        minimum_gap: Distance,
+        time_headway: UomTime,
+        geometry_time_headway: UomTime,
+        critical_gap: UomTime,
+        exponent: f32,
+    ) -> Self {
+        IdmDriver {
+            desired_speed_factor,
+            comfortable_acceleration,
+            comfortable_lateral_acceleration,
+            comfortable_deceleration,
+            minimum_gap,
+            time_headway,
+            geometry_time_headway,
+            critical_gap,
+            exponent,
+        }
+    }
+
     /// ### Arguments
     /// * `current_speed` - Speed of this vehicle.
     /// * `target_speed` - The speed that this vehicle achieves on an empty, straight road.
@@ -196,7 +221,7 @@ impl Kinematics {
     }
 }
 
-/// Decides how the vehicle navigates the map.
+/// Holds a vehicle's navigational data.
 #[derive(Component, Reflect)]
 pub(crate) struct Navigator {
     /// The route for the vehicle to follow.

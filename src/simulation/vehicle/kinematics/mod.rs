@@ -10,7 +10,7 @@ impl Plugin for KinematicsPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
-/// Calculates vehicles' accelerations due to the IDM model, road geometry (coming soon), and yield logic.
+/// Calculates vehicles' accelerations due to the IDM model, road geometry, and yield logic.
 #[allow(clippy::too_many_arguments)]
 pub(in crate::simulation) fn calculate_accelerations(
     roundabout_blueprint: Res<RoundaboutBlueprint>,
@@ -583,6 +583,227 @@ struct CirculatingVehicleInfo {
 mod tests {
     use super::*;
 
+    /// Tests for `calculate_accelerations`.
+    mod test_calculate_accelerations {
+        use super::*;
+
+        // #[test]
+        // fn acceleration_clamps_to_geometry_speed() {
+        //     // Because `calculate_accelerations` requires many highly specific Res and Query parameters,
+        //     // integration testing it requires setting up a Bevy App and running a single schedule update.
+        //     let mut app = App::new();
+
+        //     // 1. Insert required resources
+        //     app.insert_resource(RoundaboutBlueprint {
+        //         speed_limit: Velocity::new::<meter_per_second>(30.0),
+        //         number_of_arms: 4,
+        //     });
+        //     // Insert dummy resources for YieldPoints and ConflictPoints to satisfy the system signature.
+        //     app.insert_resource(RoundaboutConflictPoints::default());
+        //     app.insert_resource(RoundaboutYieldPoints::default());
+
+        //     // Spawn a vehicle and a sharp road segment.
+        //     let segment_id = app
+        //         .world_mut()
+        //         .spawn(Segment {
+        //             length: Length::new::<meter>(100.0),
+        //             curvature: 0.1, // 1 / 10m radius curve
+        //         })
+        //         .id();
+
+        //     let vehicle_entity = app
+        //         .world_mut()
+        //         .spawn((
+        //             Vehicle,
+        //             Speed::new::<meter_per_second>(20.0), // Currently travelling at 20 m/s.
+        //             NextAcceleration::from(Acceleration::new::<meter_per_second_squared>(0.0)),
+        //             IdmDriver {
+        //                 geometry_time_headway: Time::new::<second>(1.0),
+        //                 comfortable_lateral_acceleration: Acceleration::new::<
+        //                     meter_per_second_squared,
+        //                 >(2.0),
+        //                 ..default()
+        //             },
+        //             Kinematics {
+        //                 target_speed: Velocity::new::<meter_per_second>(30.0),
+        //                 max_acceleration: Acceleration::new::<meter_per_second_squared>(3.0),
+        //                 max_deceleration: Acceleration::new::<meter_per_second_squared>(-5.0),
+        //             },
+        //             Navigator {
+        //                 current_segment_id: segment_id,
+        //                 progress: 0.0,
+        //                 route: vec![segment_id],
+        //                 current_segment_index: 0,
+        //             },
+        //         ))
+        //         .id();
+
+        //     // Run the system.
+        //     app.add_systems(Update, calculate_accelerations);
+        //     app.update();
+
+        //     // Validate output.
+        //     // V_max = sqrt(lat_accel / kappa) = sqrt(2.0 / 0.1) = sqrt(20) ≈ 4.47 m/s
+        //     // because current speed (20 m/s) > target cornering speed (4.47 m/s),
+        //     // the IDM model should output a strong negative acceleration (braking).
+        //     let next_acceleration = app.world().get::<NextAcceleration>(vehicle_entity).unwrap();
+
+        //     assert!(
+        //         next_acceleration.get::<meter_per_second_squared>() < 0.0,
+        //         "Vehicle did not brake for the upcoming curve"
+        //     );
+        // }
+    }
+
+    /// Tests for `get_kappa`.
+    mod test_get_kappa {
+        use super::*;
+        use bevy::ecs::system::SystemState;
+
+        #[test]
+        fn within_current_segment() {
+            let mut world = World::new();
+
+            let arm_id = world
+                .spawn(Arm::new(
+                    0,
+                    Rot2::degrees(0.0),
+                    5.0,
+                    DestinationWeights::new(),
+                ))
+                .id();
+
+            let segment_2_id = world
+                .spawn(Segment::new(
+                    StraightLinePoints([Vec3::new(50.0, 0.0, 0.0), Vec3::new(100.0, 50.0, 0.0)]),
+                    arm_id,
+                    0,
+                    0,
+                    Connection::Direct {
+                        next_segment_id: Entity::PLACEHOLDER,
+                    },
+                    Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).unwrap(),
+                ))
+                .id();
+
+            let segment_1_id = world
+                .spawn(Segment::new(
+                    StraightLinePoints([Vec3::ZERO, Vec3::new(50.0, 0.0, 0.0)]),
+                    arm_id,
+                    0,
+                    0,
+                    Connection::Direct {
+                        next_segment_id: segment_2_id,
+                    },
+                    Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).unwrap(),
+                ))
+                .id();
+
+            // Setup IdmDriver & Navigator.
+            let idm_driver = IdmDriver::new(
+                0.95,
+                Acceleration::new::<meter_per_second_squared>(2.0),
+                Acceleration::new::<meter_per_second_squared>(3.0),
+                Acceleration::new::<meter_per_second_squared>(-2.5),
+                Distance::try_new(Length::new::<meter>(5.0)).unwrap(),
+                UomTime::new::<second>(1.5),
+                UomTime::new::<second>(2.0),
+                UomTime::new::<second>(4.0),
+                4.0,
+            );
+            let speed = Speed::try_new(Velocity::new::<meter_per_second>(10.0)).unwrap();
+            let navigator = Navigator::try_new(vec![segment_1_id, segment_2_id]).unwrap();
+
+            // Extract the Query using SystemState.
+            let mut system_state: SystemState<Query<&Segment>> = SystemState::new(&mut world);
+            let segments_query = system_state.get(&world).unwrap();
+
+            // Lookahead = 10m/s * 2s = 20m.
+            // Current distance to end = (1.0 - 0.0) * 50 = 45m.
+            // Lookahead is within the current segment.
+            let kappa = get_kappa(speed, &idm_driver, &navigator, &segments_query);
+
+            assert_eq!(kappa, 0.0);
+        }
+
+        // #[test]
+        // fn looks_ahead_to_next_segment() {
+        //     let mut world = World::new();
+
+        //     let segment_1 = world
+        //         .spawn(Segment {
+        //             length: Length::new::<meter>(20.0),
+        //             curvature: 0.0,
+        //         })
+        //         .id();
+
+        //     let segment_2 = world
+        //         .spawn(Segment {
+        //             length: Length::new::<meter>(30.0),
+        //             curvature: 0.5, // High curvature
+        //         })
+        //         .id();
+
+        //     let speed = Speed::new::<meter_per_second>(15.0);
+        //     let idm_driver = IdmDriver {
+        //         geometry_time_headway: Time::new::<second>(2.0),
+        //         ..default()
+        //     };
+
+        //     let navigator = Navigator {
+        //         current_segment_id: segment_1,
+        //         progress: 0.5, // 10m into the 20m segment. 10m remaining.
+        //         route: vec![segment_1, segment_2],
+        //         current_segment_index: 0,
+        //     };
+
+        //     let mut system_state: SystemState<Query<&Segment>> = SystemState::new(&mut world);
+        //     let segments_query = system_state.get(&world);
+
+        //     // Lookahead = 15m/s * 2s = 30m.
+        //     // Distance remaining on segment 1 = 10m.
+        //     // Remaining lookahead distance to traverse on segment 2 = 20m.
+        //     // Progress on segment 2 = 20m / 30m = 0.666...
+        //     let kappa = get_kappa(speed, &idm_driver, &navigator, &segments_query);
+
+        //     assert_eq!(kappa, 0.5);
+        // }
+
+        // #[test]
+        // fn route_end_fallback() {
+        //     let mut world = World::new();
+
+        //     let segment_1 = world
+        //         .spawn(Segment {
+        //             length: Length::new::<meter>(10.0),
+        //             curvature: 0.2,
+        //         })
+        //         .id();
+
+        //     let speed = Speed::new::<meter_per_second>(20.0);
+        //     let idm_driver = IdmDriver {
+        //         geometry_time_headway: Time::new::<second>(2.0),
+        //         ..default()
+        //     };
+
+        //     let navigator = Navigator {
+        //         current_segment_id: segment_1,
+        //         progress: 0.5,
+        //         route: vec![segment_1], // No next segment
+        //         current_segment_index: 0,
+        //     };
+
+        //     let mut system_state: SystemState<Query<&Segment>> = SystemState::new(&mut world);
+        //     let segments_query = system_state.get(&world);
+
+        //     // Lookahead = 40m. Remaining segment 1 = 5m.
+        //     // Overshoots route bounds. Should safely return 0.0.
+        //     let kappa = get_kappa(speed, &idm_driver, &navigator, &segments_query);
+
+        //     assert_eq!(kappa, 0.0);
+        // }
+    }
+
     /// Tests for `get_sectors`.
     mod test_get_sectors {
         use super::*;
@@ -614,7 +835,7 @@ mod tests {
         }
 
         #[test]
-        fn get_sectors_filters_matching_arms_and_lanes() {
+        fn filters_matching_arms_and_lanes() {
             let mut world = World::new();
 
             // Entry arm index 1, number of arms 4 => prev_arm_index = (1 + 4 - 1) % 4 = 0.
@@ -653,7 +874,7 @@ mod tests {
         }
 
         #[test]
-        fn get_sectors_handles_arm_zero_wraparound() {
+        fn handles_arm_zero_wraparound() {
             let mut world = World::new();
 
             // Entry arm index 0, number of arms 4 => prev_arm_index = (0 + 4 - 1) % 4 = 3.
@@ -681,7 +902,7 @@ mod tests {
         }
 
         #[test]
-        fn get_sectors_returns_empty_maps_when_no_matching_sectors_exist() {
+        fn returns_empty_maps_when_no_matching_sectors_exist() {
             let mut world = World::new();
 
             // Spawn segments for arm 2, but query for arm 0.
@@ -702,7 +923,7 @@ mod tests {
         }
 
         #[test]
-        fn get_sectors_handles_two_arm_roundabout() {
+        fn handles_two_arm_roundabout() {
             let mut world = World::new();
 
             // Entry arm index 0, number of arms 2 => prev_arm_index = (0 + 2 - 1) % 2 = 1.
@@ -730,7 +951,7 @@ mod tests {
         }
 
         #[test]
-        fn get_sectors_ignores_other_segment_types_on_same_arm() {
+        fn ignores_other_segment_types_on_same_arm() {
             let mut world = World::new();
 
             let entry_arm = 1;
