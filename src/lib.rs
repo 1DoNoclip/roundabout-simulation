@@ -35,13 +35,7 @@ impl Plugin for AppSetupPlugin {
         app.insert_resource(cli_args)
             .add_plugins(DefaultPlugins)
             // Register simulation domain plugins.
-            .add_plugins((
-                BlueprintPlugin,
-                LayoutPlugin,
-                SimulationPlugin,
-                UiPlugin,
-                UtilsPlugin,
-            ))
+            .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin, UtilsPlugin))
             .add_systems(
                 Startup,
                 (setup_roundabout_layout, setup_world, setup_simulation_time),
@@ -54,8 +48,14 @@ impl Plugin for AppSetupPlugin {
                 ),
             );
 
+        if !cli_args.no_inspector || !cli_args.no_control_panel {
+            app.add_plugins(EguiPlugin::default());
+        }
         if !cli_args.no_inspector {
-            app.add_plugins((EguiPlugin::default(), WorldInspectorPlugin::default()));
+            app.add_plugins(WorldInspectorPlugin::default());
+        }
+        if !cli_args.no_control_panel {
+            app.add_plugins(UiPlugin);
         }
     }
 }
@@ -75,9 +75,13 @@ struct CliArgs {
     #[arg(long, value_name = "SECONDS")]
     run_after: Option<f32>,
 
-    /// Disables the `bevy_inspector_egui` crate's plugins.
+    /// Disables the `bevy_inspector_egui`'s plugins.
     #[arg(long, alias = "ni", default_value_t = false)]
     no_inspector: bool,
+
+    /// Disables the control panel.
+    #[arg(long, alias = "nc", default_value_t = false)]
+    no_control_panel: bool,
 
     // Use `--nr` or `--no-render`.
     // Automatically parses into false if omitted.

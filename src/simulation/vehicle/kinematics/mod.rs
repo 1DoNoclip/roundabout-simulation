@@ -55,7 +55,7 @@ pub(in crate::simulation) fn calculate_accelerations(
                     (1.0 - navigator.progress()) * entry_segment.length()
                         + yield_point.progress() * deflection_segment.length()
                 } else {
-                    Length::new::<meter>(-1.0)
+                    Length::new::<meter>(0.0)
                 };
                 Some((arm_index, lane_index, distance_to_yield))
             } else {
@@ -585,19 +585,34 @@ mod tests {
 
     /// Tests for `calculate_accelerations`.
     mod test_calculate_accelerations {
-        use super::*;
+        // use super::*;
+        // use crate::simulation::vehicle::VehicleBundle;
 
         // #[test]
         // fn acceleration_clamps_to_geometry_speed() {
         //     // Because `calculate_accelerations` requires many highly specific Res and Query parameters,
-        //     // integration testing it requires setting up a Bevy App and running a single schedule update.
+        //     // testing it requires setting up a Bevy App and running a single schedule update.
         //     let mut app = App::new();
 
-        //     // 1. Insert required resources
-        //     app.insert_resource(RoundaboutBlueprint {
-        //         speed_limit: Velocity::new::<meter_per_second>(30.0),
-        //         number_of_arms: 4,
-        //     });
+        //     // Insert required resources.
+        //     app.insert_resource(
+        //         RoundaboutBlueprint::try_new(
+        //             vec![
+        //                 ArmBlueprint::from_degrees(0.0, None, 1.0),
+        //                 ArmBlueprint::from_degrees(90.0, None, 1.0),
+        //                 ArmBlueprint::from_degrees(180.0, None, 1.0),
+        //                 ArmBlueprint::from_degrees(270.0, None, 1.0),
+        //             ],
+        //             CircleBlueprint::try_new(
+        //                 Length::new::<meter>(30.0),
+        //                 Length::new::<meter>(10.0),
+        //             )
+        //             .unwrap(),
+        //             2,
+        //             Speed::try_new(Velocity::new::<meter_per_second>(10.0)).unwrap(),
+        //         )
+        //         .unwrap(),
+        //     );
         //     // Insert dummy resources for YieldPoints and ConflictPoints to satisfy the system signature.
         //     app.insert_resource(RoundaboutConflictPoints::default());
         //     app.insert_resource(RoundaboutYieldPoints::default());
@@ -609,6 +624,38 @@ mod tests {
         //             length: Length::new::<meter>(100.0),
         //             curvature: 0.1, // 1 / 10m radius curve
         //         })
+        //         .id();
+
+        //     let segment_id = app
+        //         .world_mut()
+        //         .spawn(Segment::new(
+        //             // 10m radius curve.
+        //             DeflectionCurvePoints([
+        //                 Vec3::new(10.0, 0.0, 0.0),
+        //                 Vec3::new(10.0, 5.523, 0.0),
+        //                 Vec3::new(5.523, 10.0, 0.0),
+        //                 Vec3::new(0.0, 10.0, 0.0),
+        //             ]),
+        //             Entity::PLACEHOLDER,
+        //             0,
+        //             0,
+        //             Connection::Direct {
+        //                 next_segment_id: Entity::PLACEHOLDER,
+        //             },
+        //             Speed::try_new(Velocity::new::<meter_per_second>(10.0)).unwrap(),
+        //         ))
+        //         .id();
+
+        //     let vehicle_id = app
+        //         .world_mut()
+        //         .spawn(VehicleBundle::try_new(
+        //             segments,
+        //             current_speed,
+        //             target_speed,
+        //             max_acceleration,
+        //             max_deceleration,
+        //             route,
+        //         ).unwrap())
         //         .id();
 
         //     let vehicle_entity = app
