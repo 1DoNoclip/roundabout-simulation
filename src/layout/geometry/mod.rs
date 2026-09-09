@@ -173,6 +173,24 @@ impl CurveLength for StraightLinePoints {
     }
 }
 
+impl From<StraightLinePoints> for Evaluators {
+    fn from(value: StraightLinePoints) -> Self {
+        let linear_spline = LinearSpline::new(self.0);
+        let curve = linear_spline
+            .to_curve()
+            .expect("failed to convert LinearSpline into CubicCurve");
+        let tangent_curve = curve.clone();
+
+        let position_evaluator = Box::new(move |time| curve.sample_clamped(time));
+        let tangent_evaluator =
+            Box::new(move |time| tangent_curve.velocity(time).normalize_or_zero());
+        // The curvature of the straight line is always 0.0.
+        let curvature_evaluator = Box::new(move |_| 0.0);
+
+        Evaluators::new(position_evaluator, tangent_evaluator, curvature_evaluator)
+    }
+}
+
 impl IntoEvaluators for StraightLinePoints {
     fn into_evaluators(self) -> Evaluators {
         let linear_spline = LinearSpline::new(self.0);
@@ -369,4 +387,45 @@ enum SectorType {
     IntraArm,
     /// Between Arm N's exit and Arm N's entry.
     InterArm { next_arm_angle: Rot2 },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tests for `StraightLinePoints.into_evaluators()`.
+    mod test_into_evaluators_straight_line_points {
+        use super::*;
+
+        const fn straight_line() -> StraightLinePoints {
+            StraightLinePoints([Vec3::ZERO, Vec3::new(100.0, 0.0, 0.0)])
+        }
+
+        #[test]
+        fn straight_line_start_progress() {
+            let line = straight_line();
+            let evaluators = line.into_evaluators();
+            let curvature = evaluators.curvature_at(0.0);
+
+            assert_eq!(curvature, 0.0);
+        }
+
+        #[test]
+        fn straight_line_half_progress() {
+            let line = straight_line();
+            let evaluators = line.into_evaluators();
+            let curvature = evaluators.curvature_at(0.5);
+
+            assert_eq!(curvature, 0.0);
+        }
+
+        #[test]
+        fn straight_line_end_progress() {
+            let line = straight_line();
+            let evaluators = line.into_evaluators();
+            let curvature = evaluators.curvature_at(1.0);
+
+            assert_eq!(curvature, 0.0);
+        }
+    }
 }
