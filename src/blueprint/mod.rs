@@ -102,7 +102,7 @@ pub(crate) struct ArmBlueprint {
 }
 
 impl ArmBlueprint {
-    pub fn from_degrees(
+    pub fn new(
         degrees: f32,
         speed_limit_override: Option<Speed>,
         max_vehicles_per_second: f32,
@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn new_arm_blueprint() {
-        ArmBlueprint::from_degrees(90.0, None, 0.5);
+        ArmBlueprint::new(90.0, None, 0.28);
     }
 
     #[test]
@@ -187,9 +187,9 @@ mod tests {
     #[test]
     fn try_new_roundabout_blueprint() {
         let arms = vec![
-            ArmBlueprint::from_degrees(0.0, None, 0.5),
-            ArmBlueprint::from_degrees(90.0, None, 0.5),
-            ArmBlueprint::from_degrees(180.0, None, 0.5),
+            ArmBlueprint::new(0.0, None, 0.28),
+            ArmBlueprint::new(90.0, None, 0.28),
+            ArmBlueprint::new(180.0, None, 0.28),
         ];
         let circle_blueprint =
             CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))

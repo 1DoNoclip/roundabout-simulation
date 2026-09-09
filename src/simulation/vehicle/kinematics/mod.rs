@@ -19,7 +19,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     segments: Query<&Segment>,
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
     entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
-    // Only used to check if a segment is an entry deflection segment.
+    // Used to check if a segment is an entry deflection segment.
     exit_deflection_segments: Query<(), With<segment_type::ExitDeflection>>,
     intra_arm_sectors: Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
     inter_arm_sectors: Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
@@ -32,68 +32,23 @@ pub(in crate::simulation) fn calculate_accelerations(
         let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
         let current_segment_id = navigator.current_segment_id();
 
-        let yield_context = if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
-            let (deflection_id, deflection_segment) = entry_deflection_segments
-                .iter()
-                .find(|&(_, segment)| {
-                    segment.arm_id() == entry_segment.arm_id()
-                        && segment.lane_index() == entry_segment.lane_index()
-                })
-                .expect("entry line segment should have an associated entry deflection segment");
+        let yield_context = YieldContext::get(
+            &yield_points,
+            entry_line_segments,
+            entry_deflection_segments,
+            navigator,
+            current_segment_id,
+        );
 
-            let arm_index = entry_segment.arm_index();
-            let lane_index = entry_segment.lane_index();
-
-            if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
-            {
-                // If the yield point is on the entry line.
-                let distance_to_yield = if yield_point.segment_id() == current_segment_id {
-                    (yield_point.progress() - navigator.progress()) * entry_segment.length()
-                }
-                // If the yield point is on the entry deflection.
-                else if yield_point.segment_id() == deflection_id {
-                    (1.0 - navigator.progress()) * entry_segment.length()
-                        + yield_point.progress() * deflection_segment.length()
-                } else {
-                    Length::new::<meter>(0.0)
-                };
-                Some((arm_index, lane_index, distance_to_yield))
-            } else {
-                None
-            }
-        } else if let Ok((deflection_id, deflection_segment)) =
-            entry_deflection_segments.get(current_segment_id)
-        {
-            let arm_index = deflection_segment.arm_index();
-            let lane_index = deflection_segment.lane_index();
-
-            if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
-            {
-                if yield_point.segment_id() == deflection_id {
-                    let distance_to_yield = Length::new::<meter>(
-                        (yield_point.progress() - navigator.progress())
-                            * deflection_segment.length().get::<meter>(),
-                    );
-                    Some((arm_index, lane_index, distance_to_yield))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        if let Some((entry_arm_index, entry_lane_index, distance_to_yield)) = yield_context
+        if let Some(context) = yield_context
             // Yield distance must be positive (else the vehicle is past the yield line)
             // and therefore we completely disregard using a virtual lead vehicle.
-            && let Ok(distance_to_yield) = Distance::try_new(distance_to_yield)
+            && let Ok(distance_to_yield) = Distance::try_new(context.distance_to_yield)
                 && distance_to_yield.get::<meter>() > 0.0
                 && let Ok(circulating_vehicles) = get_circulating_vehicles(
                     id,
-                    entry_lane_index,
-                    entry_arm_index,
+                    context.entry_lane_index,
+                    context.entry_arm_index,
                     roundabout_blueprint.number_of_arms(),
                     &conflict_points,
                     exit_deflection_segments,
@@ -154,122 +109,195 @@ pub(in crate::simulation) fn calculate_accelerations(
     }
 }
 
-pub(in crate::simulation) fn update_vehicle_accelerations(
-    query: Query<(&mut AccelerationComponent, &NextAcceleration)>,
-) {
-    for (mut acceleration, &next_acceleration) in query {
-        **acceleration = *next_acceleration;
-    }
-}
-
-pub(in crate::simulation) fn apply_accelerations(
-    time: Res<Time>,
-    query: Query<(&mut Speed, &AccelerationComponent)>,
-) {
-    let delta_time = UomTime::new::<second>(time.delta_secs());
-    for (mut speed, &acceleration) in query {
-        speed.apply_acceleration(*acceleration, delta_time);
-    }
-}
-
-/// Moves vehicles along their routes.
+/// Finds the vehicle in front of this vehicle.
 ///
-/// Increments segments once a vehicle has reached the end of the current segment,
-/// or despawns them if they reach the end of the route.
-pub(in crate::simulation) fn move_vehicles(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut statistics: ResMut<Statistics>,
-    segments: Query<&Segment>,
-    vehicles: Query<(Entity, &mut Navigator, &mut Transform, &Speed), With<Vehicle>>,
-) {
-    let delta_time: UomTime = UomTime::new::<second>(time.delta_secs());
-    for (id, mut navigator, mut transform, &speed) in vehicles {
-        let current_segment_id = navigator.current_segment_id();
-        let Ok(current_segment) = segments.get(current_segment_id) else {
-            warn!("Found no segment associated with segment entity.");
+/// Returns `None` if a lead vehicle was not found.
+/// ### Arguments
+/// * `this_vehicle_id` - The vehicle to find the lead vehicle for.
+fn find_lead_vehicle(
+    segments: &Query<&Segment>,
+    vehicles: &Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
+    this_vehicle_id: Entity,
+) -> Result<LeadVehicleInfo, String> {
+    let (_, _, this_navigator, _) = vehicles
+        .get(this_vehicle_id)
+        .map_err(|error| error.to_string())?;
+
+    let this_route = this_navigator.route();
+    let this_current_segment_id = this_navigator.current_segment_id();
+    let this_progress = this_navigator.progress();
+
+    // The route from the this's current segment to the end.
+    let existing_route = if let Some(current_segment_index) = this_route
+        .iter()
+        .position(|&segment_id| segment_id == this_current_segment_id)
+    {
+        // From current segment to end of route.
+        // We ignore segments that this vehicle has already travelled as we are looking ahead.
+        &this_route[current_segment_index..]
+    } else {
+        return Err(format!(
+            "failed to find this_current_segment_id ({this_current_segment_id}) in this_route ({this_route:?})"
+        ));
+    };
+
+    // (route_index, progress, vehicle_entity_id)
+    let mut best_lead_vehicle: Option<(usize, f32, Entity)> = None;
+    for (vehicle_id, _, navigator, _) in vehicles {
+        if vehicle_id == this_vehicle_id {
             continue;
-        };
-        let delta_progress =
-            ((*speed * delta_time) / current_segment.length()).get::<uom::si::ratio::ratio>();
-        match navigator.add_progress(delta_progress) {
-            Ok(_) => {
-                let progress = navigator.progress();
+        }
 
-                let position = current_segment.position_at(progress);
-                transform.translation = position;
+        // If the vehicle is still on the map.
+        let current_segment_id = navigator.current_segment_id();
+        // If the vehicle is on the route of `this_vehicle`.
+        if let Some(index) = existing_route
+            .iter()
+            .position(|&segment_id| current_segment_id == segment_id)
+        {
+            let progress = navigator.progress();
 
-                // Note: This does come at a small unnecessary cost if rendering is disabled
-                // as the vehicle rotation does not matter apart from when rendering it.
-                let tangent = current_segment.tangent_at(progress);
-                // For 2D (XY) plane, calculate the angle from the tangent vector.
-                let angle = tangent.y.atan2(tangent.x);
-                transform.rotation = Quat::from_rotation_z(angle);
+            // If they are on the same segment, but the vehicle's progress is less than
+            // `this_vehicle`'s progress, then skip as we are only looking ahead.
+            if index == 0 && progress <= this_progress {
+                continue;
             }
-            Err(_overflow_progress) => match navigator.increment_current_segment_index() {
-                // The vehicle moves onto the next segment.
-                Ok(_) => {
-                    navigator.reset_progress();
-                    // Currently nothing is done with `overflow_progress`, so we do not
-                    // need to add any progress to the navigator when on the next segment.
-                    // I have not used `overflow_progress` yet as it is often
-                    // a very small value so will not have much effect.
+
+            // Tuples implement comparison (compares .0 first then .1 after).
+            let candidate_rank = (index, progress);
+
+            if let Some((best_index, best_progress, _)) = best_lead_vehicle {
+                // If this candidate is better than the current best, then replace it.
+                if candidate_rank < (best_index, best_progress) {
+                    best_lead_vehicle = Some((index, progress, vehicle_id));
                 }
-                // The vehicle has reached the end and will be despawned.
-                Err(_) => {
-                    // The vehicle must be despawned to prevent invalid state of Navigator.
-                    commands.entity(id).despawn();
-                    statistics.increment_total_vehicles_passed();
-                }
-            },
+            } else {
+                // If there is no current best, then this vehicle must (currently) be the best.
+                best_lead_vehicle = Some((index, progress, vehicle_id));
+            }
         }
     }
+
+    let (lead_index, lead_progress, lead_vehicle_id) =
+        best_lead_vehicle.ok_or("failed to find a lead vehicle")?;
+
+    let total_distance = Distance::try_new(if lead_index == 0 {
+        let segment_length = segments
+            .get(existing_route[0])
+            .map_err(|_| "expected to get segment component")?
+            .length();
+        (lead_progress - this_progress) * segment_length
+    } else {
+        let mut total_distance = Length::ZERO;
+
+        let first_segment_length = segments
+            .get(existing_route[0])
+            .map_err(|_| "expected to get segment component")?
+            .length();
+        total_distance += (1.0 - this_progress) * first_segment_length;
+
+        for &id in existing_route.iter().take(lead_index).skip(1) {
+            let segment_length = segments
+                .get(id)
+                .map_err(|_| "expected to get segment component")?
+                .length();
+            total_distance += segment_length;
+        }
+
+        let last_segment_length = segments
+            .get(existing_route[lead_index])
+            .map_err(|_| "expected to get segment component")?
+            .length();
+        total_distance += lead_progress * last_segment_length;
+
+        total_distance
+    })?;
+
+    let (_, kinematics, _, lead_speed) = vehicles
+        .get(lead_vehicle_id)
+        .expect("expected to find vehicle components");
+
+    Ok(LeadVehicleInfo {
+        vehicle_kind: VehicleKind::Real(kinematics.vehicle_length()),
+        distance: total_distance,
+        speed: *lead_speed,
+    })
 }
 
-/// Gets the curvature (kappa, `κ`) at the lookahead distance position.
-fn get_kappa(
-    current_speed: Speed,
-    idm_driver: &IdmDriver,
-    navigator: &Navigator,
-    segments: &Query<&Segment>,
-) -> f32 {
-    let lookahead_distance: Length = idm_driver.geometry_time_headway() * *current_speed;
-    let current_segment = segments
-        .get(navigator.current_segment_id())
-        .expect("expected current segment ID to be valid");
-    let current_progress = navigator.progress();
-    let distance_to_end: Length = (1.0 - current_progress) * current_segment.length();
-    // Get the curvature of this segment.
-    let (segment, progress) = if distance_to_end > lookahead_distance {
-        let progress = (lookahead_distance / current_segment.length())
-            .get::<uom::si::ratio::ratio>()
-            + current_progress;
-        (current_segment, progress)
-    }
-    // We need to look at ahead segments until we get to the lookahead distance.
-    else {
-        let route = navigator.route();
-        let mut current_segment_index = navigator.current_segment_index();
-        let mut remaining_distance: Length = lookahead_distance - distance_to_end;
-        loop {
-            current_segment_index += 1;
-            let Some(&current_segment_id) = route.get(current_segment_index) else {
-                return 0.0;
-            };
-            let current_segment = segments
-                .get(current_segment_id)
-                .expect("expected current segment ID to be valid");
+struct YieldContext {
+    entry_arm_index: usize,
+    entry_lane_index: usize,
+    distance_to_yield: Length,
+}
 
-            let progress =
-                (remaining_distance / current_segment.length()).get::<uom::si::ratio::ratio>();
-            if progress <= 1.0 {
-                break (current_segment, progress);
+impl YieldContext {
+    fn get(
+        yield_points: &Res<RoundaboutYieldPoints>,
+        entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+        entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
+        navigator: &Navigator,
+        current_segment_id: Entity,
+    ) -> Option<Self> {
+        let yield_context = if let Ok(entry_segment) = entry_line_segments.get(current_segment_id) {
+            let (deflection_id, deflection_segment) = entry_deflection_segments
+                .iter()
+                .find(|&(_, segment)| {
+                    segment.arm_id() == entry_segment.arm_id()
+                        && segment.lane_index() == entry_segment.lane_index()
+                })
+                .expect("entry line segment should have an associated entry deflection segment");
+
+            let arm_index = entry_segment.arm_index();
+            let lane_index = entry_segment.lane_index();
+
+            if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
+            {
+                // If the yield point is on the entry line.
+                let distance_to_yield = if yield_point.segment_id() == current_segment_id {
+                    (yield_point.progress() - navigator.progress()) * entry_segment.length()
+                }
+                // If the yield point is on the entry deflection.
+                else if yield_point.segment_id() == deflection_id {
+                    (1.0 - navigator.progress()) * entry_segment.length()
+                        + yield_point.progress() * deflection_segment.length()
+                } else {
+                    Length::new::<meter>(0.0)
+                };
+                Some((arm_index, lane_index, distance_to_yield))
             } else {
-                remaining_distance -= current_segment.length();
+                None
             }
-        }
-    };
-    segment.curvature_at(progress).abs()
+        } else if let Ok((deflection_id, deflection_segment)) =
+            entry_deflection_segments.get(current_segment_id)
+        {
+            let arm_index = deflection_segment.arm_index();
+            let lane_index = deflection_segment.lane_index();
+
+            if let Some(yield_point) = yield_points.get(YieldPointIndex::new(arm_index, lane_index))
+            {
+                if yield_point.segment_id() == deflection_id {
+                    let distance_to_yield = Length::new::<meter>(
+                        (yield_point.progress() - navigator.progress())
+                            * deflection_segment.length().get::<meter>(),
+                    );
+                    Some((arm_index, lane_index, distance_to_yield))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        yield_context.map(
+            |(entry_arm_index, entry_lane_index, distance_to_yield)| YieldContext {
+                entry_arm_index,
+                entry_lane_index,
+                distance_to_yield,
+            },
+        )
+    }
 }
 
 fn get_circulating_vehicles(
@@ -414,119 +442,122 @@ fn get_sectors(
     (intra_arm_sectors, inter_arm_sectors)
 }
 
-/// Finds the vehicle in front of this vehicle.
-///
-/// Returns `None` if a lead vehicle was not found.
-/// ### Arguments
-/// * `this_vehicle_id` - The vehicle to find the lead vehicle for.
-fn find_lead_vehicle(
+/// Gets the curvature (kappa, `κ`) at the lookahead distance position.
+fn get_kappa(
+    current_speed: Speed,
+    idm_driver: &IdmDriver,
+    navigator: &Navigator,
     segments: &Query<&Segment>,
-    vehicles: &Query<(Entity, &Kinematics, &Navigator, &Speed), With<Vehicle>>,
-    this_vehicle_id: Entity,
-) -> Result<LeadVehicleInfo, String> {
-    let (_, _, this_navigator, _) = vehicles
-        .get(this_vehicle_id)
-        .map_err(|error| error.to_string())?;
+) -> f32 {
+    let lookahead_distance: Length = idm_driver.geometry_time_headway() * *current_speed;
+    let current_segment = segments
+        .get(navigator.current_segment_id())
+        .expect("expected current segment ID to be valid");
+    let current_progress = navigator.progress();
+    let distance_to_end: Length = (1.0 - current_progress) * current_segment.length();
+    // Get the curvature of this segment.
+    let (segment, progress) = if distance_to_end > lookahead_distance {
+        let progress = (lookahead_distance / current_segment.length())
+            .get::<uom::si::ratio::ratio>()
+            + current_progress;
+        (current_segment, progress)
+    }
+    // We need to look at ahead segments until we get to the lookahead distance.
+    else {
+        let route = navigator.route();
+        let mut current_segment_index = navigator.current_segment_index();
+        let mut remaining_distance: Length = lookahead_distance - distance_to_end;
+        loop {
+            current_segment_index += 1;
+            let Some(&current_segment_id) = route.get(current_segment_index) else {
+                return 0.0;
+            };
+            let current_segment = segments
+                .get(current_segment_id)
+                .expect("expected current segment ID to be valid");
 
-    let this_route = this_navigator.route();
-    let this_current_segment_id = this_navigator.current_segment_id();
-    let this_progress = this_navigator.progress();
-
-    // The route from the this's current segment to the end.
-    let existing_route = if let Some(current_segment_index) = this_route
-        .iter()
-        .position(|&segment_id| segment_id == this_current_segment_id)
-    {
-        // From current segment to end of route.
-        // We ignore segments that this vehicle has already travelled as we are looking ahead.
-        &this_route[current_segment_index..]
-    } else {
-        return Err(format!(
-            "failed to find this_current_segment_id ({this_current_segment_id}) in this_route ({this_route:?})"
-        ));
-    };
-
-    // (route_index, progress, vehicle_entity_id)
-    let mut best_lead_vehicle: Option<(usize, f32, Entity)> = None;
-    for (vehicle_id, _, navigator, _) in vehicles {
-        if vehicle_id == this_vehicle_id {
-            continue;
-        }
-
-        // If the vehicle is still on the map.
-        let current_segment_id = navigator.current_segment_id();
-        // If the vehicle is on the route of `this_vehicle`.
-        if let Some(index) = existing_route
-            .iter()
-            .position(|&segment_id| current_segment_id == segment_id)
-        {
-            let progress = navigator.progress();
-
-            // If they are on the same segment, but the vehicle's progress is less than
-            // `this_vehicle`'s progress, then skip as we are only looking ahead.
-            if index == 0 && progress <= this_progress {
-                continue;
-            }
-
-            // Tuples implement comparison (compares .0 first then .1 after).
-            let candidate_rank = (index, progress);
-
-            if let Some((best_index, best_progress, _)) = best_lead_vehicle {
-                // If this candidate is better than the current best, then replace it.
-                if candidate_rank < (best_index, best_progress) {
-                    best_lead_vehicle = Some((index, progress, vehicle_id));
-                }
+            let progress =
+                (remaining_distance / current_segment.length()).get::<uom::si::ratio::ratio>();
+            if progress <= 1.0 {
+                break (current_segment, progress);
             } else {
-                // If there is no current best, then this vehicle must (currently) be the best.
-                best_lead_vehicle = Some((index, progress, vehicle_id));
+                remaining_distance -= current_segment.length();
             }
+        }
+    };
+    segment.curvature_at(progress).abs()
+}
+
+pub(in crate::simulation) fn update_vehicle_accelerations(
+    query: Query<(&mut AccelerationComponent, &NextAcceleration)>,
+) {
+    for (mut acceleration, &next_acceleration) in query {
+        **acceleration = *next_acceleration;
+    }
+}
+
+pub(in crate::simulation) fn apply_accelerations(
+    time: Res<Time>,
+    query: Query<(&mut Speed, &AccelerationComponent)>,
+) {
+    let delta_time = UomTime::new::<second>(time.delta_secs());
+    for (mut speed, &acceleration) in query {
+        speed.apply_acceleration(*acceleration, delta_time);
+    }
+}
+
+/// Moves vehicles along their routes.
+///
+/// Increments segments once a vehicle has reached the end of the current segment,
+/// or despawns them if they reach the end of the route.
+pub(in crate::simulation) fn move_vehicles(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut statistics: ResMut<Statistics>,
+    segments: Query<&Segment>,
+    vehicles: Query<(Entity, &mut Navigator, &mut Transform, &Speed), With<Vehicle>>,
+) {
+    let delta_time: UomTime = UomTime::new::<second>(time.delta_secs());
+    for (id, mut navigator, mut transform, &speed) in vehicles {
+        let current_segment_id = navigator.current_segment_id();
+        let Ok(current_segment) = segments.get(current_segment_id) else {
+            warn!("Found no segment associated with segment entity.");
+            continue;
+        };
+        let delta_progress =
+            ((*speed * delta_time) / current_segment.length()).get::<uom::si::ratio::ratio>();
+        match navigator.add_progress(delta_progress) {
+            Ok(_) => {
+                let progress = navigator.progress();
+
+                let position = current_segment.position_at(progress);
+                transform.translation = position;
+
+                // Note: This does come at a small unnecessary cost if rendering is disabled
+                // as the vehicle rotation does not matter apart from when rendering it.
+                let tangent = current_segment.tangent_at(progress);
+                // For 2D (XY) plane, calculate the angle from the tangent vector.
+                let angle = tangent.y.atan2(tangent.x);
+                transform.rotation = Quat::from_rotation_z(angle);
+            }
+            Err(_overflow_progress) => match navigator.increment_current_segment_index() {
+                // The vehicle moves onto the next segment.
+                Ok(_) => {
+                    navigator.reset_progress();
+                    // Currently nothing is done with `overflow_progress`, so we do not
+                    // need to add any progress to the navigator when on the next segment.
+                    // I have not used `overflow_progress` yet as it is often
+                    // a very small value so will not have much effect.
+                }
+                // The vehicle has reached the end and will be despawned.
+                Err(_) => {
+                    // The vehicle must be despawned to prevent invalid state of Navigator.
+                    commands.entity(id).despawn();
+                    statistics.increment_total_vehicles_passed();
+                }
+            },
         }
     }
-
-    let (lead_index, lead_progress, lead_vehicle_id) =
-        best_lead_vehicle.ok_or("failed to find a lead vehicle")?;
-
-    let total_distance = Distance::try_new(if lead_index == 0 {
-        let segment_length = segments
-            .get(existing_route[0])
-            .map_err(|_| "expected to get segment component")?
-            .length();
-        (lead_progress - this_progress) * segment_length
-    } else {
-        let mut total_distance = Length::ZERO;
-
-        let first_segment_length = segments
-            .get(existing_route[0])
-            .map_err(|_| "expected to get segment component")?
-            .length();
-        total_distance += (1.0 - this_progress) * first_segment_length;
-
-        for &id in existing_route.iter().take(lead_index).skip(1) {
-            let segment_length = segments
-                .get(id)
-                .map_err(|_| "expected to get segment component")?
-                .length();
-            total_distance += segment_length;
-        }
-
-        let last_segment_length = segments
-            .get(existing_route[lead_index])
-            .map_err(|_| "expected to get segment component")?
-            .length();
-        total_distance += lead_progress * last_segment_length;
-
-        total_distance
-    })?;
-
-    let (_, kinematics, _, lead_speed) = vehicles
-        .get(lead_vehicle_id)
-        .expect("expected to find vehicle components");
-
-    Ok(LeadVehicleInfo {
-        vehicle_kind: VehicleKind::Real(kinematics.vehicle_length()),
-        distance: total_distance,
-        speed: *lead_speed,
-    })
 }
 
 /// A vehicle's acceleration in the next frame.

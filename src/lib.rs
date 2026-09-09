@@ -174,10 +174,10 @@ fn setup_world(mut commands: Commands) {
 
 fn setup_roundabout_layout(mut commands: Commands) {
     let arm_blueprints = vec![
-        ArmBlueprint::from_degrees(0.0, None, 1.0),
-        ArmBlueprint::from_degrees(-90.0, None, 0.15),
-        ArmBlueprint::from_degrees(-180.0, None, 1.0),
-        ArmBlueprint::from_degrees(-270.0, None, 0.15),
+        ArmBlueprint::new(0.0, None, 1.0),
+        ArmBlueprint::new(-90.0, None, 0.15),
+        ArmBlueprint::new(-180.0, None, 1.0),
+        ArmBlueprint::new(-270.0, None, 0.15),
     ];
     let circle_blueprint =
         CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
@@ -204,9 +204,9 @@ mod tests {
         let mut app = App::new();
 
         let arm_blueprints = vec![
-            ArmBlueprint::from_degrees(0.0, None, 0.5),
-            ArmBlueprint::from_degrees(120.0, None, 0.5),
-            ArmBlueprint::from_degrees(240.0, None, 0.5),
+            ArmBlueprint::new(0.0, None, 0.5),
+            ArmBlueprint::new(120.0, None, 0.5),
+            ArmBlueprint::new(240.0, None, 0.5),
         ];
         let circle_blueprint =
             CircleBlueprint::try_new(Length::new::<meter>(20.0), Length::new::<meter>(15.0))
