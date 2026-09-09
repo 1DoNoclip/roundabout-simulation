@@ -175,25 +175,7 @@ impl CurveLength for StraightLinePoints {
 
 impl From<StraightLinePoints> for Evaluators {
     fn from(value: StraightLinePoints) -> Self {
-        let linear_spline = LinearSpline::new(self.0);
-        let curve = linear_spline
-            .to_curve()
-            .expect("failed to convert LinearSpline into CubicCurve");
-        let tangent_curve = curve.clone();
-
-        let position_evaluator = Box::new(move |time| curve.sample_clamped(time));
-        let tangent_evaluator =
-            Box::new(move |time| tangent_curve.velocity(time).normalize_or_zero());
-        // The curvature of the straight line is always 0.0.
-        let curvature_evaluator = Box::new(move |_| 0.0);
-
-        Evaluators::new(position_evaluator, tangent_evaluator, curvature_evaluator)
-    }
-}
-
-impl IntoEvaluators for StraightLinePoints {
-    fn into_evaluators(self) -> Evaluators {
-        let linear_spline = LinearSpline::new(self.0);
+        let linear_spline = LinearSpline::new(value.0);
         let curve = linear_spline
             .to_curve()
             .expect("failed to convert LinearSpline into CubicCurve");
@@ -232,9 +214,9 @@ impl CurveLength for DeflectionCurvePoints {
     }
 }
 
-impl IntoEvaluators for DeflectionCurvePoints {
-    fn into_evaluators(self) -> Evaluators {
-        let cubic_bezier = CubicBezier::new([self.0]);
+impl From<DeflectionCurvePoints> for Evaluators {
+    fn from(value: DeflectionCurvePoints) -> Self {
+        let cubic_bezier = CubicBezier::new([value.0]);
         let curve = cubic_bezier
             .to_curve()
             .expect("failed to convert CubicBezier into CubicCurve");
@@ -347,11 +329,11 @@ impl CurveLength for SectorGeometry {
     }
 }
 
-impl IntoEvaluators for SectorGeometry {
-    fn into_evaluators(self) -> Evaluators {
-        let start_angle = self.start_angle;
-        let delta_angle = self.end_angle - self.start_angle;
-        let radius = self.radius;
+impl From<SectorGeometry> for Evaluators {
+    fn from(value: SectorGeometry) -> Self {
+        let start_angle = value.start_angle;
+        let delta_angle = value.end_angle - value.start_angle;
+        let radius = value.radius;
 
         let position_evaluator = Box::new(move |time| {
             let angle: f32 = start_angle + time * delta_angle;
@@ -393,8 +375,8 @@ enum SectorType {
 mod tests {
     use super::*;
 
-    /// Tests for `StraightLinePoints.into_evaluators()`.
-    mod test_into_evaluators_straight_line_points {
+    /// Tests for `Into::<Evaluators>::into(StraightLinePoints)`.
+    mod test_straight_line_points_into_evaluators {
         use super::*;
 
         const fn straight_line() -> StraightLinePoints {
@@ -404,16 +386,16 @@ mod tests {
         #[test]
         fn straight_line_start_progress() {
             let line = straight_line();
-            let evaluators = line.into_evaluators();
+            let evaluators: Evaluators = line.into();
             let curvature = evaluators.curvature_at(0.0);
 
-            assert_eq!(curvature, 0.0);
+            assert_eq!(curvature, 0.0, "Expected curvature to be 0.0.");
         }
 
         #[test]
         fn straight_line_half_progress() {
             let line = straight_line();
-            let evaluators = line.into_evaluators();
+            let evaluators: Evaluators = line.into();
             let curvature = evaluators.curvature_at(0.5);
 
             assert_eq!(curvature, 0.0);
@@ -422,10 +404,96 @@ mod tests {
         #[test]
         fn straight_line_end_progress() {
             let line = straight_line();
-            let evaluators = line.into_evaluators();
+            let evaluators: Evaluators = line.into();
             let curvature = evaluators.curvature_at(1.0);
 
-            assert_eq!(curvature, 0.0);
+            assert_eq!(curvature, 0.0, "Expected curvature to be 0.0.");
+        }
+    }
+
+    /// Tests for `Into::<Evaluators>::into(DeflectionCurvePoints)`.
+    mod test_deflection_curve_points_into_evaluators {
+        use super::*;
+
+        const EPSILON: f32 = 1e-4;
+
+        #[test]
+        fn straight_line_has_zero_curvature() {
+            let points = [
+                Vec3::new(0.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(2.0, 0.0, 0.0),
+                Vec3::new(3.0, 0.0, 0.0),
+            ];
+
+            let evaluators: Evaluators = DeflectionCurvePoints(points).into();
+
+            (1..=15).for_each(|x| {
+                let progress = x as f32 / 10.0;
+                let curvature = evaluators.curvature_at(progress);
+                assert!(curvature.abs() < EPSILON, "Expected curvature to be 0.0.");
+            });
+        }
+
+        #[test]
+        fn curve_has_curvature() {
+            let points = [
+                Vec3::new(0.0, 0.0, 0.0),
+                Vec3::new(1.0, 5.0, 0.0),
+                Vec3::new(2.0, 5.0, 0.0),
+                Vec3::new(3.0, 0.0, 0.0),
+            ];
+
+            let evaluators: Evaluators = DeflectionCurvePoints(points).into();
+            let curvature = evaluators.curvature_at(0.5);
+
+            assert!(
+                curvature > EPSILON,
+                "Expected curved path to have positive curvature, got {curvature}."
+            );
+        }
+
+        #[test]
+        fn exact_curvature() {
+            let points = [
+                Vec3::new(-1.0, 0.0, 0.0),
+                Vec3::new(-1.0, 1.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+            ];
+
+            let evaluators: Evaluators = DeflectionCurvePoints(points).into();
+            let time = 0.5;
+            let evaluated_curvature = evaluators.curvature_at(time);
+
+            let expected_curvature = 2.0 / 3.0;
+
+            assert!(
+                (evaluated_curvature - expected_curvature).abs() < EPSILON,
+                "Expected curvature at time={time} to be close to {expected_curvature}, found {evaluated_curvature}."
+            );
+        }
+
+        #[test]
+        fn exact_curvature_asymmetric_quarter_time() {
+            let points = [
+                Vec3::new(0.0, 0.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+                Vec3::new(2.0, 1.0, 0.0),
+                Vec3::new(3.0, -1.0, 0.0), // Dropped end point to break symmetry.
+            ];
+
+            let evaluators: Evaluators = DeflectionCurvePoints(points).into();
+            let time = 0.25;
+            let evaluated_curvature = evaluators.curvature_at(time);
+
+            // Analytical value for this specific curve layout at time = 0.25.
+            let expected_curvature = 0.6408095;
+
+            assert!(
+                (evaluated_curvature - expected_curvature).abs() < EPSILON,
+                "Expected curvature at time={time} to be close to {expected_curvature}, found {evaluated_curvature}."
+            );
         }
     }
 }

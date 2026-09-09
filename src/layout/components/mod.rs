@@ -131,7 +131,7 @@ impl Segment {
         speed_limit: Speed,
     ) -> Self {
         let length = curve.length();
-        let evaluators = curve.into_evaluators();
+        let evaluators: Evaluators = curve.into();
         let start_position = evaluators.position_at(0.0);
         Segment {
             evaluators,
