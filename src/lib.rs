@@ -48,10 +48,10 @@ impl Plugin for AppSetupPlugin {
                 ),
             );
 
-        if !cli_args.no_inspector || !cli_args.no_control_panel {
+        if cli_args.enable_inspector || !cli_args.no_control_panel {
             app.add_plugins(EguiPlugin::default());
         }
-        if !cli_args.no_inspector {
+        if cli_args.enable_inspector {
             app.add_plugins(WorldInspectorPlugin::default());
         }
         if !cli_args.no_control_panel {
@@ -75,9 +75,9 @@ struct CliArgs {
     #[arg(long, value_name = "SECONDS")]
     run_after: Option<f32>,
 
-    /// Disables the `bevy_inspector_egui`'s plugins.
-    #[arg(long, alias = "ni", default_value_t = false)]
-    no_inspector: bool,
+    /// Enables the `bevy_inspector_egui`.
+    #[arg(long, alias = "ei", default_value_t = false)]
+    enable_inspector: bool,
 
     /// Disables the control panel.
     #[arg(long, alias = "nc", default_value_t = false)]
