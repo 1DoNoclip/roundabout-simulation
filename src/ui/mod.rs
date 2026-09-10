@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::*;
 use bevy_inspector_egui::bevy_egui::prelude::*;
 
@@ -158,13 +160,35 @@ enum SpeedUnit {
 }
 
 #[derive(Resource)]
-struct MapSettings {
+pub(crate) struct MapSettings {
     number_of_lanes: usize,
     speed_limit: Velocity,
     current_ui_speed_unit: SpeedUnit,
     radius: Length,
     deflection_radius: Length,
     arms: Vec<ArmSettings>,
+}
+
+impl MapSettings {
+    pub const fn number_of_lanes(&self) -> usize {
+        self.number_of_lanes
+    }
+
+    pub const fn speed_limit(&self) -> Velocity {
+        self.speed_limit
+    }
+
+    pub const fn radius(&self) -> Length {
+        self.radius
+    }
+
+    pub const fn deflection_radius(&self) -> Length {
+        self.deflection_radius
+    }
+
+    pub fn arms(&self) -> &[ArmSettings] {
+        &self.arms
+    }
 }
 
 impl Default for MapSettings {
@@ -210,18 +234,30 @@ impl Default for SimulationSettings {
     }
 }
 
-struct ArmSettings {
+pub(crate) struct ArmSettings {
     angle: Rot2,
-    vehicles_per_hour: i32,
+    vehicles_per_hour: u32,
     speed_limit_override: Option<Speed>,
 }
 
 impl ArmSettings {
-    const fn new(angle: Rot2, vehicles_per_hour: i32, speed_limit_override: Option<Speed>) -> Self {
+    const fn new(angle: Rot2, vehicles_per_hour: u32, speed_limit_override: Option<Speed>) -> Self {
         ArmSettings {
             angle,
             vehicles_per_hour,
             speed_limit_override,
         }
+    }
+
+    pub const fn angle(&self) -> Rot2 {
+        self.angle
+    }
+
+    pub const fn vehicles_per_hour(&self) -> u32 {
+        self.vehicles_per_hour
+    }
+
+    pub const fn speed_limit_override(&self) -> Option<Speed> {
+        self.speed_limit_override
     }
 }

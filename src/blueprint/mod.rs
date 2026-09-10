@@ -7,12 +7,39 @@ impl Plugin for BlueprintPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<ArmBlueprint>()
             .register_type::<CircleBlueprint>()
-            .register_type::<RoundaboutBlueprint>();
+            .register_type::<RoundaboutBlueprint>()
+            .add_systems(
+                Update,
+                update_blueprints.run_if(resource_changed::<MapSettings>),
+            );
     }
 }
 
+fn update_blueprints(mut blueprint: ResMut<RoundaboutBlueprint>, map_settings: Res<MapSettings>) {
+    blueprint.arm_blueprints =
+        map_settings
+            .arms()
+            .iter()
+            .fold(Vec::new(), |mut vec, arm_settings| {
+                vec.push(ArmBlueprint {
+                    angle: arm_settings.angle(),
+                    speed_limit_override: arm_settings.speed_limit_override(),
+                    max_vehicles_per_second: arm_settings.vehicles_per_hour() as f32 / 3600.0,
+                });
+                vec
+            });
+    blueprint.circle_blueprint = CircleBlueprint {
+        radius: map_settings.radius(),
+        deflection_radius: map_settings.deflection_radius(),
+    };
+    blueprint.number_of_lanes = map_settings.number_of_lanes();
+    blueprint.speed_limit =
+        Speed::try_new(map_settings.speed_limit()).expect("expected to be positive");
+    println!("{:?}", blueprint);
+}
+
 /// Represents global roundabout data.
-#[derive(Resource, Reflect)]
+#[derive(Debug, Resource, Reflect)]
 #[reflect(Resource)]
 pub(crate) struct RoundaboutBlueprint {
     /// Length between 3 -> 6.
@@ -89,7 +116,7 @@ impl RoundaboutBlueprint {
 }
 
 /// Represents a singular arm on the roundabout.
-#[derive(Reflect)]
+#[derive(Debug, Reflect)]
 pub(crate) struct ArmBlueprint {
     /// The angle of the arm to the roundabout.
     angle: Rot2,
@@ -128,7 +155,7 @@ impl ArmBlueprint {
 }
 
 /// Represents the circular part of the roundabout.
-#[derive(Reflect)]
+#[derive(Debug, Reflect)]
 pub(crate) struct CircleBlueprint {
     /// Radius of the inner roundabout circle.
     /// The distance between the centre and the centre of the inner circulating lane.
