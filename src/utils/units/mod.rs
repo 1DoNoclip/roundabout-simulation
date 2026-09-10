@@ -46,7 +46,7 @@ mod velocity {
     use super::*;
 
     /// A speed, can be used for vehicle speed and speed limit.
-    #[derive(Clone, Component, Copy, Debug, Deref, Reflect)]
+    #[derive(Clone, Component, Copy, Debug, Deref, PartialEq, Reflect)]
     pub(crate) struct Speed(#[reflect(ignore)] Velocity);
 
     impl Speed {

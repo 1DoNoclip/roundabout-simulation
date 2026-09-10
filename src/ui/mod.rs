@@ -1,7 +1,6 @@
-use std::ops::Deref;
-
 use crate::*;
 use bevy_inspector_egui::bevy_egui::prelude::*;
+use std::marker::PhantomData;
 
 pub(super) struct UiPlugin;
 
@@ -15,9 +14,11 @@ impl Plugin for UiPlugin {
 
 fn draw_window(
     mut contexts: EguiContexts,
-    mut map_settings: ResMut<MapSettings>,
+    mut map_settings: ResMut<MapSettings<InProgress>>,
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
+    let map_settings = map_settings.bypass_change_detection();
+
     egui::Window::new("Map").show(contexts.ctx_mut()?, |ui| {
         egui::Grid::new("map_settings_grid")
             .num_columns(2)
@@ -159,8 +160,12 @@ enum SpeedUnit {
     MilePerHour,
 }
 
-#[derive(Resource)]
-pub(crate) struct MapSettings {
+pub(crate) struct Applied;
+struct InProgress;
+
+#[derive(PartialEq, Resource)]
+pub(crate) struct MapSettings<S> {
+    state: PhantomData<S>,
     number_of_lanes: usize,
     speed_limit: Velocity,
     current_ui_speed_unit: SpeedUnit,
@@ -169,7 +174,13 @@ pub(crate) struct MapSettings {
     arms: Vec<ArmSettings>,
 }
 
-impl MapSettings {
+impl MapSettings<InProgress> {
+    fn apply_settings(in_progress: Res<Self>, applied: ResMut<MapSettings<Applied>>) {
+
+    }
+}
+
+impl MapSettings<Applied> {
     pub const fn number_of_lanes(&self) -> usize {
         self.number_of_lanes
     }
@@ -191,9 +202,10 @@ impl MapSettings {
     }
 }
 
-impl Default for MapSettings {
+impl Default for MapSettings<InProgress> {
     fn default() -> Self {
         MapSettings {
+            state: PhantomData,
             number_of_lanes: 2,
             speed_limit: Velocity::new::<mile_per_hour>(30.0),
             current_ui_speed_unit: SpeedUnit::MilePerHour,
@@ -234,6 +246,7 @@ impl Default for SimulationSettings {
     }
 }
 
+#[derive(PartialEq)]
 pub(crate) struct ArmSettings {
     angle: Rot2,
     vehicles_per_hour: u32,
