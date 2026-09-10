@@ -1,4 +1,7 @@
-use bevy::{ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*};
+use bevy::{
+    ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
 
@@ -38,7 +41,12 @@ impl Plugin for AppSetupPlugin {
             .add_plugins((BlueprintPlugin, LayoutPlugin, SimulationPlugin, UtilsPlugin))
             .add_systems(
                 Startup,
-                (setup_roundabout_layout, setup_world, setup_simulation_time),
+                (
+                    maximise_window,
+                    setup_roundabout_layout,
+                    setup_world,
+                    setup_simulation_time,
+                ),
             )
             .add_systems(
                 Update,
@@ -90,6 +98,12 @@ struct CliArgs {
     /// A blank window will still open to enable user input.
     #[arg(long, alias = "nr", default_value_t = false)]
     no_render: bool,
+}
+
+fn maximise_window(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
+    if let Ok(mut window) = window_query.single_mut() {
+        window.set_maximized(true);
+    }
 }
 
 #[derive(Resource)]

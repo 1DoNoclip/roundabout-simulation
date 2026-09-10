@@ -113,6 +113,10 @@ fn draw_window(
                         arm.angle = Rot2::degrees(angle_degree);
                     }
                 });
+                ui.horizontal(|ui| {
+                    ui.label("Vehicles per hour:");
+                });
+                ui.add_space(8.0);
             }
         });
     });
