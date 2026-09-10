@@ -112,9 +112,13 @@ fn draw_window(
 
     egui::Window::new("Simulation").show(contexts.ctx_mut()?, |ui| {
         ui.horizontal(|ui| {
-           let (label, button_label) = if simulation_settings.paused { ("Paused:", "Play") } else { ("Playing:", "Pause") };
-           ui.label(label);
-           ui.toggle_value(&mut simulation_settings.paused, button_label);
+            let (label, button_label) = if simulation_settings.paused {
+                ("Paused:", "Play")
+            } else {
+                ("Playing:", "Pause")
+            };
+            ui.label(label);
+            ui.toggle_value(&mut simulation_settings.paused, button_label);
         });
 
         ui.label("Time speed factor:");
@@ -171,9 +175,19 @@ impl Default for MapSettings {
 }
 
 #[derive(Resource)]
-struct SimulationSettings {
+pub(crate) struct SimulationSettings {
     paused: bool,
     time_speed_factor: f32,
+}
+
+impl SimulationSettings {
+    pub const fn paused(&self) -> bool {
+        self.paused
+    }
+
+    pub const fn time_speed_factor(&self) -> f32 {
+        self.time_speed_factor
+    }
 }
 
 impl Default for SimulationSettings {

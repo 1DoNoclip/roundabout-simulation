@@ -44,7 +44,7 @@ impl Plugin for AppSetupPlugin {
                 Update,
                 (
                     handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
-                    // set_time_speed,
+                    set_time_speed.run_if(resource_changed::<SimulationSettings>),
                 ),
             );
 
@@ -133,31 +133,15 @@ fn handle_delayed_start(
 ///
 /// 0 => paused, 1 => 0.25, 4 => 1.0, 9 => 50.0.
 fn set_time_speed(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut virtual_time: ResMut<Time<Virtual>>,
+    simulation_settings: Res<SimulationSettings>,
 ) {
-    use KeyCode::*;
-    if keyboard_input.just_pressed(Digit0) {
+    if simulation_settings.paused() {
         virtual_time.pause();
-        return;
+    } else {
+        virtual_time.unpause();
     }
-    let digits = [
-        Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7, Digit8, Digit9,
-    ];
-    for (index, digit) in digits.into_iter().enumerate() {
-        if keyboard_input.just_pressed(digit) {
-            let key_number = index + 1;
-            let speed = if key_number <= 4 {
-                key_number as f32 * 0.25
-            } else {
-                (key_number - 4) as f32 * 10.0
-            };
-            virtual_time.set_relative_speed(speed);
-            virtual_time.unpause();
-            info!("Set speed to {speed:.2}x");
-            break;
-        }
-    }
+    virtual_time.set_relative_speed(simulation_settings.time_speed_factor());
 }
 
 fn setup_world(mut commands: Commands) {
