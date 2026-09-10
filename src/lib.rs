@@ -44,7 +44,7 @@ impl Plugin for AppSetupPlugin {
                 Update,
                 (
                     handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
-                    set_time_speed,
+                    // set_time_speed,
                 ),
             );
 

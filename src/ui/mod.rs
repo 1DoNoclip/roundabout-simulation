@@ -11,7 +11,11 @@ impl Plugin for UiPlugin {
     }
 }
 
-fn draw_window(mut contexts: EguiContexts, mut map_settings: ResMut<MapSettings>) -> Result {
+fn draw_window(
+    mut contexts: EguiContexts,
+    mut map_settings: ResMut<MapSettings>,
+    mut simulation_settings: ResMut<SimulationSettings>,
+) -> Result {
     egui::Window::new("Map").show(contexts.ctx_mut()?, |ui| {
         // Number of lanes.
         ui.horizontal(|ui| {
@@ -74,17 +78,59 @@ fn draw_window(mut contexts: EguiContexts, mut map_settings: ResMut<MapSettings>
             // Cap the max deflection radius to the radius dynamically.
             let max_value_meter = map_settings.radius.get::<meter>();
             if ui
-                .add(egui::Slider::new(&mut deflection_radius_meter, 5.0..=max_value_meter).suffix("m"))
+                .add(
+                    egui::Slider::new(&mut deflection_radius_meter, 5.0..=max_value_meter)
+                        .suffix("m"),
+                )
                 .changed()
             {
                 map_settings.deflection_radius = Length::new::<meter>(deflection_radius_meter);
             }
         });
 
+        // let mut arm_to_remove = None;
         ui.label("Arms:");
+        ui.indent("arms_indent", |ui| {
+            for (index, arm) in map_settings.arms.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    ui.label("Arm angle:");
+                    let mut angle_degree = arm.angle.as_degrees();
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut angle_degree)
+                                .speed(1.0)
+                                .suffix("°"),
+                        )
+                        .changed()
+                    {
+                        arm.angle = Rot2::degrees(angle_degree);
+                    }
+                });
+            }
+        });
     });
 
-    egui::Window::new("Simulation").show(contexts.ctx_mut()?, |ui| {});
+    egui::Window::new("Simulation").show(contexts.ctx_mut()?, |ui| {
+        ui.horizontal(|ui| {
+           let (label, button_label) = if simulation_settings.paused { ("Paused:", "Play") } else { ("Playing:", "Pause") };
+           ui.label(label);
+           ui.toggle_value(&mut simulation_settings.paused, button_label);
+        });
+
+        ui.label("Time speed factor:");
+        ui.horizontal(|ui| {
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 0.25, "x0.25");
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 0.5, "x0.5");
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 1.0, "Real time");
+        });
+        ui.horizontal(|ui| {
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 2.0, "x2");
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 4.0, "x4");
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 8.0, "x8");
+            ui.selectable_value(&mut simulation_settings.time_speed_factor, 16.0, "x16");
+        });
+    });
+
     egui::Window::new("Statistics").show(contexts.ctx_mut()?, |ui| {});
 
     Ok(())
@@ -126,31 +172,29 @@ impl Default for MapSettings {
 
 #[derive(Resource)]
 struct SimulationSettings {
+    paused: bool,
     time_speed_factor: f32,
 }
 
 impl Default for SimulationSettings {
     fn default() -> Self {
         SimulationSettings {
+            paused: false,
             time_speed_factor: 1.0,
         }
     }
 }
 
 struct ArmSettings {
-    arm_angle: Rot2,
+    angle: Rot2,
     vehicles_per_hour: i32,
     speed_limit_override: Option<Speed>,
 }
 
 impl ArmSettings {
-    const fn new(
-        arm_angle: Rot2,
-        vehicles_per_hour: i32,
-        speed_limit_override: Option<Speed>,
-    ) -> Self {
+    const fn new(angle: Rot2, vehicles_per_hour: i32, speed_limit_override: Option<Speed>) -> Self {
         ArmSettings {
-            arm_angle,
+            angle,
             vehicles_per_hour,
             speed_limit_override,
         }
