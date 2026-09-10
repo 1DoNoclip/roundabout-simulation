@@ -17,77 +17,84 @@ fn draw_window(
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
     egui::Window::new("Map").show(contexts.ctx_mut()?, |ui| {
-        // Number of lanes.
-        ui.horizontal(|ui| {
-            ui.label("Number of lanes:");
-            ui.add(egui::Slider::new(&mut map_settings.number_of_lanes, 1..=3));
-        });
+        egui::Grid::new("map_settings_grid")
+            .num_columns(2)
+            .show(ui, |ui| {
+                // Number of lanes.
+                ui.label("Number of lanes:");
+                ui.add(egui::Slider::new(&mut map_settings.number_of_lanes, 1..=3));
+                ui.end_row();
 
-        // Speed limit.
-        ui.horizontal(|ui| {
-            ui.label("Speed limit:");
-            let (mut display_value, range) = match map_settings.current_ui_speed_unit {
-                SpeedUnit::MeterPerSecond => (
-                    map_settings.speed_limit.get::<meter_per_second>(),
-                    (0.0..=27.8),
-                ),
-                SpeedUnit::MilePerHour => (
-                    map_settings.speed_limit.get::<mile_per_hour>(),
-                    (0.0..=62.1),
-                ),
-            };
-            if ui
-                .add(
-                    egui::DragValue::new(&mut display_value)
-                        .speed(0.1)
-                        .range(range),
-                )
-                .changed()
-            {
-                map_settings.speed_limit = match map_settings.current_ui_speed_unit {
-                    SpeedUnit::MeterPerSecond => Velocity::new::<meter_per_second>(display_value),
-                    SpeedUnit::MilePerHour => Velocity::new::<mile_per_hour>(display_value),
-                };
-            }
-            ui.selectable_value(
-                &mut map_settings.current_ui_speed_unit,
-                SpeedUnit::MeterPerSecond,
-                "m/s",
-            );
-            ui.selectable_value(
-                &mut map_settings.current_ui_speed_unit,
-                SpeedUnit::MilePerHour,
-                "mph",
-            );
-        });
+                // Speed limit.
+                ui.label("Speed limit:");
+                ui.horizontal(|ui| {
+                    let (mut display_value, range) = match map_settings.current_ui_speed_unit {
+                        SpeedUnit::MeterPerSecond => (
+                            map_settings.speed_limit.get::<meter_per_second>(),
+                            (0.0..=27.8),
+                        ),
+                        SpeedUnit::MilePerHour => (
+                            map_settings.speed_limit.get::<mile_per_hour>(),
+                            (0.0..=62.1),
+                        ),
+                    };
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut display_value)
+                                .speed(0.1)
+                                .range(range),
+                        )
+                        .changed()
+                    {
+                        map_settings.speed_limit = match map_settings.current_ui_speed_unit {
+                            SpeedUnit::MeterPerSecond => {
+                                Velocity::new::<meter_per_second>(display_value)
+                            }
+                            SpeedUnit::MilePerHour => Velocity::new::<mile_per_hour>(display_value),
+                        };
+                    }
+                    ui.selectable_value(
+                        &mut map_settings.current_ui_speed_unit,
+                        SpeedUnit::MeterPerSecond,
+                        "m/s",
+                    );
+                    ui.selectable_value(
+                        &mut map_settings.current_ui_speed_unit,
+                        SpeedUnit::MilePerHour,
+                        "mph",
+                    );
+                });
+                ui.end_row();
 
-        ui.horizontal(|ui| {
-            ui.label("Radius:");
-            let mut radius_meter = map_settings.radius.get::<meter>();
-            if ui
-                .add(egui::Slider::new(&mut radius_meter, 10.0..=80.0).suffix("m"))
-                .changed()
-            {
-                map_settings.radius = Length::new::<meter>(radius_meter);
-            }
-        });
+                // Radius.
+                ui.label("Radius:");
+                let mut radius_meter = map_settings.radius.get::<meter>();
+                if ui
+                    .add(egui::Slider::new(&mut radius_meter, 10.0..=80.0).suffix("m"))
+                    .changed()
+                {
+                    map_settings.radius = Length::new::<meter>(radius_meter);
+                }
+                ui.end_row();
 
-        ui.horizontal(|ui| {
-            ui.label("Deflection radius:");
-            let mut deflection_radius_meter = map_settings.deflection_radius.get::<meter>();
-            // Cap the max deflection radius to the radius dynamically.
-            let max_value_meter = map_settings.radius.get::<meter>();
-            if ui
-                .add(
-                    egui::Slider::new(&mut deflection_radius_meter, 5.0..=max_value_meter)
-                        .suffix("m"),
-                )
-                .changed()
-            {
-                map_settings.deflection_radius = Length::new::<meter>(deflection_radius_meter);
-            }
-        });
+                // Deflection radius.
+                ui.label("Deflection radius:");
+                let mut deflection_radius_meter = map_settings.deflection_radius.get::<meter>();
+                // Cap the max deflection radius to the radius dynamically.
+                let max_value_meter = map_settings.radius.get::<meter>();
+                if ui
+                    .add(
+                        egui::Slider::new(&mut deflection_radius_meter, 5.0..=max_value_meter)
+                            .suffix("m"),
+                    )
+                    .changed()
+                {
+                    map_settings.deflection_radius = Length::new::<meter>(deflection_radius_meter);
+                }
+                ui.end_row();
+            });
 
+        // Arms.
         // let mut arm_to_remove = None;
         ui.label("Arms:");
         ui.indent("arms_indent", |ui| {
