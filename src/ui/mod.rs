@@ -11,19 +11,96 @@ impl Plugin for UiPlugin {
     }
 }
 
-fn draw_window(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Control Panel").show(contexts.ctx_mut()?, |ui| {
-        if ui.button("Click me").clicked() {
-            println!("clicked");
-        }
+fn draw_window(mut contexts: EguiContexts, mut map_settings: ResMut<MapSettings>) -> Result {
+    egui::Window::new("Map").show(contexts.ctx_mut()?, |ui| {
+        // Number of lanes.
+        ui.horizontal(|ui| {
+            ui.label("Number of lanes:");
+            ui.add(egui::Slider::new(&mut map_settings.number_of_lanes, 1..=3));
+        });
+
+        // Speed limit.
+        ui.horizontal(|ui| {
+            ui.label("Speed limit:");
+            let (mut display_value, range) = match map_settings.current_ui_speed_unit {
+                SpeedUnit::MeterPerSecond => (
+                    map_settings.speed_limit.get::<meter_per_second>(),
+                    (0.0..=27.8),
+                ),
+                SpeedUnit::MilePerHour => (
+                    map_settings.speed_limit.get::<mile_per_hour>(),
+                    (0.0..=62.1),
+                ),
+            };
+            if ui
+                .add(
+                    egui::DragValue::new(&mut display_value)
+                        .speed(0.1)
+                        .range(range),
+                )
+                .changed()
+            {
+                map_settings.speed_limit = match map_settings.current_ui_speed_unit {
+                    SpeedUnit::MeterPerSecond => Velocity::new::<meter_per_second>(display_value),
+                    SpeedUnit::MilePerHour => Velocity::new::<mile_per_hour>(display_value),
+                };
+            }
+            ui.selectable_value(
+                &mut map_settings.current_ui_speed_unit,
+                SpeedUnit::MeterPerSecond,
+                "m/s",
+            );
+            ui.selectable_value(
+                &mut map_settings.current_ui_speed_unit,
+                SpeedUnit::MilePerHour,
+                "mph",
+            );
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Radius:");
+            let mut radius_meter = map_settings.radius.get::<meter>();
+            if ui
+                .add(egui::Slider::new(&mut radius_meter, 10.0..=80.0).suffix("m"))
+                .changed()
+            {
+                map_settings.radius = Length::new::<meter>(radius_meter);
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Deflection radius:");
+            let mut deflection_radius_meter = map_settings.deflection_radius.get::<meter>();
+            // Cap the max deflection radius to the radius dynamically.
+            let max_value_meter = map_settings.radius.get::<meter>();
+            if ui
+                .add(egui::Slider::new(&mut deflection_radius_meter, 5.0..=max_value_meter).suffix("m"))
+                .changed()
+            {
+                map_settings.deflection_radius = Length::new::<meter>(deflection_radius_meter);
+            }
+        });
+
+        ui.label("Arms:");
     });
+
+    egui::Window::new("Simulation").show(contexts.ctx_mut()?, |ui| {});
+    egui::Window::new("Statistics").show(contexts.ctx_mut()?, |ui| {});
+
     Ok(())
+}
+
+#[derive(PartialEq)]
+enum SpeedUnit {
+    MeterPerSecond,
+    MilePerHour,
 }
 
 #[derive(Resource)]
 struct MapSettings {
     number_of_lanes: usize,
-    speed_limit: Speed,
+    speed_limit: Velocity,
+    current_ui_speed_unit: SpeedUnit,
     radius: Length,
     deflection_radius: Length,
     arms: Vec<ArmSettings>,
@@ -33,7 +110,8 @@ impl Default for MapSettings {
     fn default() -> Self {
         MapSettings {
             number_of_lanes: 2,
-            speed_limit: Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).unwrap(),
+            speed_limit: Velocity::new::<mile_per_hour>(30.0),
+            current_ui_speed_unit: SpeedUnit::MilePerHour,
             radius: Length::new::<meter>(30.0),
             deflection_radius: Length::new::<meter>(12.5),
             arms: vec![
