@@ -10,12 +10,35 @@ impl Plugin for BlueprintPlugin {
             .register_type::<RoundaboutBlueprint>()
             .add_systems(
                 Update,
-                update_blueprints.run_if(resource_changed::<MapSettings>),
+                (
+                    detect_map_settings_change,
+                    update_blueprints.run_if(resource_changed::<MapSettings<Applied>>),
+                )
+                    .chain(),
             );
     }
 }
 
-fn update_blueprints(mut blueprint: ResMut<RoundaboutBlueprint>, map_settings: Res<MapSettings>) {
+fn detect_map_settings_change(
+    mut commands: Commands,
+    mut reader: MessageReader<ApplyMapSettings>,
+    in_progress: Res<MapSettings<InProgress>>,
+    mut applied: ResMut<MapSettings<Applied>>,
+) {
+    reader.read().for_each(|_apply_map_settings| {
+        in_progress.apply_settings(&mut applied);
+    });
+
+    // Todo: The roundabout blueprints need to be made off of the MapSettings<Applied>.
+    // Maybe applied map settings is not even needed as we just need to copy MapSettings.
+    // We can just read a MapSettings (with no state) when the user clicks Apply changes
+    // and write it to the RoundaboutBlueprint.
+}
+
+fn update_blueprints(
+    mut blueprint: ResMut<RoundaboutBlueprint>,
+    map_settings: Res<MapSettings<Applied>>,
+) {
     blueprint.arm_blueprints =
         map_settings
             .arms()

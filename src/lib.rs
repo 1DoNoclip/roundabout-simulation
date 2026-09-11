@@ -171,24 +171,24 @@ fn setup_world(mut commands: Commands) {
 }
 
 fn setup_roundabout_layout(mut commands: Commands) {
-    let arm_blueprints = vec![
-        ArmBlueprint::new(0.0, None, 1.0),
-        ArmBlueprint::new(-90.0, None, 0.15),
-        ArmBlueprint::new(-180.0, None, 1.0),
-        ArmBlueprint::new(-270.0, None, 0.15),
-    ];
-    let circle_blueprint =
-        CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
-            .expect("failed to create");
-    commands.insert_resource(
-        RoundaboutBlueprint::try_new(
-            arm_blueprints,
-            circle_blueprint,
-            2,
-            Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create"),
-        )
-        .expect("failed to create"),
-    );
+    // let arm_blueprints = vec![
+    //     ArmBlueprint::new(0.0, None, 1.0),
+    //     ArmBlueprint::new(-90.0, None, 0.15),
+    //     ArmBlueprint::new(-180.0, None, 1.0),
+    //     ArmBlueprint::new(-270.0, None, 0.15),
+    // ];
+    // let circle_blueprint =
+    //     CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
+    //         .expect("failed to create");
+    // commands.insert_resource(
+    //     RoundaboutBlueprint::try_new(
+    //         arm_blueprints,
+    //         circle_blueprint,
+    //         2,
+    //         Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create"),
+    //     )
+    //     .expect("failed to create"),
+    // );
 }
 
 #[cfg(test)]

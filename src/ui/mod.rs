@@ -6,14 +6,20 @@ pub(super) struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(MapSettings::default())
+        app.add_message::<ApplyMapSettings>()
+            .insert_resource(MapSettings::<InProgress>::default())
+            .insert_resource(MapSettings::<Applied>::default())
             .insert_resource(SimulationSettings::default())
             .add_systems(EguiPrimaryContextPass, draw_window);
     }
 }
 
+#[derive(Message)]
+pub(crate) struct ApplyMapSettings;
+
 fn draw_window(
     mut contexts: EguiContexts,
+    mut apply_writer: MessageWriter<ApplyMapSettings>,
     mut map_settings: ResMut<MapSettings<InProgress>>,
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
@@ -101,7 +107,7 @@ fn draw_window(
         // let mut arm_to_remove = None;
         ui.label("Arms:");
         ui.indent("arms_indent", |ui| {
-            for (index, arm) in map_settings.arms.iter_mut().enumerate() {
+            for arm in map_settings.arms.iter_mut() {
                 ui.horizontal(|ui| {
                     ui.label("Arm angle:");
                     let mut angle_degree = arm.angle.as_degrees();
@@ -122,6 +128,10 @@ fn draw_window(
                 ui.add_space(8.0);
             }
         });
+
+        if ui.button("Apply changes").clicked() {
+            apply_writer.write(ApplyMapSettings);
+        }
     });
 
     egui::Window::new("Simulation").show(contexts.ctx_mut()?, |ui| {
@@ -149,19 +159,19 @@ fn draw_window(
         });
     });
 
-    egui::Window::new("Statistics").show(contexts.ctx_mut()?, |ui| {});
+    egui::Window::new("Statistics").show(contexts.ctx_mut()?, |_ui| {});
 
     Ok(())
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum SpeedUnit {
     MeterPerSecond,
     MilePerHour,
 }
 
 pub(crate) struct Applied;
-struct InProgress;
+pub(crate) struct InProgress;
 
 #[derive(PartialEq, Resource)]
 pub(crate) struct MapSettings<S> {
@@ -175,8 +185,14 @@ pub(crate) struct MapSettings<S> {
 }
 
 impl MapSettings<InProgress> {
-    fn apply_settings(in_progress: Res<Self>, applied: ResMut<MapSettings<Applied>>) {
-
+    pub fn apply_settings(&self, applied: &mut ResMut<MapSettings<Applied>>) {
+        applied.number_of_lanes = self.number_of_lanes;
+        applied.speed_limit = self.speed_limit;
+        // This one is unnecessary, will find a way to remove field from Applied version.
+        applied.current_ui_speed_unit = self.current_ui_speed_unit;
+        applied.radius = self.radius;
+        applied.deflection_radius = self.deflection_radius;
+        applied.arms = self.arms.clone();
     }
 }
 
@@ -221,6 +237,25 @@ impl Default for MapSettings<InProgress> {
     }
 }
 
+impl Default for MapSettings<Applied> {
+    fn default() -> Self {
+        MapSettings {
+            state: PhantomData,
+            number_of_lanes: 2,
+            speed_limit: Velocity::new::<mile_per_hour>(30.0),
+            current_ui_speed_unit: SpeedUnit::MilePerHour,
+            radius: Length::new::<meter>(30.0),
+            deflection_radius: Length::new::<meter>(12.5),
+            arms: vec![
+                ArmSettings::new(Rot2::degrees(0.0), 1_000, None),
+                ArmSettings::new(Rot2::degrees(-90.0), 1_000, None),
+                ArmSettings::new(Rot2::degrees(-180.0), 1_000, None),
+                ArmSettings::new(Rot2::degrees(-270.0), 1_000, None),
+            ],
+        }
+    }
+}
+
 #[derive(Resource)]
 pub(crate) struct SimulationSettings {
     paused: bool,
@@ -246,7 +281,7 @@ impl Default for SimulationSettings {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(crate) struct ArmSettings {
     angle: Rot2,
     vehicles_per_hour: u32,
