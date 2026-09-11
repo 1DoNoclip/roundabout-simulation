@@ -1,14 +1,12 @@
 use crate::*;
 use bevy_inspector_egui::bevy_egui::prelude::*;
-use std::marker::PhantomData;
 
 pub(super) struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<ApplyMapSettings>()
-            .insert_resource(MapSettings::<InProgress>::default())
-            .insert_resource(MapSettings::<Applied>::default())
+            .insert_resource(MapSettings::default())
             .insert_resource(SimulationSettings::default())
             .add_systems(EguiPrimaryContextPass, draw_window);
     }
@@ -20,7 +18,7 @@ pub(crate) struct ApplyMapSettings;
 fn draw_window(
     mut contexts: EguiContexts,
     mut apply_writer: MessageWriter<ApplyMapSettings>,
-    mut map_settings: ResMut<MapSettings<InProgress>>,
+    mut map_settings: ResMut<MapSettings>,
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
     let map_settings = map_settings.bypass_change_detection();
@@ -170,12 +168,8 @@ enum SpeedUnit {
     MilePerHour,
 }
 
-pub(crate) struct Applied;
-pub(crate) struct InProgress;
-
 #[derive(PartialEq, Resource)]
-pub(crate) struct MapSettings<S> {
-    state: PhantomData<S>,
+pub(crate) struct MapSettings {
     number_of_lanes: usize,
     speed_limit: Velocity,
     current_ui_speed_unit: SpeedUnit,
@@ -184,19 +178,7 @@ pub(crate) struct MapSettings<S> {
     arms: Vec<ArmSettings>,
 }
 
-impl MapSettings<InProgress> {
-    pub fn apply_settings(&self, applied: &mut ResMut<MapSettings<Applied>>) {
-        applied.number_of_lanes = self.number_of_lanes;
-        applied.speed_limit = self.speed_limit;
-        // This one is unnecessary, will find a way to remove field from Applied version.
-        applied.current_ui_speed_unit = self.current_ui_speed_unit;
-        applied.radius = self.radius;
-        applied.deflection_radius = self.deflection_radius;
-        applied.arms = self.arms.clone();
-    }
-}
-
-impl MapSettings<Applied> {
+impl MapSettings {
     pub const fn number_of_lanes(&self) -> usize {
         self.number_of_lanes
     }
@@ -218,29 +200,9 @@ impl MapSettings<Applied> {
     }
 }
 
-impl Default for MapSettings<InProgress> {
+impl Default for MapSettings {
     fn default() -> Self {
         MapSettings {
-            state: PhantomData,
-            number_of_lanes: 2,
-            speed_limit: Velocity::new::<mile_per_hour>(30.0),
-            current_ui_speed_unit: SpeedUnit::MilePerHour,
-            radius: Length::new::<meter>(30.0),
-            deflection_radius: Length::new::<meter>(12.5),
-            arms: vec![
-                ArmSettings::new(Rot2::degrees(0.0), 1_000, None),
-                ArmSettings::new(Rot2::degrees(-90.0), 1_000, None),
-                ArmSettings::new(Rot2::degrees(-180.0), 1_000, None),
-                ArmSettings::new(Rot2::degrees(-270.0), 1_000, None),
-            ],
-        }
-    }
-}
-
-impl Default for MapSettings<Applied> {
-    fn default() -> Self {
-        MapSettings {
-            state: PhantomData,
             number_of_lanes: 2,
             speed_limit: Velocity::new::<mile_per_hour>(30.0),
             current_ui_speed_unit: SpeedUnit::MilePerHour,

@@ -202,9 +202,9 @@ mod tests {
         let mut app = App::new();
 
         let arm_blueprints = vec![
-            ArmBlueprint::new(0.0, None, 0.5),
-            ArmBlueprint::new(120.0, None, 0.5),
-            ArmBlueprint::new(240.0, None, 0.5),
+            ArmBlueprint::new_degrees(0.0, None, 0.5),
+            ArmBlueprint::new_degrees(120.0, None, 0.5),
+            ArmBlueprint::new_degrees(240.0, None, 0.5),
         ];
         let circle_blueprint =
             CircleBlueprint::try_new(Length::new::<meter>(20.0), Length::new::<meter>(15.0))

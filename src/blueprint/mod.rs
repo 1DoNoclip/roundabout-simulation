@@ -8,57 +8,59 @@ impl Plugin for BlueprintPlugin {
         app.register_type::<ArmBlueprint>()
             .register_type::<CircleBlueprint>()
             .register_type::<RoundaboutBlueprint>()
+            .add_systems(Startup, replace_roundabout_blueprint)
             .add_systems(
                 Update,
                 (
-                    detect_map_settings_change,
-                    update_blueprints.run_if(resource_changed::<MapSettings<Applied>>),
+                    map_settings_changed,
+                    // update_blueprints.run_if(resource_changed::<MapSettings>),
                 )
                     .chain(),
             );
     }
 }
 
-fn detect_map_settings_change(
+fn map_settings_changed(
     mut commands: Commands,
     mut reader: MessageReader<ApplyMapSettings>,
-    in_progress: Res<MapSettings<InProgress>>,
-    mut applied: ResMut<MapSettings<Applied>>,
+    map_settings: Res<MapSettings>,
 ) {
-    reader.read().for_each(|_apply_map_settings| {
-        in_progress.apply_settings(&mut applied);
-    });
-
-    // Todo: The roundabout blueprints need to be made off of the MapSettings<Applied>.
-    // Maybe applied map settings is not even needed as we just need to copy MapSettings.
-    // We can just read a MapSettings (with no state) when the user clicks Apply changes
-    // and write it to the RoundaboutBlueprint.
+    // Replaces the RoundaboutBlueprint with MapSettings.
+    // Will only run once no matter how many events were fired before handled.
+    if let Some(_apply_map_settings) = reader.read().next() {
+        replace_roundabout_blueprint(commands, map_settings);
+    }
 }
 
-fn update_blueprints(
-    mut blueprint: ResMut<RoundaboutBlueprint>,
-    map_settings: Res<MapSettings<Applied>>,
-) {
-    blueprint.arm_blueprints =
-        map_settings
-            .arms()
-            .iter()
-            .fold(Vec::new(), |mut vec, arm_settings| {
-                vec.push(ArmBlueprint {
-                    angle: arm_settings.angle(),
-                    speed_limit_override: arm_settings.speed_limit_override(),
-                    max_vehicles_per_second: arm_settings.vehicles_per_hour() as f32 / 3600.0,
-                });
-                vec
+/// Replaces `RoundaboutBlueprint` with the values from `MapSettings`.
+fn replace_roundabout_blueprint(mut commands: Commands, map_settings: Res<MapSettings>) {
+    let arm_blueprints = map_settings
+        .arms()
+        .iter()
+        .fold(Vec::new(), |mut vec, arm_settings| {
+            vec.push(ArmBlueprint {
+                angle: arm_settings.angle(),
+                speed_limit_override: arm_settings.speed_limit_override(),
+                max_vehicles_per_second: arm_settings.vehicles_per_hour() as f32 / 3600.0,
             });
-    blueprint.circle_blueprint = CircleBlueprint {
+            vec
+        });
+    let circle_blueprint = CircleBlueprint {
         radius: map_settings.radius(),
         deflection_radius: map_settings.deflection_radius(),
     };
-    blueprint.number_of_lanes = map_settings.number_of_lanes();
-    blueprint.speed_limit =
-        Speed::try_new(map_settings.speed_limit()).expect("expected to be positive");
-    println!("{:?}", blueprint);
+    let number_of_lanes = map_settings.number_of_lanes();
+    let speed_limit = Speed::try_new(map_settings.speed_limit()).expect("expected to be positive");
+
+    commands.insert_resource(
+        RoundaboutBlueprint::try_new(
+            arm_blueprints,
+            circle_blueprint,
+            number_of_lanes,
+            speed_limit,
+        )
+        .expect("failed to create"),
+    );
 }
 
 /// Represents global roundabout data.
@@ -152,7 +154,19 @@ pub(crate) struct ArmBlueprint {
 }
 
 impl ArmBlueprint {
-    pub fn new(
+    pub const fn new(
+        angle: Rot2,
+        speed_limit_override: Option<Speed>,
+        max_vehicles_per_second: f32,
+    ) -> Self {
+        ArmBlueprint {
+            angle,
+            speed_limit_override,
+            max_vehicles_per_second,
+        }
+    }
+
+    pub fn new_degrees(
         degrees: f32,
         speed_limit_override: Option<Speed>,
         max_vehicles_per_second: f32,
@@ -225,7 +239,7 @@ mod tests {
 
     #[test]
     fn new_arm_blueprint() {
-        ArmBlueprint::new(90.0, None, 0.28);
+        ArmBlueprint::new_degrees(90.0, None, 0.28);
     }
 
     #[test]
@@ -237,9 +251,9 @@ mod tests {
     #[test]
     fn try_new_roundabout_blueprint() {
         let arms = vec![
-            ArmBlueprint::new(0.0, None, 0.28),
-            ArmBlueprint::new(90.0, None, 0.28),
-            ArmBlueprint::new(180.0, None, 0.28),
+            ArmBlueprint::new_degrees(0.0, None, 0.28),
+            ArmBlueprint::new_degrees(90.0, None, 0.28),
+            ArmBlueprint::new_degrees(180.0, None, 0.28),
         ];
         let circle_blueprint =
             CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
