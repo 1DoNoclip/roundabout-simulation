@@ -121,12 +121,14 @@ pub(super) fn spawn_vehicles(
                 roundabout_blueprint.number_of_lanes(),
             );
 
-            let (spawn_point_id, spawn_point) = spawn_points
-                .iter()
-                .find(|(_, spawn_point)| {
+            let Some((spawn_point_id, spawn_point)) =
+                spawn_points.iter().find(|(_, spawn_point)| {
                     spawn_point.arm() == spawn_arm_id && spawn_point.lane_index() == lane_index
                 })
-                .expect("expected to find a matching SpawnPoint with lane_index");
+            else {
+                warn!("failed to find spawn point with matching arm and lane");
+                continue;
+            };
 
             let entry_segment_id = spawn_point.segment();
             let entry_segment = segments

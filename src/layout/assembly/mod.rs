@@ -192,20 +192,18 @@ pub(crate) fn assemble_roundabout(
 /// Issues eviction notices to all entities part of the previous blueprint designs.
 fn clear_existing_layout(
     mut commands: Commands,
-    existing_vehicles: Query<Entity, (With<Kinematics>, With<Navigator>)>,
+    existing_vehicles: Query<Entity, With<Vehicle>>,
+    existing_arms: Query<Entity, With<Arm>>,
     existing_segments: Query<Entity, With<Segment>>,
     existing_spawns: Query<Entity, With<SpawnPoint>>,
     existing_ends: Query<Entity, With<EndPoint>>,
 ) {
-    info!("Despawning all existing vehicles.");
-    for vehicle in existing_vehicles {
-        commands.entity(vehicle).despawn();
-    }
-
-    // Despawn old segments before assembling new layout.
-    info!("Despawning all existing segments, spawn points and end points.");
-    for entity in existing_segments
+    // Despawn old features before assembling new layout.
+    info!("Despawning old layout.");
+    for entity in existing_vehicles
         .iter()
+        .chain(existing_arms.iter())
+        .chain(existing_segments.iter())
         .chain(existing_spawns.iter())
         .chain(existing_ends.iter())
     {

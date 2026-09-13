@@ -21,7 +21,7 @@ impl Plugin for BlueprintPlugin {
 }
 
 fn map_settings_changed(
-    mut commands: Commands,
+    commands: Commands,
     mut reader: MessageReader<ApplyMapSettings>,
     map_settings: Res<MapSettings>,
 ) {
@@ -38,17 +38,17 @@ fn replace_roundabout_blueprint(mut commands: Commands, map_settings: Res<MapSet
         .arms()
         .iter()
         .fold(Vec::new(), |mut vec, arm_settings| {
-            vec.push(ArmBlueprint {
-                angle: arm_settings.angle(),
-                speed_limit_override: arm_settings.speed_limit_override(),
-                max_vehicles_per_second: arm_settings.vehicles_per_hour() as f32 / 3600.0,
-            });
+            vec.push(ArmBlueprint::new(
+                arm_settings.angle(),
+                arm_settings.speed_limit_override(),
+                // Note: replace with vehicles per hour during Poisson process implementation.
+                arm_settings.vehicles_per_hour() as f32 / 3600.0,
+            ));
             vec
         });
-    let circle_blueprint = CircleBlueprint {
-        radius: map_settings.radius(),
-        deflection_radius: map_settings.deflection_radius(),
-    };
+    let circle_blueprint =
+        CircleBlueprint::try_new(map_settings.radius(), map_settings.deflection_radius())
+            .expect("expected to be valid blueprint");
     let number_of_lanes = map_settings.number_of_lanes();
     let speed_limit = Speed::try_new(map_settings.speed_limit()).expect("expected to be positive");
 
@@ -166,6 +166,7 @@ impl ArmBlueprint {
         }
     }
 
+    #[cfg(test)]
     pub fn new_degrees(
         degrees: f32,
         speed_limit_override: Option<Speed>,
