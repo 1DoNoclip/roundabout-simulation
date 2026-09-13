@@ -8,32 +8,12 @@ impl Plugin for BlueprintPlugin {
         app.register_type::<ArmBlueprint>()
             .register_type::<CircleBlueprint>()
             .register_type::<RoundaboutBlueprint>()
-            .add_systems(Startup, replace_roundabout_blueprint)
-            .add_systems(
-                Update,
-                (
-                    map_settings_changed,
-                    // update_blueprints.run_if(resource_changed::<MapSettings>),
-                )
-                    .chain(),
-            );
-    }
-}
-
-fn map_settings_changed(
-    commands: Commands,
-    mut reader: MessageReader<ApplyMapSettings>,
-    map_settings: Res<MapSettings>,
-) {
-    // Replaces the RoundaboutBlueprint with MapSettings.
-    // Will only run once no matter how many events were fired before handled.
-    if let Some(_apply_map_settings) = reader.read().next() {
-        replace_roundabout_blueprint(commands, map_settings);
+            .add_systems(Startup, replace_roundabout_blueprint);
     }
 }
 
 /// Replaces `RoundaboutBlueprint` with the values from `MapSettings`.
-fn replace_roundabout_blueprint(mut commands: Commands, map_settings: Res<MapSettings>) {
+pub(crate) fn replace_roundabout_blueprint(mut commands: Commands, map_settings: Res<MapSettings>) {
     let arm_blueprints = map_settings
         .arms()
         .iter()

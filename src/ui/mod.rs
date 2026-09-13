@@ -5,25 +5,49 @@ pub(super) struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<ApplyMapSettings>()
+        app.add_message::<ApplyUiSettings>()
             .insert_resource(MapSettings::default())
             .insert_resource(SimulationSettings::default())
+            .add_systems(Update, ui_settings_changed)
             .add_systems(EguiPrimaryContextPass, draw_window);
     }
 }
 
 #[derive(Message)]
-pub(crate) struct ApplyMapSettings;
+pub(crate) enum ApplyUiSettings {
+    Map,
+    SimulationPlayPause,
+    SimulationSpeed,
+}
+
+fn ui_settings_changed(mut commands: Commands, mut reader: MessageReader<ApplyUiSettings>) {
+    // Expected reader.read().len() to be a max of 1 as the user should
+    // struggle to change map and simulation settings in the same frame.
+    if reader.read().len() > 1 {
+        warn!(
+            "Expected reader.read().len() to be a max of 1 as the user should
+            struggle to change map and simulation settings in the same frame."
+        );
+    }
+    for apply_ui_settings in reader.read() {
+        match apply_ui_settings {
+            ApplyUiSettings::Map => commands.run_system_cached(replace_roundabout_blueprint),
+            ApplyUiSettings::SimulationPlayPause => commands.run_system_cached(play_pause_time),
+            ApplyUiSettings::SimulationSpeed => commands.run_system_cached(set_time_speed),
+        }
+    }
+}
 
 fn draw_window(
     mut contexts: EguiContexts,
-    mut apply_writer: MessageWriter<ApplyMapSettings>,
+    mut apply_writer: MessageWriter<ApplyUiSettings>,
     mut map_settings: ResMut<MapSettings>,
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
-    let map_settings = map_settings.bypass_change_detection();
+    // let map_settings = map_settings.bypass_change_detection();
+    let simulation_settings = simulation_settings.bypass_change_detection();
 
-    egui::Window::new("Map").show(contexts.ctx_mut()?, |ui| {
+    egui::Window::new("Map Settings").show(contexts.ctx_mut()?, |ui| {
         egui::Grid::new("map_settings_grid")
             .num_columns(2)
             .show(ui, |ui| {
@@ -128,11 +152,11 @@ fn draw_window(
         });
 
         if ui.button("Apply changes").clicked() {
-            apply_writer.write(ApplyMapSettings);
+            apply_writer.write(ApplyUiSettings::Map);
         }
     });
 
-    egui::Window::new("Simulation").show(contexts.ctx_mut()?, |ui| {
+    egui::Window::new("Simulation Settings").show(contexts.ctx_mut()?, |ui| {
         ui.horizontal(|ui| {
             let (label, button_label) = if simulation_settings.paused {
                 ("Paused:", "Play")
@@ -140,21 +164,44 @@ fn draw_window(
                 ("Playing:", "Pause")
             };
             ui.label(label);
-            ui.toggle_value(&mut simulation_settings.paused, button_label);
+            if ui
+                .toggle_value(&mut simulation_settings.paused, button_label)
+                .changed()
+            {
+                apply_writer.write(ApplyUiSettings::SimulationPlayPause);
+            }
         });
 
+        let mut simulation_speed_changed = false;
         ui.label("Time speed factor:");
         ui.horizontal(|ui| {
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 0.25, "x0.25");
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 0.5, "x0.5");
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 1.0, "Real time");
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 0.25, "x0.25")
+                .changed();
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 0.5, "x0.5")
+                .changed();
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 1.0, "Real time")
+                .changed();
         });
         ui.horizontal(|ui| {
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 2.0, "x2");
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 4.0, "x4");
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 8.0, "x8");
-            ui.selectable_value(&mut simulation_settings.time_speed_factor, 16.0, "x16");
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 2.0, "x2")
+                .changed();
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 4.0, "x4")
+                .changed();
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 8.0, "x8")
+                .changed();
+            simulation_speed_changed |= ui
+                .selectable_value(&mut simulation_settings.time_speed_factor, 16.0, "x16")
+                .changed();
         });
+        if simulation_speed_changed {
+            apply_writer.write(ApplyUiSettings::SimulationSpeed);
+        }
     });
 
     egui::Window::new("Statistics").show(contexts.ctx_mut()?, |_ui| {});

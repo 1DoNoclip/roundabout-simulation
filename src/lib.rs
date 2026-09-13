@@ -138,10 +138,7 @@ fn handle_delayed_start(
     }
 }
 
-/// Use the number keys to set time speed.
-///
-/// 0 => paused, 1 => 0.25, 4 => 1.0, 9 => 50.0.
-fn set_time_speed(
+fn play_pause_time(
     mut virtual_time: ResMut<Time<Virtual>>,
     simulation_settings: Res<SimulationSettings>,
 ) {
@@ -152,6 +149,15 @@ fn set_time_speed(
         info!("Time has resumed.");
         virtual_time.unpause();
     }
+}
+
+/// Use the number keys to set time speed.
+///
+/// 0 => paused, 1 => 0.25, 4 => 1.0, 9 => 50.0.
+fn set_time_speed(
+    mut virtual_time: ResMut<Time<Virtual>>,
+    simulation_settings: Res<SimulationSettings>,
+) {
     info!("Speed set to x{}", simulation_settings.time_speed_factor());
     virtual_time.set_relative_speed(simulation_settings.time_speed_factor());
 }
