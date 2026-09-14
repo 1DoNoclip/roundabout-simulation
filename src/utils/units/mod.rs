@@ -72,6 +72,12 @@ mod velocity {
         }
     }
 
+    impl Default for Speed {
+        fn default() -> Self {
+            Speed(Velocity::new::<mile_per_hour>(30.0))
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;

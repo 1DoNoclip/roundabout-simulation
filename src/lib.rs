@@ -45,10 +45,7 @@ impl Plugin for AppSetupPlugin {
             )
             .add_systems(
                 Update,
-                (
-                    handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
-                    set_time_speed.run_if(resource_changed::<SimulationSettings>),
-                ),
+                (handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),),
             );
 
         if cli_args.enable_inspector || !cli_args.no_control_panel {
@@ -138,6 +135,30 @@ fn handle_delayed_start(
     }
 }
 
+fn update_speed_limit_overrides(
+    map_settings: Res<MapSettings>,
+    roundabout_blueprint: Res<RoundaboutBlueprint>,
+    arms: Query<(Entity, &Arm)>,
+    mut segments: Query<&mut Segment>,
+) {
+    for (arm_id, arm) in arms {
+        let arm_settings = map_settings
+            .arms()
+            .iter()
+            .find(|&arm_settings| arm_settings.angle() == arm.angle())
+            .expect("expected matching arm settings to an arm");
+        segments
+            .iter_mut()
+            .filter(|segment| segment.arm_id() == arm_id)
+            .for_each(|mut segment| {
+                segment.set_speed_limit_override(match arm_settings.speed_limit_override() {
+                    Some(speed_limit) => speed_limit,
+                    None => roundabout_blueprint.speed_limit(),
+                });
+            });
+    }
+}
+
 fn play_pause_time(
     mut virtual_time: ResMut<Time<Virtual>>,
     simulation_settings: Res<SimulationSettings>,
@@ -194,13 +215,8 @@ mod tests {
                 .expect("failed to create");
 
         app.insert_resource(
-            RoundaboutBlueprint::try_new(
-                arm_blueprints,
-                circle_blueprint,
-                2,
-                Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create"),
-            )
-            .expect("failed to create"),
+            RoundaboutBlueprint::try_new(arm_blueprints, circle_blueprint, 2, Speed::default())
+                .expect("failed to create"),
         );
 
         app.add_systems(Update, assemble_roundabout);

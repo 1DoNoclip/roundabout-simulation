@@ -31,6 +31,7 @@ pub(in crate::simulation) fn calculate_accelerations(
     for (id, idm_driver, kinematics, navigator, &speed) in vehicles {
         let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
         let current_segment_id = navigator.current_segment_id();
+        let current_segment = segments.get(current_segment_id).expect("expected matching segment to segment Entity");
 
         let yield_context = YieldContext::get(
             &yield_points,
@@ -84,7 +85,7 @@ pub(in crate::simulation) fn calculate_accelerations(
 
             kinematics
                 .target_speed()
-                .min(*roundabout_blueprint.speed_limit())
+                .min(current_segment.speed_limit_override())
                 .min(max_cornering_speed)
         } else {
             kinematics
@@ -97,6 +98,7 @@ pub(in crate::simulation) fn calculate_accelerations(
             Speed::try_new(target_speed).unwrap(),
             lead_vehicle_info,
         );
+        println!("{:?}", roundabout_blueprint.speed_limit());
 
         // Clamp within max and min vehicle values.
         let new_acceleration: Acceleration = raw_acceleration
@@ -760,7 +762,7 @@ mod tests {
                     Connection::Direct {
                         next_segment_id: Entity::PLACEHOLDER,
                     },
-                    Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).unwrap(),
+                    Speed::default(),
                 ))
                 .id();
 
@@ -773,7 +775,7 @@ mod tests {
                     Connection::Direct {
                         next_segment_id: segment_2_id,
                     },
-                    Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).unwrap(),
+                    Speed::default(),
                 ))
                 .id();
 

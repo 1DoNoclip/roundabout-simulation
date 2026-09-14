@@ -16,6 +16,7 @@ impl Plugin for UiPlugin {
 #[derive(Message)]
 pub(crate) enum ApplyUiSettings {
     Map,
+    SpeedLimitOverride,
     SimulationPlayPause,
     SimulationSpeed,
 }
@@ -32,6 +33,9 @@ fn ui_settings_changed(mut commands: Commands, mut reader: MessageReader<ApplyUi
     for apply_ui_settings in reader.read() {
         match apply_ui_settings {
             ApplyUiSettings::Map => commands.run_system_cached(replace_roundabout_blueprint),
+            ApplyUiSettings::SpeedLimitOverride => {
+                commands.run_system_cached(update_speed_limit_overrides)
+            }
             ApplyUiSettings::SimulationPlayPause => commands.run_system_cached(play_pause_time),
             ApplyUiSettings::SimulationSpeed => commands.run_system_cached(set_time_speed),
         }
@@ -44,9 +48,6 @@ fn draw_window(
     mut map_settings: ResMut<MapSettings>,
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
-    // let map_settings = map_settings.bypass_change_detection();
-    let simulation_settings = simulation_settings.bypass_change_detection();
-
     egui::Window::new("Map Settings").show(contexts.ctx_mut()?, |ui| {
         egui::Grid::new("map_settings_grid")
             .num_columns(2)
@@ -129,24 +130,45 @@ fn draw_window(
         // let mut arm_to_remove = None;
         ui.label("Arms:");
         ui.indent("arms_indent", |ui| {
-            for arm in map_settings.arms.iter_mut() {
-                ui.horizontal(|ui| {
-                    ui.label("Arm angle:");
-                    let mut angle_degree = arm.angle.as_degrees();
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut angle_degree)
-                                .speed(1.0)
-                                .suffix("°"),
-                        )
-                        .changed()
-                    {
-                        arm.angle = Rot2::degrees(angle_degree);
-                    }
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Vehicles per hour:");
-                });
+            for (index, arm_settings) in map_settings.arms.iter_mut().enumerate() {
+                egui::Grid::new(("arm_settings_grid_", index))
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        ui.label("Arm angle:");
+                        let mut angle_degree = arm_settings.angle.as_degrees();
+                        if ui
+                            .add(
+                                egui::DragValue::new(&mut angle_degree)
+                                    .speed(1.0)
+                                    .suffix("°"),
+                            )
+                            .changed()
+                        {
+                            arm_settings.angle = Rot2::degrees(angle_degree);
+                        }
+                        ui.end_row();
+
+                        ui.label("Vehicles per hour:");
+                        // ui.horizontal(|ui| {
+
+                        // });
+                        ui.end_row();
+
+                        ui.label("Speed limit override:");
+                        ui.horizontal(|ui| {
+                            let mut is_overridden = arm_settings.speed_limit_override().is_some();
+                            if ui.checkbox(&mut is_overridden, "").changed() {
+                                if is_overridden {
+                                    arm_settings.speed_limit_override = Some(Speed::default());
+                                } else {
+                                    arm_settings.speed_limit_override = None;
+                                }
+                                println!("new speed");
+                                apply_writer.write(ApplyUiSettings::SpeedLimitOverride);
+                            }
+                        });
+                        ui.end_row();
+                    });
                 ui.add_space(8.0);
             }
         });

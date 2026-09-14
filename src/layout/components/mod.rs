@@ -76,6 +76,10 @@ impl Arm {
         self.index
     }
 
+    pub const fn angle(&self) -> Rot2 {
+        self.angle
+    }
+
     pub const fn max_vehicles_per_second(&self) -> f32 {
         self.max_vehicles_per_second
     }
@@ -118,7 +122,7 @@ pub(crate) struct Segment {
     length: Length,
 
     /// The maximum speed allowed for vehicles to travel at.
-    speed_limit: Speed,
+    speed_limit_override: Option<Speed>,
 }
 
 impl Segment {
@@ -128,7 +132,7 @@ impl Segment {
         arm_index: usize,
         lane_index: usize,
         connection: Connection,
-        speed_limit: Speed,
+        speed_limit_override: Option<Speed>,
     ) -> Self {
         let length = curve.length();
         let evaluators: Evaluators = curve.into();
@@ -141,8 +145,12 @@ impl Segment {
             lane_index,
             connection,
             length,
-            speed_limit,
+            speed_limit_override,
         }
+    }
+
+    pub const fn set_speed_limit_override(&mut self, speed_limit_override: Option<Speed>) {
+        self.speed_limit_override = speed_limit_override
     }
 
     pub fn position_at(&self, progress: f32) -> Vec3 {
