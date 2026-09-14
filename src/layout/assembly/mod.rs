@@ -28,7 +28,6 @@ pub(crate) fn assemble_roundabout(
     let deflection_radius = circle_blueprint.deflection_radius();
 
     let number_of_lanes = roundabout_blueprint.number_of_lanes();
-    let speed_limit = roundabout_blueprint.speed_limit();
 
     let roundabout_topology =
         RoundaboutTopology::new(&mut commands, number_of_lanes, number_of_arms);
@@ -45,8 +44,7 @@ pub(crate) fn assemble_roundabout(
             calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
         ));
 
-        // If the arm has a speed limit override, use that instead of the intersection default speed limit.
-        let speed_limit = arm_blueprint.speed_limit_override().unwrap_or(speed_limit);
+        let speed_limit_override = arm_blueprint.speed_limit_override();
 
         for lane_index in 0..number_of_lanes {
             // A unique identifier for naming purposes.
@@ -74,7 +72,7 @@ pub(crate) fn assemble_roundabout(
                     Connection::Merge {
                         next_segment_id: ids.inter_arm_sector,
                     },
-                    speed_limit,
+                    speed_limit_override,
                 ),
             ));
 
@@ -89,7 +87,7 @@ pub(crate) fn assemble_roundabout(
                     Connection::Direct {
                         next_segment_id: ids.entry_deflection,
                     },
-                    speed_limit,
+                    speed_limit_override,
                 ),
             ));
 
@@ -121,7 +119,7 @@ pub(crate) fn assemble_roundabout(
                     arm_index,
                     lane_index,
                     Connection::EndPoint { end_point_id },
-                    speed_limit,
+                    speed_limit_override,
                 ),
             ));
 
@@ -135,7 +133,7 @@ pub(crate) fn assemble_roundabout(
                     Connection::Direct {
                         next_segment_id: ids.exit_line,
                     },
-                    speed_limit,
+                    speed_limit_override,
                 ),
             ));
 
@@ -157,7 +155,7 @@ pub(crate) fn assemble_roundabout(
                     Connection::Direct {
                         next_segment_id: ids.inter_arm_sector,
                     },
-                    speed_limit,
+                    None,
                 ),
             ));
 
@@ -182,7 +180,7 @@ pub(crate) fn assemble_roundabout(
                         exit_segment_id: ids.next_exit_deflection,
                         circulating_segment_id: ids.next_intra_arm_sector,
                     },
-                    speed_limit,
+                    None,
                 ),
             ));
         }
