@@ -163,7 +163,6 @@ fn draw_window(
                                 } else {
                                     arm_settings.speed_limit_override = None;
                                 }
-                                println!("new speed");
                                 apply_writer.write(ApplyUiSettings::SpeedLimitOverride);
                             }
                         });

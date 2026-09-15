@@ -18,7 +18,6 @@ pub(crate) fn replace_roundabout_blueprint(mut commands: Commands, map_settings:
         .arms()
         .iter()
         .fold(Vec::new(), |mut vec, arm_settings| {
-            println!("{:?}", arm_settings.speed_limit_override());
             vec.push(ArmBlueprint::new(
                 arm_settings.angle(),
                 arm_settings.speed_limit_override(),

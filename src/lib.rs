@@ -137,7 +137,6 @@ fn handle_delayed_start(
 
 fn update_speed_limit_overrides(
     map_settings: Res<MapSettings>,
-    roundabout_blueprint: Res<RoundaboutBlueprint>,
     arms: Query<(Entity, &Arm)>,
     mut segments: Query<&mut Segment>,
 ) {
@@ -151,10 +150,7 @@ fn update_speed_limit_overrides(
             .iter_mut()
             .filter(|segment| segment.arm_id() == arm_id)
             .for_each(|mut segment| {
-                segment.set_speed_limit_override(match arm_settings.speed_limit_override() {
-                    Some(speed_limit) => speed_limit,
-                    None => roundabout_blueprint.speed_limit(),
-                });
+                segment.set_speed_limit_override(arm_settings.speed_limit_override());
             });
     }
 }

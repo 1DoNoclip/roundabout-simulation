@@ -83,9 +83,12 @@ pub(in crate::simulation) fn calculate_accelerations(
             let max_cornering_speed: Velocity =
                 Velocity::new::<meter_per_second>((lateral_acceleration / kappa).sqrt());
 
+            if let Some(or) = current_segment.speed_limit_override() {
+                println!("or of {or:?}");
+            }
             kinematics
                 .target_speed()
-                .min(current_segment.speed_limit_override())
+                .min(*current_segment.speed_limit_override().unwrap_or(roundabout_blueprint.speed_limit()))
                 .min(max_cornering_speed)
         } else {
             kinematics
@@ -98,7 +101,6 @@ pub(in crate::simulation) fn calculate_accelerations(
             Speed::try_new(target_speed).unwrap(),
             lead_vehicle_info,
         );
-        println!("{:?}", roundabout_blueprint.speed_limit());
 
         // Clamp within max and min vehicle values.
         let new_acceleration: Acceleration = raw_acceleration
@@ -762,7 +764,7 @@ mod tests {
                     Connection::Direct {
                         next_segment_id: Entity::PLACEHOLDER,
                     },
-                    Speed::default(),
+                    None,
                 ))
                 .id();
 
@@ -775,7 +777,7 @@ mod tests {
                     Connection::Direct {
                         next_segment_id: segment_2_id,
                     },
-                    Speed::default(),
+                    None,
                 ))
                 .id();
 
@@ -900,7 +902,6 @@ mod tests {
             let dummy_connection = Connection::Direct {
                 next_segment_id: Entity::PLACEHOLDER,
             };
-            let dummy_speed_limit = Speed::ZERO;
 
             let segment = Segment::new(
                 dummy_curve,
@@ -908,7 +909,7 @@ mod tests {
                 arm_index,
                 lane_index,
                 dummy_connection,
-                dummy_speed_limit,
+                None,
             );
 
             world.spawn((segment, component)).id()

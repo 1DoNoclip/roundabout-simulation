@@ -149,8 +149,12 @@ impl Segment {
         }
     }
 
-    pub const fn set_speed_limit_override(&mut self, speed_limit_override: Option<Speed>) {
-        self.speed_limit_override = speed_limit_override
+    // const
+    pub  fn set_speed_limit_override(&mut self, speed_limit_override: Option<Speed>) {
+        self.speed_limit_override = speed_limit_override;
+        if let Some(or) = self.speed_limit_override {
+            println!("set or of {or:?}");
+        }
     }
 
     pub fn position_at(&self, progress: f32) -> Vec3 {
@@ -187,6 +191,10 @@ impl Segment {
 
     pub const fn length(&self) -> Length {
         self.length
+    }
+
+    pub const fn speed_limit_override(&self) -> Option<Speed> {
+        self.speed_limit_override
     }
 }
 
