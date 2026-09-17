@@ -45,7 +45,10 @@ impl Plugin for AppSetupPlugin {
             )
             .add_systems(
                 Update,
-                (handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),),
+                (
+                    handle_delayed_start.run_if(resource_exists::<StartupDelayTimer>),
+                    print_segments,
+                ),
             );
 
         if cli_args.enable_inspector || !cli_args.no_control_panel {
@@ -135,11 +138,40 @@ fn handle_delayed_start(
     }
 }
 
+// Todo: Remove this.
+fn print_segments(segments: Query<&Segment>, input: Res<ButtonInput<KeyCode>>) {
+    if input.just_released(KeyCode::KeyH) {
+        println!("printing segments");
+        for segment in segments {
+            println!("{:?}", segment.speed_limit_override());
+        }
+    }
+}
+
 fn update_speed_limit_overrides(
     map_settings: Res<MapSettings>,
+    mut roundabout_blueprint: ResMut<RoundaboutBlueprint>,
     arms: Query<(Entity, &Arm)>,
-    mut segments: Query<&mut Segment>,
+    mut segments: Query<(
+        &mut Segment,
+        Has<segment_type::EntryLine>,
+        Has<segment_type::ExitLine>,
+    )>,
 ) {
+    info!("Updating speed limit overrides.");
+
+    for arm_blueprint in roundabout_blueprint.arm_blueprints_mut() {
+        let Some(arm_settings) = map_settings
+            .arms()
+            .iter()
+            .find(|&arm_settings| arm_settings.angle() == arm_blueprint.angle())
+        else {
+            warn!("No matching ArmSettings with same angle as ArmBlueprint");
+            continue;
+        };
+        arm_blueprint.set_speed_limit_override(arm_settings.speed_limit_override());
+    }
+
     for (arm_id, arm) in arms {
         let arm_settings = map_settings
             .arms()
@@ -148,9 +180,12 @@ fn update_speed_limit_overrides(
             .expect("expected matching arm settings to an arm");
         segments
             .iter_mut()
-            .filter(|segment| segment.arm_id() == arm_id)
-            .for_each(|mut segment| {
-                segment.set_speed_limit_override(arm_settings.speed_limit_override());
+            .filter(|(segment, _, _)| segment.arm_id() == arm_id)
+            .for_each(|(mut segment, is_entry_line, is_exit_line)| {
+                // Do not override the speed limit if it is not an entry or exit segment.
+                if is_entry_line || is_exit_line {
+                    segment.set_speed_limit_override(arm_settings.speed_limit_override());
+                }
             });
     }
 }

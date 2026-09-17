@@ -103,6 +103,13 @@ impl RoundaboutBlueprint {
         self.arm_blueprints.as_slice()
     }
 
+    pub const fn arm_blueprints_mut(&mut self) -> &mut [ArmBlueprint] {
+        // Using &self.arm_blueprints is not yet stable const.
+        // .as_slice is directly implemented on a Vec, but the &[]
+        // slice is a trait-based implementation.
+        self.arm_blueprints.as_mut_slice()
+    }
+
     pub const fn number_of_arms(&self) -> usize {
         self.arm_blueprints.len()
     }
@@ -165,6 +172,10 @@ impl ArmBlueprint {
 
     pub const fn speed_limit_override(&self) -> Option<Speed> {
         self.speed_limit_override
+    }
+
+    pub const fn set_speed_limit_override(&mut self, speed_limit_override: Option<Speed>) {
+        self.speed_limit_override = speed_limit_override;
     }
 
     pub const fn max_vehicles_per_second(&self) -> f32 {

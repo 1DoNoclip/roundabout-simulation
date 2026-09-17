@@ -16,4 +16,7 @@ pub(crate) struct InterArmSector;
 pub(crate) struct IntraArmSector;
 
 #[derive(Component)]
+pub(crate) struct ExitLine;
+
+#[derive(Component)]
 pub(crate) struct ExitDeflection;

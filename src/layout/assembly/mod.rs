@@ -72,7 +72,7 @@ pub(crate) fn assemble_roundabout(
                     Connection::Merge {
                         next_segment_id: ids.inter_arm_sector,
                     },
-                    speed_limit_override,
+                    None,
                 ),
             ));
 
@@ -113,6 +113,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.exit_line).insert((
                 Name::new(format!("ExitLine {unique_identifier}")),
+                segment_type::ExitLine,
                 Segment::new(
                     exit_line_points,
                     arm_id,
@@ -125,6 +126,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.exit_deflection).insert((
                 Name::new(format!("ExitDeflection {unique_identifier}")),
+                segment_type::ExitDeflection,
                 Segment::new(
                     exit_deflection_points,
                     arm_id,
@@ -133,7 +135,7 @@ pub(crate) fn assemble_roundabout(
                     Connection::Direct {
                         next_segment_id: ids.exit_line,
                     },
-                    speed_limit_override,
+                    None,
                 ),
             ));
 

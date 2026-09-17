@@ -31,7 +31,9 @@ pub(in crate::simulation) fn calculate_accelerations(
     for (id, idm_driver, kinematics, navigator, &speed) in vehicles {
         let mut lead_vehicle_info = find_lead_vehicle(&segments, &lead_vehicles_query, id).ok();
         let current_segment_id = navigator.current_segment_id();
-        let current_segment = segments.get(current_segment_id).expect("expected matching segment to segment Entity");
+        let current_segment = segments
+            .get(current_segment_id)
+            .expect("expected matching segment to segment Entity");
 
         let yield_context = YieldContext::get(
             &yield_points,
@@ -83,12 +85,19 @@ pub(in crate::simulation) fn calculate_accelerations(
             let max_cornering_speed: Velocity =
                 Velocity::new::<meter_per_second>((lateral_acceleration / kappa).sqrt());
 
-            if let Some(or) = current_segment.speed_limit_override() {
-                println!("or of {or:?}");
+            if current_segment.length() != Length::new::<meter>(100.0) {
+                if let Some(_) = current_segment.speed_limit_override() {
+                    println!("non line with override detected");
+                }
             }
+
             kinematics
                 .target_speed()
-                .min(*current_segment.speed_limit_override().unwrap_or(roundabout_blueprint.speed_limit()))
+                .min(
+                    *current_segment
+                        .speed_limit_override()
+                        .unwrap_or(roundabout_blueprint.speed_limit()),
+                )
                 .min(max_cornering_speed)
         } else {
             kinematics

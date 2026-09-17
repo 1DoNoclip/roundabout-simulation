@@ -311,7 +311,7 @@ impl Default for SimulationSettings {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ArmSettings {
     angle: Rot2,
     vehicles_per_hour: u32,
