@@ -74,11 +74,11 @@ impl RoundaboutBlueprint {
         speed_limit: Speed,
     ) -> Result<Self, String> {
         let arms_length = arm_blueprints.len();
-        if !(3..=6).contains(&arms_length) {
+        if (3..=6).contains(&arms_length).not() {
             Err(format!(
                 "length of arm_blueprints must be between 3 and 6 inclusive, found {arms_length}"
             ))
-        } else if !(1..=3).contains(&number_of_lanes) {
+        } else if (1..=3).contains(&number_of_lanes).not() {
             Err(format!(
                 "number_of_lanes must be between 1 and 3 inclusive, found {number_of_lanes}"
             ))

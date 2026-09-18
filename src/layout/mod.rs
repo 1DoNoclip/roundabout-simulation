@@ -26,25 +26,29 @@ impl Plugin for LayoutPlugin {
             GeometryPlugin,
             YieldPointsPlugin,
         ))
-        .add_systems(Update, roundabout_blueprint_changed);
+        .add_systems(Update, regenerate_layout);
     }
 }
 
-fn roundabout_blueprint_changed(mut commands: Commands, blueprint: Res<RoundaboutBlueprint>) {
-    // Only runs if the blueprint resource has changed.
-    if !blueprint.is_changed() {
-        return;
+#[derive(Message)]
+pub(crate) struct RegenerateLayout;
+
+fn regenerate_layout(mut commands: Commands, mut reader: MessageReader<RegenerateLayout>) {
+    // If one or more RegenerateLayout messages have been created.
+    // If more than 1 messages have been created, only regenerate once.
+    if reader.is_empty().not() {
+        reader.clear();
+        commands.queue(move |world: &mut World| {
+            info!("RoundaboutBlueprint has changed. Running layout generation pipeline.");
+            world.run_system_cached(assemble_roundabout).unwrap();
+            world.flush();
+            world
+                .run_system_cached(RoundaboutConflictPoints::generate)
+                .unwrap();
+            world
+                .run_system_cached(RoundaboutYieldPoints::generate)
+                .unwrap();
+            info!("Roundabout layout and conflict points successfully updated.");
+        });
     }
-    commands.queue(move |world: &mut World| {
-        info!("RoundaboutBlueprint has changed. Running layout generation pipeline.");
-        world.run_system_cached(assemble_roundabout).unwrap();
-        world.flush();
-        world
-            .run_system_cached(RoundaboutConflictPoints::generate)
-            .unwrap();
-        world
-            .run_system_cached(RoundaboutYieldPoints::generate)
-            .unwrap();
-        info!("Roundabout layout and conflict points successfully updated.");
-    });
 }

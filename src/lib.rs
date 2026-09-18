@@ -4,6 +4,7 @@ use bevy::{
 };
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
+use std::ops::Not;
 
 mod blueprint;
 mod graphics;
@@ -57,7 +58,7 @@ impl Plugin for AppSetupPlugin {
         if cli_args.enable_inspector {
             app.add_plugins(WorldInspectorPlugin::default());
         }
-        if !cli_args.no_control_panel {
+        if cli_args.no_control_panel.not() {
             app.add_plugins(UiPlugin);
         }
     }
