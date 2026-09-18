@@ -139,8 +139,13 @@ fn handle_delayed_start(
 }
 
 // Todo: Remove this.
-fn print_segments(segments: Query<&Segment>, input: Res<ButtonInput<KeyCode>>) {
+fn print_segments(
+    roundabout_blueprint: Res<RoundaboutBlueprint>,
+    segments: Query<&Segment>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
     if input.just_released(KeyCode::KeyH) {
+        println!("blueprint limit: {:?}", roundabout_blueprint.speed_limit());
         println!("printing segments");
         for segment in segments {
             println!("{:?}", segment.speed_limit_override());

@@ -17,6 +17,10 @@ pub(in crate::simulation) fn calculate_accelerations(
     conflict_points: Res<RoundaboutConflictPoints>,
     yield_points: Res<RoundaboutYieldPoints>,
     segments: Query<&Segment>,
+    line_segments: Query<
+        &Segment,
+        Or<(With<segment_type::EntryLine>, With<segment_type::ExitLine>)>,
+    >,
     entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
     entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
     // Used to check if a segment is an entry deflection segment.
@@ -85,9 +89,10 @@ pub(in crate::simulation) fn calculate_accelerations(
             let max_cornering_speed: Velocity =
                 Velocity::new::<meter_per_second>((lateral_acceleration / kappa).sqrt());
 
-            if current_segment.length() != Length::new::<meter>(100.0) {
-                if let Some(_) = current_segment.speed_limit_override() {
-                    println!("non line with override detected");
+            // Note: This is temporary, just to ensure non-line segments do not have a speed limit override.
+            if !line_segments.contains(current_segment_id) {
+                if current_segment.speed_limit_override().is_some() {
+                    warn!("current_segment has Some speed limit override");
                 }
             }
 
@@ -100,9 +105,11 @@ pub(in crate::simulation) fn calculate_accelerations(
                 )
                 .min(max_cornering_speed)
         } else {
-            kinematics
-                .target_speed()
-                .min(*roundabout_blueprint.speed_limit())
+            kinematics.target_speed().min(
+                *current_segment
+                    .speed_limit_override()
+                    .unwrap_or(roundabout_blueprint.speed_limit()),
+            )
         };
 
         let raw_acceleration: Acceleration = idm_driver.calculate_acceleration(
