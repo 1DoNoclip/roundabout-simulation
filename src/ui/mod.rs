@@ -300,6 +300,10 @@ impl SimulationSettings {
         self.paused
     }
 
+    pub(crate) const fn pause(&mut self) {
+        self.paused = true;
+    }
+
     pub const fn time_speed_factor(&self) -> f32 {
         self.time_speed_factor
     }

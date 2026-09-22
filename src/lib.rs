@@ -108,10 +108,12 @@ struct StartupDelayTimer(Timer);
 fn setup_simulation_time(
     mut commands: Commands,
     args: Res<CliArgs>,
-    mut virtual_time: ResMut<Time<Virtual>>,
+    mut simulation_settings: ResMut<SimulationSettings>,
+    mut apply_writer: MessageWriter<ApplyUiSettings>,
 ) {
     if let Some(delay_seconds) = args.run_after {
-        virtual_time.pause();
+        simulation_settings.pause();
+        apply_writer.write(ApplyUiSettings::SimulationPlayPause);
         let timer = Timer::from_seconds(delay_seconds, TimerMode::Once);
         info!(
             "Simulation paused. Will start automatically after {} seconds.",
@@ -119,7 +121,8 @@ fn setup_simulation_time(
         );
         commands.insert_resource(StartupDelayTimer(timer));
     } else if args.paused {
-        virtual_time.pause();
+        simulation_settings.pause();
+        apply_writer.write(ApplyUiSettings::SimulationPlayPause);
         info!("Simulation started in paused state.");
     }
 }

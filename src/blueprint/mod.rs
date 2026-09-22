@@ -13,7 +13,11 @@ impl Plugin for BlueprintPlugin {
 }
 
 /// Replaces `RoundaboutBlueprint` with the values from `MapSettings`.
-pub(crate) fn replace_roundabout_blueprint(mut commands: Commands, map_settings: Res<MapSettings>) {
+pub(crate) fn replace_roundabout_blueprint(
+    mut commands: Commands,
+    map_settings: Res<MapSettings>,
+    mut regenerate_writer: MessageWriter<RegenerateLayout>,
+) {
     let arm_blueprints = map_settings
         .arms()
         .iter()
@@ -41,6 +45,7 @@ pub(crate) fn replace_roundabout_blueprint(mut commands: Commands, map_settings:
         )
         .expect("failed to create"),
     );
+    regenerate_writer.write(RegenerateLayout);
 }
 
 /// Represents global roundabout data.
