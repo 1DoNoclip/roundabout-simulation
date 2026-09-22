@@ -130,13 +130,15 @@ fn setup_simulation_time(
 fn handle_delayed_start(
     mut commands: Commands,
     real_time: Res<Time<Real>>,
-    mut virtual_time: ResMut<Time<Virtual>>,
     mut delay_timer: ResMut<StartupDelayTimer>,
+    mut simulation_settings: ResMut<SimulationSettings>,
+    mut apply_writer: MessageWriter<ApplyUiSettings>,
 ) {
     delay_timer.0.tick(real_time.delta());
 
     if delay_timer.0.just_finished() {
-        virtual_time.unpause();
+        simulation_settings.unpause();
+        apply_writer.write(ApplyUiSettings::SimulationPlayPause);
         info!("Delayed start complete. Simulation unpaused.");
         commands.remove_resource::<StartupDelayTimer>();
     }
