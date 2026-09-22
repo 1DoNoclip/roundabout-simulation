@@ -90,10 +90,10 @@ pub(in crate::simulation) fn calculate_accelerations(
                 Velocity::new::<meter_per_second>((lateral_acceleration / kappa).sqrt());
 
             // Note: This is temporary, just to ensure non-line segments do not have a speed limit override.
-            if line_segments.contains(current_segment_id).not() {
-                if current_segment.speed_limit_override().is_some() {
-                    warn!("current_segment has Some speed limit override");
-                }
+            if line_segments.contains(current_segment_id).not()
+                && current_segment.speed_limit_override().is_some()
+            {
+                warn!("current_segment has Some speed limit override");
             }
 
             kinematics

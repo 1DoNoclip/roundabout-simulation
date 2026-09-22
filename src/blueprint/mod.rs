@@ -125,6 +125,10 @@ impl RoundaboutBlueprint {
     pub const fn speed_limit(&self) -> Speed {
         self.speed_limit
     }
+
+    pub(crate) const fn set_speed_limit(&mut self, speed_limit: Speed) {
+        self.speed_limit = speed_limit
+    }
 }
 
 /// Represents a singular arm on the roundabout.

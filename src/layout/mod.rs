@@ -18,20 +18,27 @@ pub(crate) struct LayoutPlugin;
 
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            AssemblyPlugin,
-            ComponentsPlugin,
-            ConflictPointsPlugin,
-            CurvePlugin,
-            GeometryPlugin,
-            YieldPointsPlugin,
-        ))
-        .add_systems(Update, regenerate_layout);
+        app.add_message::<RegenerateLayout>()
+            .add_plugins((
+                AssemblyPlugin,
+                ComponentsPlugin,
+                ConflictPointsPlugin,
+                CurvePlugin,
+                GeometryPlugin,
+                YieldPointsPlugin,
+            ))
+            .add_systems(Startup, initialize_generation)
+            .add_systems(Update, regenerate_layout);
     }
 }
 
 #[derive(Message)]
 pub(crate) struct RegenerateLayout;
+
+/// Creates a `RegenerateLayout` message.
+fn initialize_generation(mut writer: MessageWriter<RegenerateLayout>) {
+    writer.write(RegenerateLayout);
+}
 
 fn regenerate_layout(mut commands: Commands, mut reader: MessageReader<RegenerateLayout>) {
     // If one or more RegenerateLayout messages have been created.
@@ -39,7 +46,7 @@ fn regenerate_layout(mut commands: Commands, mut reader: MessageReader<Regenerat
     if reader.is_empty().not() {
         reader.clear();
         commands.queue(move |world: &mut World| {
-            info!("RoundaboutBlueprint has changed. Running layout generation pipeline.");
+            info!("RoundaboutBlueprint was created/changed. Running layout generation pipeline.");
             world.run_system_cached(assemble_roundabout).unwrap();
             world.flush();
             world

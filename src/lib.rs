@@ -154,6 +154,15 @@ fn print_segments(
     }
 }
 
+fn update_speed_limit(
+    map_settings: Res<MapSettings>,
+    mut roundabout_blueprint: ResMut<RoundaboutBlueprint>,
+) {
+    info!("Updating speed limit");
+
+    roundabout_blueprint.set_speed_limit(Speed::try_new(map_settings.speed_limit()).unwrap());
+}
+
 fn update_speed_limit_overrides(
     map_settings: Res<MapSettings>,
     mut roundabout_blueprint: ResMut<RoundaboutBlueprint>,

@@ -16,6 +16,7 @@ impl Plugin for UiPlugin {
 #[derive(Message)]
 pub(crate) enum ApplyUiSettings {
     Map,
+    SpeedLimit,
     SpeedLimitOverride,
     SimulationPlayPause,
     SimulationSpeed,
@@ -33,6 +34,7 @@ fn ui_settings_changed(mut commands: Commands, mut reader: MessageReader<ApplyUi
     for apply_ui_settings in reader.read() {
         match apply_ui_settings {
             ApplyUiSettings::Map => commands.run_system_cached(replace_roundabout_blueprint),
+            ApplyUiSettings::SpeedLimit => commands.run_system_cached(update_speed_limit),
             ApplyUiSettings::SpeedLimitOverride => {
                 commands.run_system_cached(update_speed_limit_overrides)
             }
@@ -84,6 +86,7 @@ fn draw_window(
                             }
                             SpeedUnit::MilePerHour => Velocity::new::<mile_per_hour>(display_value),
                         };
+                        apply_writer.write(ApplyUiSettings::SpeedLimit);
                     }
                     ui.selectable_value(
                         &mut map_settings.current_ui_speed_unit,
