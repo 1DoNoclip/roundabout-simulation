@@ -1,15 +1,16 @@
 use crate::*;
-use pathfinding::*;
-use rand::{SeedableRng, rng, rngs::StdRng};
 use rand_distr::{Distribution, Poisson};
 use uom::ConstZero;
 
 pub(crate) mod components;
 pub(crate) mod kinematics;
 mod pathfinding;
+pub(crate) mod spawning;
 
 pub(crate) use components::*;
 pub(crate) use kinematics::*;
+use pathfinding::*;
+pub(crate) use spawning::*;
 
 pub(super) struct VehiclePlugin;
 
@@ -57,17 +58,6 @@ impl VehicleBundle {
             next_acceleration: NextAcceleration::from(*current_acceleration),
             transform: Transform::from_translation(start_segment.position_at(0.0)),
         })
-    }
-}
-
-/// Used in spawn_vehicles.
-#[derive(Deref, DerefMut)]
-pub(crate) struct SpawnerRng(StdRng);
-
-// Local requires Default to initialize the struct.
-impl Default for SpawnerRng {
-    fn default() -> Self {
-        Self(StdRng::from_rng(&mut rng()))
     }
 }
 

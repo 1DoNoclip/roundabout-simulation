@@ -4,7 +4,10 @@
 use crate::*;
 
 #[derive(Component)]
-pub(crate) struct EntryLine;
+pub(crate) struct EntryLine {
+    adjusted_arrival_time: Frequency,
+    headway_distribution: NormalDistr,
+}
 
 #[derive(Component)]
 pub(crate) struct EntryDeflection;

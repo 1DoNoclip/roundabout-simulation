@@ -1,5 +1,7 @@
 //! Contains the components used in the roundabout layout, such as segments, connections and end points.
 
+use rand_distr::Normal;
+
 use crate::*;
 
 pub(crate) mod segment_type;
@@ -20,25 +22,18 @@ impl Plugin for ComponentsPlugin {
 pub(crate) struct ArmBundle {
     name: Name,
     arm: Arm,
-    vehicle_spawn_queue: VehicleSpawnQueue,
+    spawn_timer: SpawnTimer,
 }
 
 impl ArmBundle {
-    pub fn new(
-        index: usize,
-        angle: Rot2,
-        max_vehicles_per_second: f32,
-        destination_weights: DestinationWeights,
-    ) -> Self {
+    pub fn new(index: usize, angle: Rot2, destination_weights: DestinationWeights) -> Self {
         ArmBundle {
             name: Name::new(format!("Arm: [{index}]")),
             arm: Arm::new(index, angle, max_vehicles_per_second, destination_weights),
-            vehicle_spawn_queue: VehicleSpawnQueue::new(),
+            spawn_timer: SpawnTimer::default(),
         }
     }
 }
-
-pub(crate) type DestinationWeights = EntityHashMap<u32>;
 
 #[derive(Component, Debug, Reflect)]
 #[reflect(Component)]
@@ -50,26 +45,11 @@ pub(crate) struct Arm {
     index: usize,
     /// The angle of the arm to the roundabout.
     angle: Rot2,
-    /// The maximum vehicles spawned per second. The actual spawn rate may
-    /// be less due to lack of space in the network to spawn another vehicle.
-    max_vehicles_per_second: f32,
-    /// The desirability of each destination from this spawn point.
-    destination_weights: DestinationWeights,
 }
 
 impl Arm {
-    pub const fn new(
-        index: usize,
-        angle: Rot2,
-        max_vehicles_per_second: f32,
-        destination_weights: DestinationWeights,
-    ) -> Self {
-        Arm {
-            index,
-            angle,
-            max_vehicles_per_second,
-            destination_weights,
-        }
+    pub const fn new(index: usize, angle: Rot2) -> Self {
+        Arm { index, angle }
     }
 
     pub const fn index(&self) -> usize {
@@ -79,15 +59,12 @@ impl Arm {
     pub const fn angle(&self) -> Rot2 {
         self.angle
     }
-
-    pub const fn max_vehicles_per_second(&self) -> f32 {
-        self.max_vehicles_per_second
-    }
-
-    pub const fn destination_weights(&self) -> &DestinationWeights {
-        &self.destination_weights
-    }
 }
+
+/// The destination flows for a singular entry lane to all possible exit lanes.
+///
+/// `Frequency` is the flow rate of vehicles to that exit.
+pub(crate) type DestinationFlows = EntityHashMap<Frequency>;
 
 /// A road segment between connections.
 #[derive(Component, Reflect)]

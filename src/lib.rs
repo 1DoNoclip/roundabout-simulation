@@ -6,6 +6,8 @@ use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
 use std::ops::Not;
 
+type NormalDistr = rand_distr::Normal<f32>;
+
 mod blueprint;
 mod graphics;
 mod layout;

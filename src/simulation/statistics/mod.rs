@@ -2,7 +2,7 @@ use crate::*;
 
 pub(crate) use uom::si::{
     f32::Frequency,
-    frequency::{cycle_per_minute, hertz},
+    frequency::{cycle_per_hour, hertz},
 };
 
 pub(super) struct StatisticsPlugin;
