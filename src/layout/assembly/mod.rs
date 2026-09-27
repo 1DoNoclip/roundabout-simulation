@@ -1,7 +1,6 @@
 //! Contains the instructions from assembling a roundabout layout from blueprints.
 
 use crate::*;
-use std::f32::consts::PI;
 
 pub(super) struct AssemblyPlugin;
 
@@ -35,14 +34,26 @@ pub(crate) fn assemble_roundabout(
         let next_arm_index = (arm_index + 1) % number_of_arms;
         let next_arm_angle = arm_blueprints[next_arm_index].angle();
 
+        let arm = Arm::new(arm_index, arm_blueprint.angle());
         let arm_id = roundabout_topology.get_arm_id_at(arm_index);
         // Add the ArmBundle.
-        commands.entity(arm_id).insert(ArmBundle::new(
-            arm_index,
-            arm_blueprint.angle(),
-            arm_blueprint.max_vehicles_per_second(),
-            calculate_destination_weights(arm_blueprints, arm_index, &roundabout_topology),
-        ));
+        commands.entity(arm_id).insert(ArmBundle::new(arm));
+
+        // The key is the lane index.
+        let mut arm_flow_rates = HashMap::<usize, EntityHashMap<Frequency>>::new();
+        for other_arm_index in 0..number_of_arms {
+            let other_arm = Arm::new(other_arm_index, arm_blueprints[other_arm_index].angle());
+            let other_arm_id = roundabout_topology.get_arm_id_at(other_arm_index);
+            let lane_index = select_lane_index(&arm, &other_arm, number_of_arms, number_of_lanes);
+            arm_flow_rates
+                .entry(lane_index)
+                .or_insert_with(EntityHashMap::new)
+                .insert(other_arm_id, Frequency::new::<per_hour>(800.0));
+        }
+        println!("arm {arm_index}");
+        for afr in arm_flow_rates.iter() {
+            println!("lane index {}, hm {:?}", afr.0, afr.1);
+        }
 
         let speed_limit_override = arm_blueprint.speed_limit_override();
 
@@ -78,7 +89,7 @@ pub(crate) fn assemble_roundabout(
 
             commands.entity(ids.entry_line).insert((
                 Name::new(format!("EntryLine {unique_identifier}")),
-                segment_type::EntryLine,
+                segment_type::EntryLine::new(arm_flow_rates.remove(&lane_index).unwrap()),
                 Segment::new(
                     entry_line_points,
                     arm_id,
@@ -211,38 +222,40 @@ fn clear_existing_layout(
     }
 }
 
-/// Calculates relative exit weights for vehicles entering from `current_arm_index`.
-///
-/// Returns an `EntityHashMap`<`u32`> mapping target arm entities to their integer destination weights.
-fn calculate_destination_weights(
-    arm_blueprints: &[ArmBlueprint],
-    current_arm_index: usize,
-    roundabout_topology: &RoundaboutTopology,
-) -> DestinationWeights {
-    /// The minimum destination weight of an exit road. Assigned to U-turns.
-    const UTURN_WEIGHT: f32 = 0.05;
-
-    let mut destination_weights = EntityHashMap::default();
-
-    let source_angle = arm_blueprints[current_arm_index].angle().as_radians();
-
-    for (target_index, target_blueprint) in arm_blueprints.iter().enumerate() {
-        let target_arm_id = roundabout_topology.get_arm_id_at(target_index);
-        let target_angle = target_blueprint.angle().as_radians();
-
-        let difference = target_angle - source_angle;
-
-        // Score based on angle difference of exit arm to entry arm.
-        let alignment_score = (1.0 + (difference - PI).cos()) / 2.0;
-        let normalized_weight = UTURN_WEIGHT + (1.0 - UTURN_WEIGHT) * alignment_score;
-
-        // Scale to integer range (between UTURN_WEIGHT * 100 and 100).
-        let u32_weight = (normalized_weight * 100.0).round() as u32;
-
-        destination_weights.insert(target_arm_id, u32_weight);
+/// Returns the valid lane index to use to get from `entry_arm` to `exit_arm`.
+pub(super) fn select_lane_index(
+    entry_arm: &Arm,
+    exit_arm: &Arm,
+    number_of_arms: usize,
+    number_of_lanes: usize,
+) -> usize {
+    // Single-lane roundabouts always use lane 0.
+    if number_of_lanes <= 1 {
+        return 0;
     }
 
-    destination_weights
+    let exit_rank = get_exit_rank(entry_arm, exit_arm, number_of_arms);
+    let max_rank = number_of_arms - 1;
+
+    // Clamp exit_rank so U-turns share highest rank with final exit.
+    let rank = if exit_rank == 0 || exit_rank > max_rank {
+        max_rank
+    } else {
+        exit_rank
+    };
+
+    let raw_progress = (rank - 1) as f32 / (max_rank - 1) as f32;
+    // Adds quadratic bias (which delays using more inner lanes until later ranks).
+    let biased_progress = raw_progress.powf(2.0);
+
+    let inner_offset = (biased_progress * (number_of_lanes - 1) as f32).round() as usize;
+
+    (number_of_lanes - 1) - inner_offset
+}
+
+/// Returns a 1-based exit rank for a vehicle travelling from `entry_arm` to `exit_arm`.
+const fn get_exit_rank(entry_arm: &Arm, exit_arm: &Arm, number_of_arms: usize) -> usize {
+    (exit_arm.index() + number_of_arms - entry_arm.index()) % number_of_arms
 }
 
 /// Points to all of the entities forming the roundabout.

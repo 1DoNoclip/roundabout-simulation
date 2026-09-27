@@ -1,7 +1,5 @@
 //! Contains the components used in the roundabout layout, such as segments, connections and end points.
 
-use rand_distr::Normal;
-
 use crate::*;
 
 pub(crate) mod segment_type;
@@ -22,20 +20,20 @@ impl Plugin for ComponentsPlugin {
 pub(crate) struct ArmBundle {
     name: Name,
     arm: Arm,
-    spawn_timer: SpawnTimer,
+    // spawn_timer: SpawnTimer,
 }
 
 impl ArmBundle {
-    pub fn new(index: usize, angle: Rot2, destination_weights: DestinationWeights) -> Self {
+    pub fn new(arm: Arm) -> Self {
         ArmBundle {
-            name: Name::new(format!("Arm: [{index}]")),
-            arm: Arm::new(index, angle, max_vehicles_per_second, destination_weights),
-            spawn_timer: SpawnTimer::default(),
+            name: Name::new(format!("Arm: [{}]", arm.index())),
+            arm,
+            // spawn_timer: SpawnTimer::default(),
         }
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Clone, Copy, Component, Debug, Reflect)]
 #[reflect(Component)]
 /// A marker for spawned road `Segment`s and other components to assign themselves to.
 ///

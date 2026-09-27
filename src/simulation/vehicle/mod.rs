@@ -1,5 +1,4 @@
 use crate::*;
-use rand_distr::{Distribution, Poisson};
 use uom::ConstZero;
 
 pub(crate) mod components;
@@ -61,95 +60,7 @@ impl VehicleBundle {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn spawn_vehicles(
-    mut commands: Commands,
-    // A unique instance of SpawnerRng is created for this system (Local).
-    // It is handed to us each time Bevy calls this system.
-    mut spawner_rng: Local<SpawnerRng>,
-    time: Res<Time>,
-    roundabout_blueprint: Res<RoundaboutBlueprint>,
-    mut spawning_arms: Query<(Entity, &Arm, &mut VehicleSpawnQueue)>,
-    target_arms: Query<&Arm>,
-    spawn_points: Query<(Entity, &SpawnPoint)>,
-    segments: Query<&Segment>,
-    existing_vehicles: Query<(&Navigator, &Transform), With<Kinematics>>,
-) {
-    let delta_seconds = time.delta_secs();
-
-    for (spawn_arm_id, spawn_arm, mut spawn_queue) in &mut spawning_arms {
-        // Poisson Process uses an exponential curve, where the average spawn rate = max_vehicles_per_second
-        // (assuming that the road has capacity to spawn vehicles), but with the advantage of variance
-        // of spawn rates.
-
-        // Calculate expected number of new vehicles during this frame.
-        let lambda = spawn_arm.max_vehicles_per_second() * delta_seconds;
-        if lambda > 0.0
-            && let Ok(poisson) = Poisson::new(lambda)
-        {
-            let number_to_spawn = poisson.sample(&mut spawner_rng) as u32;
-            spawn_queue.reserve(number_to_spawn as usize);
-            for _ in 0..number_to_spawn {
-                let end_arm_id =
-                    select_destination_arm(&mut spawner_rng, spawn_arm.destination_weights());
-                spawn_queue.push_back(end_arm_id);
-            }
-        }
-
-        let mut drained_indices = Vec::new();
-        let mut frame_spawned_segments = Vec::new();
-
-        for (index, &end_arm_id) in spawn_queue.iter().enumerate() {
-            let end_arm = target_arms
-                .get(end_arm_id)
-                .expect("expected to find a matching target Arm entity");
-
-            let lane_index = select_lane_index(
-                spawn_arm,
-                end_arm,
-                roundabout_blueprint.arm_blueprints().len(),
-                roundabout_blueprint.number_of_lanes(),
-            );
-
-            let Some((spawn_point_id, spawn_point)) =
-                spawn_points.iter().find(|(_, spawn_point)| {
-                    spawn_point.arm() == spawn_arm_id && spawn_point.lane_index() == lane_index
-                })
-            else {
-                warn!("failed to find spawn point with matching arm and lane");
-                continue;
-            };
-
-            let entry_segment_id = spawn_point.segment();
-            let entry_segment = segments
-                .get(entry_segment_id)
-                .expect("expected Segment component for this Entity");
-
-            let is_blocked_existing = existing_vehicles.iter().any(|(navigator, transform)| {
-                navigator.current_segment_id() == entry_segment_id
-                    && transform
-                        .translation
-                        .distance_squared(entry_segment.start_position())
-                        < 25.0
-            });
-            let is_blocked_this_frame = frame_spawned_segments.contains(&entry_segment_id);
-            if is_blocked_existing || is_blocked_this_frame {
-                // We cannot spawn another vehicle in this lane at this moment.
-                // Continue to allow vehicles in other unblocked lanes to spawn.
-                continue;
-            }
-
-            commands.run_system_cached_with(spawn_vehicle, (spawn_point_id, end_arm_id));
-
-            drained_indices.push(index);
-            frame_spawned_segments.push(entry_segment_id);
-        }
-
-        for index in drained_indices.into_iter().rev() {
-            spawn_queue.remove(index);
-        }
-    }
-}
+pub(super) fn spawn_vehicles() {}
 
 fn spawn_vehicle(
     In((spawn_point_id, end_arm_id)): In<(Entity, Entity)>,

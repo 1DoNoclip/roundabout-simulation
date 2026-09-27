@@ -1,5 +1,4 @@
 use crate::*;
-use std::collections::VecDeque;
 
 pub(crate) mod statistics;
 pub(crate) mod vehicle;
@@ -25,19 +24,5 @@ impl Plugin for SimulationPlugin {
                         .chain(),
                 ),
             );
-    }
-}
-
-#[derive(Component, Deref, DerefMut)]
-pub(crate) struct VehicleSpawnQueue {
-    /// Holds destination arms of vehicles waiting to spawn.
-    pending_destinations: VecDeque<Entity>,
-}
-
-impl VehicleSpawnQueue {
-    pub const fn new() -> Self {
-        VehicleSpawnQueue {
-            pending_destinations: VecDeque::new(),
-        }
     }
 }

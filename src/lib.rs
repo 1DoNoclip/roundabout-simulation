@@ -1,6 +1,6 @@
 use bevy::{
-    ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, prelude::*,
-    window::PrimaryWindow,
+    ecs::entity::EntityHashMap, math::cubic_splines::LinearSpline, platform::collections::HashMap,
+    prelude::*, window::PrimaryWindow,
 };
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
