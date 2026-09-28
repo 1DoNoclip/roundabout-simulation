@@ -105,7 +105,13 @@ fn draw_window(
                 ui.label("Radius:");
                 let mut radius_meter = map_settings.radius.get::<meter>();
                 if ui
-                    .add(egui::Slider::new(&mut radius_meter, 10.0..=80.0).suffix("m"))
+                    .add(
+                        egui::Slider::new(&mut radius_meter, 10.0..=80.0)
+                            .suffix("m")
+                            .max_decimals(1)
+                            .step_by(0.1)
+                            .drag_value_speed(0.025),
+                    )
                     .changed()
                 {
                     map_settings.radius = Length::new::<meter>(radius_meter);
@@ -118,12 +124,15 @@ fn draw_window(
                 // Deflection radius.
                 ui.label("Deflection radius:");
                 let mut deflection_radius_meter = map_settings.deflection_radius.get::<meter>();
-                // Cap the max deflection radius to the radius dynamically.
+                // Cap the max deflection radius to the radius to prevent panicking.
                 let max_value_meter = map_settings.radius.get::<meter>();
                 if ui
                     .add(
                         egui::Slider::new(&mut deflection_radius_meter, 5.0..=max_value_meter)
-                            .suffix("m"),
+                            .suffix("m")
+                            .max_decimals(1)
+                            .step_by(0.1)
+                            .drag_value_speed(0.025),
                     )
                     .changed()
                 {
