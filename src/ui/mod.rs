@@ -109,6 +109,9 @@ fn draw_window(
                     .changed()
                 {
                     map_settings.radius = Length::new::<meter>(radius_meter);
+                    // Prevent deflection radius from exceeding radius.
+                    map_settings.deflection_radius =
+                        map_settings.deflection_radius.min(map_settings.radius);
                 }
                 ui.end_row();
 
