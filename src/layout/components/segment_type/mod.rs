@@ -5,11 +5,11 @@ use crate::*;
 
 #[derive(Component)]
 pub(crate) struct EntryLine {
-    flow_rates: EntityHashMap<Frequency>,
+    flow_rates: FlowRates,
 }
 
 impl EntryLine {
-    pub const fn new(flow_rates: EntityHashMap<Frequency>) -> Self {
+    pub const fn new(flow_rates: FlowRates) -> Self {
         EntryLine { flow_rates }
     }
 }
