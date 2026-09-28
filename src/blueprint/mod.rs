@@ -207,8 +207,10 @@ pub(crate) struct CircleBlueprint {
 
 impl CircleBlueprint {
     pub fn try_new(radius: Length, deflection_radius: Length) -> Result<Self, &'static str> {
-        if radius.is_nan() || deflection_radius.is_nan() {
-            Err("radius or deflection_radius is NaN")
+        if radius.is_nan() {
+            Err("radius is NaN")
+        } else if deflection_radius.is_nan() {
+            Err("deflection_radius is NaN")
         }
         // Note: Jank is still possible due to 5.0m not being a special value.
         // If there are too many lanes and too small deflection radius, then the deflections
