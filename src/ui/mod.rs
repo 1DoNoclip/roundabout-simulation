@@ -172,8 +172,8 @@ fn draw_window(
                                     }
                                     ui.end_row();
 
-                                    egui::CollapsingHeader::new("Traffic flow")
-                                        .id_salt(("destination_flows_", index))
+                                    egui::CollapsingHeader::new("Flow rates")
+                                        .id_salt(("flow_rates_", index))
                                         .show(ui, |ui| {});
                                     ui.end_row();
 
@@ -313,18 +313,37 @@ impl MapSettings {
 
 impl Default for MapSettings {
     fn default() -> Self {
+        let number_of_lanes = 2;
+
+        let mut arms = vec![
+            ArmSettings::new(Rot2::degrees(0.0), 1_000, None, Vec::new()),
+            ArmSettings::new(Rot2::degrees(-90.0), 1_000, None, Vec::new()),
+            ArmSettings::new(Rot2::degrees(-180.0), 1_000, None, Vec::new()),
+            ArmSettings::new(Rot2::degrees(-270.0), 1_000, None, Vec::new()),
+        ];
+
+        // Flow rates of each lane in each arm.
+        // HashMap's key is the arm index.
+        // Inside Vec's key is the lane index.
+        // Inside HashMap's key is the exit arm index.
+        let mut all_flow_rates: HashMap<usize, Vec<HashMap<usize, Frequency>>> = HashMap::new();
+
+        for arm in &arms {
+
+        }
+
+        // Insert the calculated flow rates into each `ArmSettings`.
+        for (index, arm) in arms.iter_mut().enumerate() {
+            arm.flow_rates = all_flow_rates.remove(&index).unwrap();
+        }
+
         MapSettings {
-            number_of_lanes: 2,
+            number_of_lanes,
             speed_limit: Velocity::new::<mile_per_hour>(30.0),
             current_ui_speed_unit: SpeedUnit::MilePerHour,
             radius: Length::new::<meter>(30.0),
             deflection_radius: Length::new::<meter>(12.5),
-            arms: vec![
-                ArmSettings::new(Rot2::degrees(0.0), 1_000, None),
-                ArmSettings::new(Rot2::degrees(-90.0), 1_000, None),
-                ArmSettings::new(Rot2::degrees(-180.0), 1_000, None),
-                ArmSettings::new(Rot2::degrees(-270.0), 1_000, None),
-            ],
+            arms,
         }
     }
 }
@@ -367,14 +386,22 @@ pub(crate) struct ArmSettings {
     angle: Rot2,
     vehicles_per_hour: u32,
     speed_limit_override: Option<Speed>,
+    /// Each index is a lane (index 0 is the inner lane).
+    flow_rates: Vec<HashMap<usize, Frequency>>,
 }
 
 impl ArmSettings {
-    const fn new(angle: Rot2, vehicles_per_hour: u32, speed_limit_override: Option<Speed>) -> Self {
+    const fn new(
+        angle: Rot2,
+        vehicles_per_hour: u32,
+        speed_limit_override: Option<Speed>,
+        flow_rates: Vec<HashMap<usize, Frequency>>,
+    ) -> Self {
         ArmSettings {
             angle,
             vehicles_per_hour,
             speed_limit_override,
+            flow_rates,
         }
     }
 
