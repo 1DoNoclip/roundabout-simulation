@@ -219,7 +219,7 @@ fn clear_existing_layout(
 }
 
 /// Returns the valid lane index to use to get from `entry_arm` to `exit_arm`.
-pub(super) fn select_lane_index(
+pub(crate) fn select_lane_index(
     entry_arm: &Arm,
     exit_arm: &Arm,
     number_of_arms: usize,

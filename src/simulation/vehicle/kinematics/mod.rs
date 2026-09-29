@@ -760,68 +760,69 @@ mod tests {
 
         #[test]
         fn within_current_segment() {
-            let mut world = World::new();
+            panic!("Test needs to be rewritten.");
+            // let mut world = World::new();
 
-            let arm_id = world
-                .spawn(Arm::new(
-                    0,
-                    Rot2::degrees(0.0),
-                    5.0,
-                    DestinationWeights::new(),
-                ))
-                .id();
+            // let arm_id = world
+            //     .spawn(Arm::new(
+            //         0,
+            //         Rot2::degrees(0.0),
+            //         5.0,
+            //         DestinationWeights::new(),
+            //     ))
+            //     .id();
 
-            let segment_2_id = world
-                .spawn(Segment::new(
-                    StraightLinePoints([Vec3::new(50.0, 0.0, 0.0), Vec3::new(100.0, 50.0, 0.0)]),
-                    arm_id,
-                    0,
-                    0,
-                    Connection::Direct {
-                        next_segment_id: Entity::PLACEHOLDER,
-                    },
-                    None,
-                ))
-                .id();
+            // let segment_2_id = world
+            //     .spawn(Segment::new(
+            //         StraightLinePoints([Vec3::new(50.0, 0.0, 0.0), Vec3::new(100.0, 50.0, 0.0)]),
+            //         arm_id,
+            //         0,
+            //         0,
+            //         Connection::Direct {
+            //             next_segment_id: Entity::PLACEHOLDER,
+            //         },
+            //         None,
+            //     ))
+            //     .id();
 
-            let segment_1_id = world
-                .spawn(Segment::new(
-                    StraightLinePoints([Vec3::ZERO, Vec3::new(50.0, 0.0, 0.0)]),
-                    arm_id,
-                    0,
-                    0,
-                    Connection::Direct {
-                        next_segment_id: segment_2_id,
-                    },
-                    None,
-                ))
-                .id();
+            // let segment_1_id = world
+            //     .spawn(Segment::new(
+            //         StraightLinePoints([Vec3::ZERO, Vec3::new(50.0, 0.0, 0.0)]),
+            //         arm_id,
+            //         0,
+            //         0,
+            //         Connection::Direct {
+            //             next_segment_id: segment_2_id,
+            //         },
+            //         None,
+            //     ))
+            //     .id();
 
-            // Setup IdmDriver & Navigator.
-            let idm_driver = IdmDriver::new(
-                0.95,
-                Acceleration::new::<meter_per_second_squared>(2.0),
-                Acceleration::new::<meter_per_second_squared>(3.0),
-                Acceleration::new::<meter_per_second_squared>(-2.5),
-                Distance::try_new(Length::new::<meter>(5.0)).unwrap(),
-                UomTime::new::<second>(1.5),
-                UomTime::new::<second>(2.0),
-                UomTime::new::<second>(4.0),
-                4.0,
-            );
-            let speed = Speed::try_new(Velocity::new::<meter_per_second>(10.0)).unwrap();
-            let navigator = Navigator::try_new(vec![segment_1_id, segment_2_id]).unwrap();
+            // // Setup IdmDriver & Navigator.
+            // let idm_driver = IdmDriver::new(
+            //     0.95,
+            //     Acceleration::new::<meter_per_second_squared>(2.0),
+            //     Acceleration::new::<meter_per_second_squared>(3.0),
+            //     Acceleration::new::<meter_per_second_squared>(-2.5),
+            //     Distance::try_new(Length::new::<meter>(5.0)).unwrap(),
+            //     UomTime::new::<second>(1.5),
+            //     UomTime::new::<second>(2.0),
+            //     UomTime::new::<second>(4.0),
+            //     4.0,
+            // );
+            // let speed = Speed::try_new(Velocity::new::<meter_per_second>(10.0)).unwrap();
+            // let navigator = Navigator::try_new(vec![segment_1_id, segment_2_id]).unwrap();
 
-            // Extract the Query using SystemState.
-            let mut system_state: SystemState<Query<&Segment>> = SystemState::new(&mut world);
-            let segments_query = system_state.get(&world).unwrap();
+            // // Extract the Query using SystemState.
+            // let mut system_state: SystemState<Query<&Segment>> = SystemState::new(&mut world);
+            // let segments_query = system_state.get(&world).unwrap();
 
-            // Lookahead = 10m/s * 2s = 20m.
-            // Current distance to end = (1.0 - 0.0) * 50 = 45m.
-            // Lookahead is within the current segment.
-            let kappa = get_kappa(speed, &idm_driver, &navigator, &segments_query);
+            // // Lookahead = 10m/s * 2s = 20m.
+            // // Current distance to end = (1.0 - 0.0) * 50 = 45m.
+            // // Lookahead is within the current segment.
+            // let kappa = get_kappa(speed, &idm_driver, &navigator, &segments_query);
 
-            assert_eq!(kappa, 0.0);
+            // assert_eq!(kappa, 0.0);
         }
 
         // #[test]
@@ -1049,34 +1050,35 @@ mod tests {
 
         #[test]
         fn ignores_other_segment_types_on_same_arm() {
-            let mut world = World::new();
+            panic!("Test needs to be rewritten.");
+            //     let mut world = World::new();
 
-            let entry_arm = 1;
-            let number_of_arms = 4;
+            //     let entry_arm = 1;
+            //     let number_of_arms = 4;
 
-            // Target sectors
-            let intra_target = spawn_segment(&mut world, 1, 0, segment_type::IntraArmSector);
-            let inter_target = spawn_segment(&mut world, 0, 0, segment_type::InterArmSector);
+            //     // Target sectors
+            //     let intra_target = spawn_segment(&mut world, 1, 0, segment_type::IntraArmSector);
+            //     let inter_target = spawn_segment(&mut world, 0, 0, segment_type::InterArmSector);
 
-            // Non-sector segments on the target arms.
-            spawn_segment(&mut world, 1, 0, segment_type::EntryLine);
-            spawn_segment(&mut world, 0, 0, segment_type::EntryDeflection);
+            //     // Non-sector segments on the target arms.
+            //     spawn_segment(&mut world, 1, 0, segment_type::EntryLine);
+            //     spawn_segment(&mut world, 0, 0, segment_type::EntryDeflection);
 
-            let mut system_state = SystemState::<(
-                Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
-                Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
-            )>::new(&mut world);
+            //     let mut system_state = SystemState::<(
+            //         Query<(Entity, &Segment), With<segment_type::IntraArmSector>>,
+            //         Query<(Entity, &Segment), With<segment_type::InterArmSector>>,
+            //     )>::new(&mut world);
 
-            let (intra_query, inter_query) = system_state.get(&world).unwrap();
+            //     let (intra_query, inter_query) = system_state.get(&world).unwrap();
 
-            let (intra_map, inter_map) =
-                get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
+            //     let (intra_map, inter_map) =
+            //         get_sectors(entry_arm, number_of_arms, intra_query, inter_query);
 
-            assert_eq!(intra_map.len(), 1);
-            assert!(intra_map.contains_left(&intra_target));
+            //     assert_eq!(intra_map.len(), 1);
+            //     assert!(intra_map.contains_left(&intra_target));
 
-            assert_eq!(inter_map.len(), 1);
-            assert!(inter_map.contains_left(&inter_target));
+            //     assert_eq!(inter_map.len(), 1);
+            //     assert!(inter_map.contains_left(&inter_target));
         }
     }
 

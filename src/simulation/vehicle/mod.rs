@@ -105,91 +105,95 @@ mod tests {
     #[test]
     #[should_panic(expected = "Cannot select a destination arm from an empty destination_weights")]
     fn empty_weights_panics() {
-        let mut rng = StdRng::seed_from_u64(42);
-        let destination_weights = DestinationWeights::default();
+        panic!("Test needs to be rewritten.");
+        // let mut rng = StdRng::seed_from_u64(42);
+        // let destination_weights = DestinationWeights::default();
 
-        select_destination_arm(&mut rng, &destination_weights);
+        // select_destination_arm(&mut rng, &destination_weights);
     }
 
     #[test]
     fn single_choice_guaranteed() {
-        let mut rng = StdRng::seed_from_u64(42);
-        let mut destination_weights = DestinationWeights::default();
+        panic!("Test needs to be rewritten.");
+        // let mut rng = StdRng::seed_from_u64(42);
+        // let mut destination_weights = DestinationWeights::default();
 
-        let target_arm = make_test_entity(1);
-        // Anything above a value of 0 is included in the distribution.
-        destination_weights.insert(target_arm, 1);
+        // let target_arm = make_test_entity(1);
+        // // Anything above a value of 0 is included in the distribution.
+        // destination_weights.insert(target_arm, 1);
 
-        // With only one option, it must return that option 100% of the time.
-        for _ in 0..100 {
-            let selected = select_destination_arm(&mut rng, &destination_weights);
-            assert_eq!(selected, target_arm);
-        }
+        // // With only one option, it must return that option 100% of the time.
+        // for _ in 0..100 {
+        //     let selected = select_destination_arm(&mut rng, &destination_weights);
+        //     assert_eq!(selected, target_arm);
+        // }
     }
 
     #[test]
     fn zero_weight_ignored() {
-        let mut rng = StdRng::seed_from_u64(12345);
-        let mut destination_weights = DestinationWeights::default();
+        panic!("Test needs to be rewritten.");
+        // let mut rng = StdRng::seed_from_u64(12345);
+        // let mut destination_weights = DestinationWeights::default();
 
-        let lucky_arm = make_test_entity(1);
-        let unlucky_arm = make_test_entity(2);
+        // let lucky_arm = make_test_entity(1);
+        // let unlucky_arm = make_test_entity(2);
 
-        destination_weights.insert(lucky_arm, 10);
-        destination_weights.insert(unlucky_arm, 0); // 0% chance of selection.
+        // destination_weights.insert(lucky_arm, 10);
+        // destination_weights.insert(unlucky_arm, 0); // 0% chance of selection.
 
-        // The 0-weight option should never be picked.
-        for _ in 0..100 {
-            let selected = select_destination_arm(&mut rng, &destination_weights);
-            assert_eq!(selected, lucky_arm);
-            assert_ne!(selected, unlucky_arm);
-        }
+        // // The 0-weight option should never be picked.
+        // for _ in 0..100 {
+        //     let selected = select_destination_arm(&mut rng, &destination_weights);
+        //     assert_eq!(selected, lucky_arm);
+        //     assert_ne!(selected, unlucky_arm);
+        // }
     }
 
     #[test]
     fn statistical_distribution() {
-        // Use a fixed seed so the test outcome is completely deterministic.
-        // The seed number has no value. Using a fixed seed just ensures that
-        // the test never fails due to the seed. The Law of Large Numbers and
-        // the tolerance used in the assertions ensures that this test should
-        // pass for most seeds.
-        let mut rng = StdRng::seed_from_u64(987654321);
-        let mut weights = DestinationWeights::default();
+        panic!("Test needs to be rewritten.");
+        // // Use a fixed seed so the test outcome is completely deterministic.
+        // // The seed number has no value. Using a fixed seed just ensures that
+        // // the test never fails due to the seed. The Law of Large Numbers and
+        // // the tolerance used in the assertions ensures that this test should
+        // // pass for most seeds.
+        // let mut rng = StdRng::seed_from_u64(987654321);
+        // let mut weights = DestinationWeights::default();
 
-        let arm_a = make_test_entity(1);
-        let arm_b = make_test_entity(2);
+        // let arm_a = make_test_entity(1);
+        // let arm_b = make_test_entity(2);
 
-        weights.insert(arm_a, 25); // Should get ~25% of rolls.
-        weights.insert(arm_b, 75); // Should get ~75% of rolls.
+        // weights.insert(arm_a, 25); // Should get ~25% of rolls.
+        // weights.insert(arm_b, 75); // Should get ~75% of rolls.
 
-        let mut count_a = 0;
-        let mut count_b = 0;
-        let iterations = 10_000;
+        // let mut count_a = 0;
+        // let mut count_b = 0;
+        // let iterations = 10_000;
 
-        for _ in 0..iterations {
-            let selected = select_destination_arm(&mut rng, &weights);
-            if selected == arm_a {
-                count_a += 1;
-            } else if selected == arm_b {
-                count_b += 1;
-            }
-        }
+        // for _ in 0..iterations {
+        //     let selected = select_destination_arm(&mut rng, &weights);
+        //     if selected == arm_a {
+        //         count_a += 1;
+        //     } else if selected == arm_b {
+        //         count_b += 1;
+        //     }
+        // }
 
-        const PERCENTAGE_TOLERANCE: f64 = 2.0;
-        // Calculate actual percentages.
-        let percentage_a = (count_a as f64 / iterations as f64) * 100.0;
-        let percentage_b = (count_b as f64 / iterations as f64) * 100.0;
+        // const PERCENTAGE_TOLERANCE: f64 = 2.0;
+        // // Calculate actual percentages.
+        // let percentage_a = (count_a as f64 / iterations as f64) * 100.0;
+        // let percentage_b = (count_b as f64 / iterations as f64) * 100.0;
 
-        // Allow a small statistical tolerance variance (margin of error) of ±2%.
-        assert!(
-            (percentage_a - 25.0).abs() < PERCENTAGE_TOLERANCE,
-            "Arm A variance too high above {PERCENTAGE_TOLERANCE}%: {}%",
-            percentage_a
-        );
-        assert!(
-            (percentage_b - 75.0).abs() < PERCENTAGE_TOLERANCE,
-            "Arm B variance too high above {PERCENTAGE_TOLERANCE}%: {}%",
-            percentage_b
-        );
+        // // Allow a small statistical tolerance variance (margin of error) of ±2%.
+        // assert!(
+        //     (percentage_a - 25.0).abs() < PERCENTAGE_TOLERANCE,
+        //     "Arm A variance too high above {PERCENTAGE_TOLERANCE}%: {}%",
+        //     percentage_a
+        // );
+        // assert!(
+        //     (percentage_b - 75.0).abs() < PERCENTAGE_TOLERANCE,
+        //     "Arm B variance too high above {PERCENTAGE_TOLERANCE}%: {}%",
+        //     percentage_b
+        // );
     }
 }

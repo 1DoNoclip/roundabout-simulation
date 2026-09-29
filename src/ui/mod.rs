@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{layout::assembly::select_lane_index, *};
 use bevy_inspector_egui::bevy_egui::prelude::*;
 
 pub(super) struct UiPlugin;
@@ -324,17 +324,34 @@ impl Default for MapSettings {
 
         // Flow rates of each lane in each arm.
         // HashMap's key is the arm index.
-        // Inside Vec's key is the lane index.
+        // Inside Vec's index is the lane index.
         // Inside HashMap's key is the exit arm index.
         let mut all_flow_rates: HashMap<usize, Vec<HashMap<usize, Frequency>>> = HashMap::new();
+        let number_of_arms = arms.len();
 
-        for arm in &arms {
+        for (index, arm_settings) in arms.iter().enumerate() {
+            let arm = Arm::new(index, arm_settings.angle());
+            let mut arm_flow_rates: Vec<HashMap<usize, Frequency>> =
+                core::iter::repeat_with(HashMap::new)
+                    .take(number_of_lanes)
+                    .collect();
+            for (other_index, other_arm_settings) in arms.iter().enumerate() {
+                let other_arm = Arm::new(other_index, other_arm_settings.angle());
+                let lane_index =
+                    select_lane_index(&arm, &other_arm, number_of_arms, number_of_lanes);
+                arm_flow_rates[lane_index].insert(other_index, Frequency::new::<per_hour>(800.0));
+            }
 
+            all_flow_rates.insert(index, arm_flow_rates);
         }
 
         // Insert the calculated flow rates into each `ArmSettings`.
-        for (index, arm) in arms.iter_mut().enumerate() {
-            arm.flow_rates = all_flow_rates.remove(&index).unwrap();
+        for (index, arm_settings) in arms.iter_mut().enumerate() {
+            if let Some(arm_flow_rates) = all_flow_rates.remove(&index) {
+                arm_settings.arm_flow_rates = arm_flow_rates;
+            } else {
+                warn!("No flow rates found for arm_settings with index {index}");
+            }
         }
 
         MapSettings {
@@ -387,7 +404,7 @@ pub(crate) struct ArmSettings {
     vehicles_per_hour: u32,
     speed_limit_override: Option<Speed>,
     /// Each index is a lane (index 0 is the inner lane).
-    flow_rates: Vec<HashMap<usize, Frequency>>,
+    arm_flow_rates: Vec<HashMap<usize, Frequency>>,
 }
 
 impl ArmSettings {
@@ -395,13 +412,13 @@ impl ArmSettings {
         angle: Rot2,
         vehicles_per_hour: u32,
         speed_limit_override: Option<Speed>,
-        flow_rates: Vec<HashMap<usize, Frequency>>,
+        arm_flow_rates: Vec<HashMap<usize, Frequency>>,
     ) -> Self {
         ArmSettings {
             angle,
             vehicles_per_hour,
             speed_limit_override,
-            flow_rates,
+            arm_flow_rates,
         }
     }
 
