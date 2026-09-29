@@ -155,6 +155,9 @@ fn draw_window(
                             egui::Grid::new(("arm_settings_grid_", index))
                                 .num_columns(2)
                                 .show(ui, |ui| {
+                                    ui.label(format!("Arm {index}"));
+                                    ui.end_row();
+
                                     ui.label("Arm angle:");
                                     let mut angle_degree = arm_settings.angle.as_degrees();
                                     if ui
@@ -167,6 +170,11 @@ fn draw_window(
                                     {
                                         arm_settings.angle = Rot2::degrees(angle_degree);
                                     }
+                                    ui.end_row();
+
+                                    egui::CollapsingHeader::new("Traffic flow")
+                                        .id_salt(("destination_flows_", index))
+                                        .show(ui, |ui| {});
                                     ui.end_row();
 
                                     ui.label("Vehicles per hour:");
@@ -194,7 +202,7 @@ fn draw_window(
                         }
                     });
 
-                if ui.button("Apply changes").clicked() {
+                if ui.button("Apply changes and reset statistics").clicked() {
                     apply_writer.write(ApplyUiSettings::Map);
                 }
             });
