@@ -44,231 +44,280 @@ fn draw_window(
     mut map_settings: ResMut<MapSettings>,
     mut simulation_settings: ResMut<SimulationSettings>,
 ) -> Result {
-    egui::Window::new("Interface").show(contexts.ctx_mut()?, |ui| {
-        egui::CollapsingHeader::new("Map Settings")
-            .default_open(true)
-            .show(ui, |ui| {
-                egui::Grid::new("map_settings_grid")
-                    .num_columns(2)
-                    .show(ui, |ui| {
-                        // Number of lanes.
-                        ui.label("Number of lanes:");
-                        ui.add(egui::Slider::new(&mut map_settings.number_of_lanes, 1..=3));
-                        ui.end_row();
-
-                        // Speed limit.
-                        ui.label("Speed limit:");
-                        ui.horizontal(|ui| {
-                            let (mut display_value, range) =
-                                match map_settings.current_ui_speed_unit {
-                                    SpeedUnit::MeterPerSecond => (
-                                        map_settings.speed_limit.get::<meter_per_second>(),
-                                        (0.0..=27.8),
-                                    ),
-                                    SpeedUnit::MilePerHour => (
-                                        map_settings.speed_limit.get::<mile_per_hour>(),
-                                        (0.0..=62.1),
-                                    ),
-                                };
-                            if ui
-                                .add(
-                                    egui::DragValue::new(&mut display_value)
-                                        .speed(0.1)
-                                        .range(range),
-                                )
-                                .changed()
-                            {
-                                map_settings.speed_limit = match map_settings.current_ui_speed_unit
-                                {
-                                    SpeedUnit::MeterPerSecond => {
-                                        Velocity::new::<meter_per_second>(display_value)
-                                    }
-                                    SpeedUnit::MilePerHour => {
-                                        Velocity::new::<mile_per_hour>(display_value)
-                                    }
-                                };
-                            }
-                            ui.selectable_value(
-                                &mut map_settings.current_ui_speed_unit,
-                                SpeedUnit::MeterPerSecond,
-                                "m/s",
-                            );
-                            ui.selectable_value(
-                                &mut map_settings.current_ui_speed_unit,
-                                SpeedUnit::MilePerHour,
-                                "mph",
-                            );
-                        });
-                        ui.end_row();
-
-                        // Radius.
-                        ui.label("Radius:");
-                        let mut radius_meter = map_settings.radius.get::<meter>();
-                        if ui
-                            .add(
-                                egui::Slider::new(&mut radius_meter, 10.0..=80.0)
-                                    .suffix("m")
-                                    .max_decimals(1)
-                                    .step_by(0.1)
-                                    .drag_value_speed(0.025),
-                            )
-                            .changed()
-                        {
-                            map_settings.radius = Length::new::<meter>(radius_meter);
-                            // Prevent deflection radius from exceeding radius.
-                            map_settings.deflection_radius =
-                                map_settings.deflection_radius.min(map_settings.radius);
-                        }
-                        ui.end_row();
-
-                        // Deflection radius.
-                        ui.label("Deflection radius:");
-                        let mut deflection_radius_meter =
-                            map_settings.deflection_radius.get::<meter>();
-                        // Cap the max deflection radius to the radius to prevent panicking.
-                        let max_value_meter = map_settings.radius.get::<meter>();
-                        if ui
-                            .add(
-                                egui::Slider::new(
-                                    &mut deflection_radius_meter,
-                                    5.0..=max_value_meter,
-                                )
-                                .suffix("m")
-                                .max_decimals(1)
-                                .step_by(0.1)
-                                .drag_value_speed(0.025),
-                            )
-                            .changed()
-                        {
-                            map_settings.deflection_radius =
-                                Length::new::<meter>(deflection_radius_meter);
-                        }
-                        ui.end_row();
-                    });
-
-                // Arms.
-                // let mut arm_to_remove = None;
-                egui::CollapsingHeader::new("Arms")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        for (index, arm_settings) in map_settings.arms.iter_mut().enumerate() {
-                            egui::Grid::new(("arm_settings_grid_", index))
+    let ctx = contexts.ctx_mut()?;
+    let screen_height = ctx.content_rect().size().y - 60.0;
+    egui::Window::new("Interface")
+        .fixed_size([350.0, screen_height])
+        .show(contexts.ctx_mut()?, |ui| {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    egui::CollapsingHeader::new("Map Settings")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            egui::Grid::new("map_settings_grid")
                                 .num_columns(2)
                                 .show(ui, |ui| {
-                                    ui.label(format!("Arm {index}"));
+                                    // Number of lanes.
+                                    ui.label("Number of lanes:");
+                                    ui.add(egui::Slider::new(
+                                        &mut map_settings.number_of_lanes,
+                                        1..=3,
+                                    ));
                                     ui.end_row();
 
-                                    ui.label("Arm angle:");
-                                    let mut angle_degree = arm_settings.angle.as_degrees();
+                                    // Speed limit.
+                                    ui.label("Speed limit:");
+                                    ui.horizontal(|ui| {
+                                        let (mut display_value, range) = match map_settings
+                                            .current_ui_speed_unit
+                                        {
+                                            SpeedUnit::MeterPerSecond => (
+                                                map_settings.speed_limit.get::<meter_per_second>(),
+                                                (0.0..=27.8),
+                                            ),
+                                            SpeedUnit::MilePerHour => (
+                                                map_settings.speed_limit.get::<mile_per_hour>(),
+                                                (0.0..=62.1),
+                                            ),
+                                        };
+                                        if ui
+                                            .add(
+                                                egui::DragValue::new(&mut display_value)
+                                                    .speed(0.1)
+                                                    .range(range),
+                                            )
+                                            .changed()
+                                        {
+                                            map_settings.speed_limit = match map_settings
+                                                .current_ui_speed_unit
+                                            {
+                                                SpeedUnit::MeterPerSecond => {
+                                                    Velocity::new::<meter_per_second>(display_value)
+                                                }
+                                                SpeedUnit::MilePerHour => {
+                                                    Velocity::new::<mile_per_hour>(display_value)
+                                                }
+                                            };
+                                        }
+                                        ui.selectable_value(
+                                            &mut map_settings.current_ui_speed_unit,
+                                            SpeedUnit::MeterPerSecond,
+                                            "m/s",
+                                        );
+                                        ui.selectable_value(
+                                            &mut map_settings.current_ui_speed_unit,
+                                            SpeedUnit::MilePerHour,
+                                            "mph",
+                                        );
+                                    });
+                                    ui.end_row();
+
+                                    // Radius.
+                                    ui.label("Radius:");
+                                    let mut radius_meter = map_settings.radius.get::<meter>();
                                     if ui
                                         .add(
-                                            egui::DragValue::new(&mut angle_degree)
-                                                .speed(1.0)
-                                                .suffix("°"),
+                                            egui::Slider::new(&mut radius_meter, 10.0..=80.0)
+                                                .suffix("m")
+                                                .max_decimals(1)
+                                                .step_by(0.1)
+                                                .drag_value_speed(0.025),
                                         )
                                         .changed()
                                     {
-                                        arm_settings.angle = Rot2::degrees(angle_degree);
+                                        map_settings.radius = Length::new::<meter>(radius_meter);
+                                        // Prevent deflection radius from exceeding radius.
+                                        map_settings.deflection_radius =
+                                            map_settings.deflection_radius.min(map_settings.radius);
                                     }
                                     ui.end_row();
 
-                                    egui::CollapsingHeader::new("Flow rates")
-                                        .id_salt(("flow_rates_", index))
-                                        .show(ui, |ui| {});
-                                    ui.end_row();
-
-                                    ui.label("Vehicles per hour:");
-                                    // ui.horizontal(|ui| {
-
-                                    // });
-                                    ui.end_row();
-
-                                    ui.label("Speed limit override:");
-                                    ui.horizontal(|ui| {
-                                        let mut is_overridden =
-                                            arm_settings.speed_limit_override().is_some();
-                                        if ui.checkbox(&mut is_overridden, "").changed() {
-                                            if is_overridden {
-                                                arm_settings.speed_limit_override =
-                                                    Some(Speed::default());
-                                            } else {
-                                                arm_settings.speed_limit_override = None;
-                                            }
-                                        }
-                                    });
+                                    // Deflection radius.
+                                    ui.label("Deflection radius:");
+                                    let mut deflection_radius_meter =
+                                        map_settings.deflection_radius.get::<meter>();
+                                    // Cap the max deflection radius to the radius to prevent panicking.
+                                    let max_value_meter = map_settings.radius.get::<meter>();
+                                    if ui
+                                        .add(
+                                            egui::Slider::new(
+                                                &mut deflection_radius_meter,
+                                                5.0..=max_value_meter,
+                                            )
+                                            .suffix("m")
+                                            .max_decimals(1)
+                                            .step_by(0.1)
+                                            .drag_value_speed(0.025),
+                                        )
+                                        .changed()
+                                    {
+                                        map_settings.deflection_radius =
+                                            Length::new::<meter>(deflection_radius_meter);
+                                    }
                                     ui.end_row();
                                 });
-                            ui.add_space(8.0);
-                        }
-                    });
 
-                if ui.button("Apply changes and reset statistics").clicked() {
-                    apply_writer.write(ApplyUiSettings::Map);
-                }
-            });
+                            // Arms.
+                            // let mut arm_to_remove = None;
+                            egui::CollapsingHeader::new("Arms")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    let number_of_lanes = map_settings.number_of_lanes();
+                                    for (index, arm_settings) in
+                                        map_settings.arms.iter_mut().enumerate()
+                                    {
+                                        egui::Grid::new(("arm_settings_grid_", index))
+                                            .num_columns(2)
+                                            .show(ui, |ui| {
+                                                ui.label(format!("Arm {index}"));
+                                                ui.end_row();
 
-        ui.add_space(15.0);
+                                                ui.label("Arm angle:");
+                                                let mut angle_degree =
+                                                    arm_settings.angle.as_degrees();
+                                                if ui
+                                                    .add(
+                                                        egui::DragValue::new(&mut angle_degree)
+                                                            .speed(1.0)
+                                                            .suffix("°"),
+                                                    )
+                                                    .changed()
+                                                {
+                                                    arm_settings.angle =
+                                                        Rot2::degrees(angle_degree);
+                                                }
+                                                ui.end_row();
 
-        egui::CollapsingHeader::new("Simulation Settings")
-            .default_open(true)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    let (label, button_label) = if simulation_settings.paused {
-                        ("Paused:", "Play")
-                    } else {
-                        ("Playing:", "Pause")
-                    };
-                    ui.label(label);
-                    if ui
-                        .toggle_value(&mut simulation_settings.paused, button_label)
-                        .changed()
-                    {
-                        apply_writer.write(ApplyUiSettings::SimulationPlayPause);
-                    }
+                                                egui::CollapsingHeader::new("Flow rates")
+                                                    .id_salt(("flow_rates_", index))
+                                                    .show(ui, |ui| {
+                                                        for index in 0..number_of_lanes {
+                                                            ui.label(format!("Lane {index}"));
+                                                        }
+                                                    });
+                                                ui.end_row();
+
+                                                ui.label("Vehicles per hour:");
+                                                // ui.horizontal(|ui| {
+
+                                                // });
+                                                ui.end_row();
+
+                                                ui.label("Speed limit override:");
+                                                ui.horizontal(|ui| {
+                                                    let mut is_overridden = arm_settings
+                                                        .speed_limit_override()
+                                                        .is_some();
+                                                    if ui.checkbox(&mut is_overridden, "").changed()
+                                                    {
+                                                        if is_overridden {
+                                                            arm_settings.speed_limit_override =
+                                                                Some(Speed::default());
+                                                        } else {
+                                                            arm_settings.speed_limit_override =
+                                                                None;
+                                                        }
+                                                    }
+                                                });
+                                                ui.end_row();
+                                            });
+                                        ui.add_space(8.0);
+                                    }
+                                });
+
+                            if ui.button("Apply changes and reset statistics").clicked() {
+                                apply_writer.write(ApplyUiSettings::Map);
+                            }
+                        });
+
+                    ui.add_space(15.0);
+
+                    egui::CollapsingHeader::new("Simulation Settings")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                let (label, button_label) = if simulation_settings.paused {
+                                    ("Paused:", "Play")
+                                } else {
+                                    ("Playing:", "Pause")
+                                };
+                                ui.label(label);
+                                if ui
+                                    .toggle_value(&mut simulation_settings.paused, button_label)
+                                    .changed()
+                                {
+                                    apply_writer.write(ApplyUiSettings::SimulationPlayPause);
+                                }
+                            });
+
+                            let mut simulation_speed_changed = false;
+                            ui.label("Time speed factor:");
+                            ui.horizontal(|ui| {
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        0.25,
+                                        "x0.25",
+                                    )
+                                    .changed();
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        0.5,
+                                        "x0.5",
+                                    )
+                                    .changed();
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        1.0,
+                                        "Real time",
+                                    )
+                                    .changed();
+                            });
+                            ui.horizontal(|ui| {
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        2.0,
+                                        "x2",
+                                    )
+                                    .changed();
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        4.0,
+                                        "x4",
+                                    )
+                                    .changed();
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        8.0,
+                                        "x8",
+                                    )
+                                    .changed();
+                                simulation_speed_changed |= ui
+                                    .selectable_value(
+                                        &mut simulation_settings.time_speed_factor,
+                                        16.0,
+                                        "x16",
+                                    )
+                                    .changed();
+                            });
+                            if simulation_speed_changed {
+                                apply_writer.write(ApplyUiSettings::SimulationSpeed);
+                            }
+                        });
+
+                    ui.add_space(15.0);
+
+                    egui::CollapsingHeader::new("Statistics")
+                        .default_open(true)
+                        .show(ui, |ui| {});
                 });
-
-                let mut simulation_speed_changed = false;
-                ui.label("Time speed factor:");
-                ui.horizontal(|ui| {
-                    simulation_speed_changed |= ui
-                        .selectable_value(&mut simulation_settings.time_speed_factor, 0.25, "x0.25")
-                        .changed();
-                    simulation_speed_changed |= ui
-                        .selectable_value(&mut simulation_settings.time_speed_factor, 0.5, "x0.5")
-                        .changed();
-                    simulation_speed_changed |= ui
-                        .selectable_value(
-                            &mut simulation_settings.time_speed_factor,
-                            1.0,
-                            "Real time",
-                        )
-                        .changed();
-                });
-                ui.horizontal(|ui| {
-                    simulation_speed_changed |= ui
-                        .selectable_value(&mut simulation_settings.time_speed_factor, 2.0, "x2")
-                        .changed();
-                    simulation_speed_changed |= ui
-                        .selectable_value(&mut simulation_settings.time_speed_factor, 4.0, "x4")
-                        .changed();
-                    simulation_speed_changed |= ui
-                        .selectable_value(&mut simulation_settings.time_speed_factor, 8.0, "x8")
-                        .changed();
-                    simulation_speed_changed |= ui
-                        .selectable_value(&mut simulation_settings.time_speed_factor, 16.0, "x16")
-                        .changed();
-                });
-                if simulation_speed_changed {
-                    apply_writer.write(ApplyUiSettings::SimulationSpeed);
-                }
-            });
-
-        ui.add_space(15.0);
-
-        egui::CollapsingHeader::new("Statistics")
-            .default_open(true)
-            .show(ui, |ui| {});
-    });
+        });
 
     Ok(())
 }
