@@ -1,4 +1,5 @@
-use crate::{layout::assembly::select_lane_index, *};
+use crate::*;
+use bevy::ecs::message::Message;
 use bevy_inspector_egui::bevy_egui::prelude::*;
 
 pub(super) struct UiPlugin;
@@ -73,11 +74,13 @@ fn draw_window(
                                             .current_ui_speed_unit
                                         {
                                             SpeedUnit::MeterPerSecond => (
-                                                map_settings.speed_limit.get::<meter_per_second>(),
+                                                map_settings
+                                                    .speed_limit()
+                                                    .get::<meter_per_second>(),
                                                 (0.0..=27.8),
                                             ),
                                             SpeedUnit::MilePerHour => (
-                                                map_settings.speed_limit.get::<mile_per_hour>(),
+                                                map_settings.speed_limit().get::<mile_per_hour>(),
                                                 (0.0..=62.1),
                                             ),
                                         };
@@ -115,7 +118,7 @@ fn draw_window(
 
                                     // Radius.
                                     ui.label("Radius:");
-                                    let mut radius_meter = map_settings.radius.get::<meter>();
+                                    let mut radius_meter = map_settings.radius().get::<meter>();
                                     if ui
                                         .add(
                                             egui::Slider::new(&mut radius_meter, 10.0..=80.0)
@@ -128,17 +131,18 @@ fn draw_window(
                                     {
                                         map_settings.radius = Length::new::<meter>(radius_meter);
                                         // Prevent deflection radius from exceeding radius.
-                                        map_settings.deflection_radius =
-                                            map_settings.deflection_radius.min(map_settings.radius);
+                                        map_settings.deflection_radius = map_settings
+                                            .deflection_radius()
+                                            .min(map_settings.radius());
                                     }
                                     ui.end_row();
 
                                     // Deflection radius.
                                     ui.label("Deflection radius:");
                                     let mut deflection_radius_meter =
-                                        map_settings.deflection_radius.get::<meter>();
+                                        map_settings.deflection_radius().get::<meter>();
                                     // Cap the max deflection radius to the radius to prevent panicking.
-                                    let max_value_meter = map_settings.radius.get::<meter>();
+                                    let max_value_meter = map_settings.radius().get::<meter>();
                                     if ui
                                         .add(
                                             egui::Slider::new(
@@ -175,7 +179,7 @@ fn draw_window(
 
                                                 ui.label("Arm angle:");
                                                 let mut angle_degree =
-                                                    arm_settings.angle.as_degrees();
+                                                    arm_settings.angle().as_degrees();
                                                 if ui
                                                     .add(
                                                         egui::DragValue::new(&mut angle_degree)
@@ -237,7 +241,7 @@ fn draw_window(
                         .default_open(true)
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                let (label, button_label) = if simulation_settings.paused {
+                                let (label, button_label) = if simulation_settings.paused() {
                                     ("Paused:", "Play")
                                 } else {
                                     ("Playing:", "Pause")

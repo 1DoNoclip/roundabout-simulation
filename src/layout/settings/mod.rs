@@ -8,12 +8,12 @@ pub(crate) enum SpeedUnit {
 
 #[derive(PartialEq, Resource)]
 pub(crate) struct MapSettings {
-    number_of_lanes: usize,
-    speed_limit: Velocity,
-    current_ui_speed_unit: SpeedUnit,
-    radius: Length,
-    deflection_radius: Length,
-    arms: Vec<ArmSettings>,
+    pub(crate) number_of_lanes: usize,
+    pub(crate) speed_limit: Velocity,
+    pub(crate) current_ui_speed_unit: SpeedUnit,
+    pub(crate) radius: Length,
+    pub(crate) deflection_radius: Length,
+    pub(crate) arms: Vec<ArmSettings>,
 }
 
 impl MapSettings {
@@ -94,8 +94,8 @@ impl Default for MapSettings {
 
 #[derive(Resource)]
 pub(crate) struct SimulationSettings {
-    paused: bool,
-    time_speed_factor: f32,
+    pub(crate) paused: bool,
+    pub(crate) time_speed_factor: f32,
 }
 
 impl SimulationSettings {
@@ -127,9 +127,9 @@ impl Default for SimulationSettings {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ArmSettings {
-    angle: Rot2,
+    pub(crate) angle: Rot2,
     vehicles_per_hour: u32,
-    speed_limit_override: Option<Speed>,
+    pub(crate) speed_limit_override: Option<Speed>,
     /// Each index is a lane (index 0 is the inner lane).
     arm_flow_rates: Vec<HashMap<usize, Frequency>>,
 }
