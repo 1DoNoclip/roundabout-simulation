@@ -24,15 +24,19 @@ pub(crate) struct Statistics {
     mean_maximum_deceleration: Acceleration,
     average_queue_length: Length,
     maximum_queue_length: Length,
-    /// The (time it would take for a vehicle to traverse an empty road) - (actual time taken).
-    delay_per_vehicle: UomTime,
+    /// The mean (time it would take for a vehicle to traverse an empty road) - (actual time taken) for every vehicle.
+    mean_delay: UomTime,
     spawn_rate: Frequency,
     /// Can be compared against `spawn_rate` to determine maximum junction capacity.
     completed_trip_rate: Frequency,
 }
 
 impl Statistics {
-    pub fn increment_total_vehicles_passed(&mut self) {
+    pub const fn increment_total_vehicles_passed(&mut self) {
         self.total_vehicles_passed += 1;
+    }
+
+    pub const fn total_vehicles_passed(&self) -> u32 {
+        self.total_vehicles_passed
     }
 }

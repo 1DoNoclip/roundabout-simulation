@@ -1,5 +1,22 @@
 use crate::*;
 
+pub(super) struct SettingsPlugin;
+
+impl Plugin for SettingsPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_message::<ApplyUiSettings>()
+            .insert_resource(MapSettings::default())
+            .insert_resource(SimulationSettings::default());
+    }
+}
+
+#[derive(Message)]
+pub(crate) enum ApplyUiSettings {
+    Map,
+    SimulationPlayPause,
+    SimulationSpeed,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum SpeedUnit {
     MeterPerSecond,

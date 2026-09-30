@@ -6,8 +6,6 @@ use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use clap::Parser;
 use std::ops::Not;
 
-type NormalDistr = rand_distr::Normal<f32>;
-
 mod blueprint;
 mod graphics;
 mod layout;
@@ -97,6 +95,8 @@ struct CliArgs {
     #[arg(long, alias = "nr", default_value_t = false)]
     no_render: bool,
 }
+
+type NormalDistr = rand_distr::Normal<f32>;
 
 fn maximise_window(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
     if let Ok(mut window) = window_query.single_mut() {

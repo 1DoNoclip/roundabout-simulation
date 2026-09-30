@@ -21,14 +21,13 @@ pub(crate) struct LayoutPlugin;
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<RegenerateLayout>()
-            .insert_resource(MapSettings::default())
-            .insert_resource(SimulationSettings::default())
             .add_plugins((
                 AssemblyPlugin,
                 ComponentsPlugin,
                 ConflictPointsPlugin,
                 CurvePlugin,
                 GeometryPlugin,
+                SettingsPlugin,
                 YieldPointsPlugin,
             ))
             .add_systems(Startup, initialize_generation)

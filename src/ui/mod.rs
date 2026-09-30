@@ -1,24 +1,13 @@
 use crate::*;
-use bevy::ecs::message::Message;
 use bevy_inspector_egui::bevy_egui::prelude::*;
 
 pub(super) struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<ApplyUiSettings>()
-            .insert_resource(MapSettings::default())
-            .insert_resource(SimulationSettings::default())
-            .add_systems(Update, ui_settings_changed)
+        app.add_systems(Update, ui_settings_changed)
             .add_systems(EguiPrimaryContextPass, draw_window);
     }
-}
-
-#[derive(Message)]
-pub(crate) enum ApplyUiSettings {
-    Map,
-    SimulationPlayPause,
-    SimulationSpeed,
 }
 
 fn ui_settings_changed(mut commands: Commands, mut reader: MessageReader<ApplyUiSettings>) {
@@ -44,6 +33,7 @@ fn draw_window(
     mut apply_writer: MessageWriter<ApplyUiSettings>,
     mut map_settings: ResMut<MapSettings>,
     mut simulation_settings: ResMut<SimulationSettings>,
+    statistics: Res<Statistics>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let screen_height = ctx.content_rect().size().y - 60.0;
@@ -319,7 +309,44 @@ fn draw_window(
 
                     egui::CollapsingHeader::new("Statistics")
                         .default_open(true)
-                        .show(ui, |ui| {});
+                        .show(ui, |ui| {
+                            egui::Grid::new("statistics_grid")
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label("Total vehicles passed");
+                                    ui.label(statistics.total_vehicles_passed().to_string());
+
+                                    ui.end_row();
+
+                                    ui.label("Minimum time to collision (TTC)");
+
+                                    ui.end_row();
+
+                                    ui.label("Max change in velocity (Δv)");
+
+                                    ui.end_row();
+
+                                    ui.label("Mean maximum deceleration");
+
+                                    ui.end_row();
+
+                                    ui.label("Average queue length");
+
+                                    ui.end_row();
+
+                                    ui.label("Maximum queue length");
+
+                                    ui.end_row();
+
+                                    ui.label("Mean delay");
+
+                                    ui.end_row();
+
+                                    ui.label("Maximum junction capacity");
+
+                                    ui.end_row();
+                                });
+                        });
                 });
         });
 
