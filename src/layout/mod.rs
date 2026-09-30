@@ -5,13 +5,15 @@ pub(crate) mod components;
 pub(crate) mod conflict_points;
 pub(crate) mod curve;
 pub(crate) mod geometry;
+pub(crate) mod settings;
 pub(crate) mod yield_points;
 
-use assembly::*;
+pub(crate) use assembly::*;
 pub(crate) use components::*;
 pub(crate) use conflict_points::*;
 pub(crate) use curve::*;
 pub(crate) use geometry::*;
+pub(crate) use settings::*;
 pub(crate) use yield_points::*;
 
 pub(crate) struct LayoutPlugin;
@@ -19,6 +21,8 @@ pub(crate) struct LayoutPlugin;
 impl Plugin for LayoutPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<RegenerateLayout>()
+            .insert_resource(MapSettings::default())
+            .insert_resource(SimulationSettings::default())
             .add_plugins((
                 AssemblyPlugin,
                 ComponentsPlugin,
