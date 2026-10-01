@@ -43,6 +43,26 @@ fn initialize_generation(mut writer: MessageWriter<RegenerateLayout>) {
     writer.write(RegenerateLayout);
 }
 
+pub(crate) fn get_arm_flow_rates(
+    arm_blueprints: &[ArmBlueprint],
+    number_of_arms: usize,
+    number_of_lanes: usize,
+    roundabout_topology: &RoundaboutTopology,
+    arm: Arm,
+) -> HashMap<usize, FlowRates> {
+    let mut arm_flow_rates = HashMap::<usize, FlowRates>::new();
+    for other_arm_index in 0..number_of_arms {
+        let other_arm = Arm::new(other_arm_index, arm_blueprints[other_arm_index].angle());
+        let other_arm_id = roundabout_topology.get_arm_id_at(other_arm_index);
+        let lane_index = select_lane_index(&arm, &other_arm, number_of_arms, number_of_lanes);
+        arm_flow_rates
+            .entry(lane_index)
+            .or_insert_with(FlowRates::new)
+            .insert(other_arm_id, Frequency::new::<per_hour>(800.0));
+    }
+    arm_flow_rates
+}
+
 fn regenerate_layout(mut commands: Commands, mut reader: MessageReader<RegenerateLayout>) {
     // If one or more RegenerateLayout messages have been created.
     // If more than 1 messages have been created, only regenerate once.

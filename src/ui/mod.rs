@@ -217,7 +217,7 @@ fn draw_window(
                                                                                 &mut flow_per_hour
                                                                             )
                                                                             .range(0..=3600)
-                                                                            .suffix("per hour"),
+                                                                            .suffix(" per hour"),
                                                                         )
                                                                         .changed()
                                                                     {

@@ -40,16 +40,13 @@ pub(crate) fn assemble_roundabout(
         commands.entity(arm_id).insert(ArmBundle::new(arm));
 
         // The key is the lane index.
-        let mut arm_flow_rates = HashMap::<usize, FlowRates>::new();
-        for other_arm_index in 0..number_of_arms {
-            let other_arm = Arm::new(other_arm_index, arm_blueprints[other_arm_index].angle());
-            let other_arm_id = roundabout_topology.get_arm_id_at(other_arm_index);
-            let lane_index = select_lane_index(&arm, &other_arm, number_of_arms, number_of_lanes);
-            arm_flow_rates
-                .entry(lane_index)
-                .or_insert_with(FlowRates::new)
-                .insert(other_arm_id, Frequency::new::<per_hour>(800.0));
-        }
+        let mut arm_flow_rates = get_arm_flow_rates(
+            arm_blueprints,
+            number_of_arms,
+            number_of_lanes,
+            &roundabout_topology,
+            arm,
+        );
 
         let speed_limit_override = arm_blueprint.speed_limit_override();
 
@@ -255,7 +252,7 @@ const fn get_exit_rank(entry_arm: &Arm, exit_arm: &Arm, number_of_arms: usize) -
 }
 
 /// Points to all of the entities forming the roundabout.
-struct RoundaboutTopology {
+pub(crate) struct RoundaboutTopology {
     arm_topologies: Vec<ArmTopology>,
 }
 
