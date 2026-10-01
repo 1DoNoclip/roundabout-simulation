@@ -41,25 +41,21 @@ pub(crate) fn assemble_roundabout(
         commands.entity(arm_id).insert(ArmBundle::new(arm));
 
         // The key of the outer `HashMap` is the lane index.
-        // The key of the inner `HashMap` is the exit arm index.
-        let arm_index_flow_rates =
-            get_arm_flow_rates(arm_blueprints, number_of_arms, number_of_lanes, arm);
         // The key of the inner `HashMap` / `EntityHashMap` becomes the exit arm ID.
-        let mut arm_flow_rates: HashMap<usize, FlowRates> = arm_index_flow_rates.into_iter().fold(
-            HashMap::new(),
-            |mut map, (lane_index, inner_map)| {
-                let lane_flow_rates = inner_map.into_iter().fold(
-                    EntityHashMap::new(),
-                    |mut inner_map, (exit_arm_index, flow_rate)| {
-                        let exit_arm_id = roundabout_topology.get_arm_id_at(exit_arm_index);
-                        inner_map.insert(exit_arm_id, flow_rate);
-                        inner_map
-                    },
-                );
-                map.insert(lane_index, lane_flow_rates);
-                map
-            },
-        );
+        let mut arm_flow_rates: HashMap<usize, FlowRates> =
+            get_arm_flow_rates(arm_blueprints, number_of_arms, number_of_lanes, arm)
+                .into_iter()
+                .map(|(lane_index, inner_map)| {
+                    let lane_flow_rates: FlowRates = inner_map
+                        .into_iter()
+                        .map(|(exit_arm_index, flow_rate)| {
+                            let exit_arm_id = roundabout_topology.get_arm_id_at(exit_arm_index);
+                            (exit_arm_id, flow_rate)
+                        })
+                        .collect();
+                    (lane_index, lane_flow_rates)
+                })
+                .collect();
 
         let speed_limit_override = arm_blueprint.speed_limit_override();
 
