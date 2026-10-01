@@ -158,13 +158,14 @@ fn draw_window(
                                 .default_open(true)
                                 .show(ui, |ui| {
                                     let number_of_lanes = map_settings.number_of_lanes();
-                                    for (index, arm_settings) in
+                                    // let arm_settings_view = map_settings.clone().arms;
+                                    for (arm_index, arm_settings) in
                                         map_settings.arms.iter_mut().enumerate()
                                     {
-                                        egui::Grid::new(("arm_settings_grid_", index))
+                                        egui::Grid::new(("arm_settings_grid_", arm_index))
                                             .num_columns(2)
                                             .show(ui, |ui| {
-                                                ui.label(format!("Arm {index}"));
+                                                ui.label(format!("Arm {arm_index}"));
                                                 ui.end_row();
 
                                                 ui.label("Arm angle:");
@@ -180,22 +181,56 @@ fn draw_window(
                                                 {
                                                     arm_settings.angle =
                                                         Rot2::degrees(angle_degree);
+                                                    // Note: Recalculate flow rates when an angle has changed.
                                                 }
                                                 ui.end_row();
 
                                                 egui::CollapsingHeader::new("Flow rates")
-                                                    .id_salt(("flow_rates_", index))
+                                                    .id_salt(("flow_rates_header_", arm_index))
                                                     .show(ui, |ui| {
-                                                        for index in 0..number_of_lanes {
-                                                            ui.label(format!("Lane {index}"));
+                                                        for lane_index in 0..number_of_lanes {
+                                                            egui::Grid::new((
+                                                                "flow_rates_grid_",
+                                                                lane_index,
+                                                            ))
+                                                            .num_columns(2)
+                                                            .show(ui, |ui| {
+                                                                ui.label(format!(
+                                                                    "Lane {lane_index}"
+                                                                ));
+                                                                let flow_rates = &mut arm_settings
+                                                                    .arm_flow_rates[lane_index];
+                                                                egui::Grid::new(
+                                                                    ("flow_rates_inner_grid_", lane_index)
+                                                                ).num_columns(2)
+                                                                .show(ui, |ui| {
+                                                                for (exit_arm_index, flow_rate) in
+                                                                    flow_rates
+                                                                {
+                                                                    ui.label(format!("To arm {exit_arm_index}"));
+                                                                    let mut flow_per_hour =
+                                                                        flow_rate.get::<per_hour>()
+                                                                            as u32;
+                                                                    if ui
+                                                                        .add(
+                                                                            egui::DragValue::new(
+                                                                                &mut flow_per_hour
+                                                                            )
+                                                                            .range(0..=3600)
+                                                                            .suffix("per hour"),
+                                                                        )
+                                                                        .changed()
+                                                                    {
+                                                                        *flow_rate = Frequency::new::<per_hour>(flow_per_hour as f32);
+                                                                    }
+                                                                    ui.end_row();
+                                                                }
+                                                                // Add some space between each arm's flow rate controls.
+                                                                ui.allocate_space(egui::vec2(0.0, 20.0));
+                                                                });
+                                                            });
                                                         }
                                                     });
-                                                ui.end_row();
-
-                                                ui.label("Vehicles per hour:");
-                                                // ui.horizontal(|ui| {
-
-                                                // });
                                                 ui.end_row();
 
                                                 ui.label("Speed limit override:");

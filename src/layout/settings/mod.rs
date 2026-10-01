@@ -23,7 +23,7 @@ pub(crate) enum SpeedUnit {
     MilePerHour,
 }
 
-#[derive(PartialEq, Resource)]
+#[derive(Clone, PartialEq, Resource)]
 pub(crate) struct MapSettings {
     pub(crate) number_of_lanes: usize,
     pub(crate) speed_limit: Velocity,
@@ -147,8 +147,9 @@ pub(crate) struct ArmSettings {
     pub(crate) angle: Rot2,
     vehicles_per_hour: u32,
     pub(crate) speed_limit_override: Option<Speed>,
-    /// Each index is a lane (index 0 is the inner lane).
-    arm_flow_rates: Vec<HashMap<usize, Frequency>>,
+    /// Each `Vec` index is a lane (index 0 is the inner lane).
+    /// The `HashMap` key is the exit arm index.
+    pub(crate) arm_flow_rates: Vec<HashMap<usize, Frequency>>,
 }
 
 impl ArmSettings {
