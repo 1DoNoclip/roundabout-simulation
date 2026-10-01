@@ -59,9 +59,10 @@ impl Arm {
     }
 }
 
-/// The vehicle flow rates for a singular entry lane to all possible exit lanes.
+/// The vehicle flow rates for a singular entry lane to all possible exit arms.
 ///
-/// `Frequency` is the flow rate of vehicles to that exit.
+/// The key is the exit arm ID.
+/// The value is the flow rate of vehicles to that exit.
 pub(crate) type FlowRates = EntityHashMap<Frequency>;
 
 /// A road segment between connections.

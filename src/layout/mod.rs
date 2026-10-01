@@ -52,6 +52,7 @@ pub(crate) fn get_arm_flow_rates(
     arm: Arm,
 ) -> HashMap<usize, HashMap<usize, Frequency>> {
     let mut arm_flow_rates = HashMap::<usize, HashMap<usize, Frequency>>::new();
+    // `other_arm_index` aka the exit arm index.
     for other_arm_index in 0..number_of_arms {
         let other_arm = Arm::new(other_arm_index, arm_blueprints[other_arm_index].angle());
         let lane_index = select_lane_index(&arm, &other_arm, number_of_arms, number_of_lanes);
