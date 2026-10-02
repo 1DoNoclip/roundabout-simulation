@@ -22,6 +22,7 @@ fn ui_settings_changed(mut commands: Commands, mut reader: MessageReader<ApplyUi
     for apply_ui_settings in reader.read() {
         match apply_ui_settings {
             ApplyUiSettings::Map => commands.run_system_cached(replace_roundabout_blueprint),
+            ApplyUiSettings::UpdateFlowRates => commands.run_system_cached(update_flow_rates),
             ApplyUiSettings::SimulationPlayPause => commands.run_system_cached(play_pause_time),
             ApplyUiSettings::SimulationSpeed => commands.run_system_cached(set_time_speed),
         }

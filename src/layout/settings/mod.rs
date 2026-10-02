@@ -10,9 +10,16 @@ impl Plugin for SettingsPlugin {
     }
 }
 
+pub(crate) fn update_flow_rates(
+    mut map_settings: ResMut<MapSettings>,
+) {
+
+}
+
 #[derive(Message)]
 pub(crate) enum ApplyUiSettings {
     Map,
+    UpdateFlowRates,
     SimulationPlayPause,
     SimulationSpeed,
 }
