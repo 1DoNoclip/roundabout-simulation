@@ -52,10 +52,13 @@ fn draw_window(
                                 .show(ui, |ui| {
                                     // Number of lanes.
                                     ui.label("Number of lanes:");
-                                    ui.add(egui::Slider::new(
+                                    if ui.add(egui::Slider::new(
                                         &mut map_settings.number_of_lanes,
                                         1..=3,
-                                    ));
+                                    )).changed() {
+                                        // Reason: The number of lanes affects where each lane goes to.
+                                        apply_writer.write(ApplyUiSettings::UpdateFlowRates);
+                                    }
                                     ui.end_row();
 
                                     // Speed limit.
@@ -154,7 +157,6 @@ fn draw_window(
                                 });
 
                             // Arms.
-                            // let mut arm_to_remove = None;
                             egui::CollapsingHeader::new("Arms")
                                 .default_open(true)
                                 .show(ui, |ui| {
@@ -182,7 +184,9 @@ fn draw_window(
                                                 {
                                                     arm_settings.angle =
                                                         Rot2::degrees(angle_degree);
-                                                    // Note: Recalculate flow rates when an angle has changed.
+                                                    // Reason: The arm angle may have affected what order the
+                                                    // arms are, requiring updating flow rate mappings.
+                                                    apply_writer.write(ApplyUiSettings::UpdateFlowRates);
                                                 }
                                                 ui.end_row();
 
