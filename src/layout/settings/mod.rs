@@ -10,35 +10,10 @@ impl Plugin for SettingsPlugin {
     }
 }
 
+/// Will reset the user specified flow rates, but will align with the new geometry.
 pub(crate) fn update_flow_rates(mut map_settings: ResMut<MapSettings>) {
     let number_of_lanes = map_settings.number_of_lanes();
-    // The outer `HashMap` key is the entry arm index.
-    // The `Vec` index is the entry lane index.
-    // The inner `HashMap` key is the exit arm index.
-    let all_flow_rates: HashMap<usize, Vec<HashMap<usize, Frequency>>> = HashMap::new();
-
-
-    for (arm_index, arm_flow_rates) in all_flow_rates {
-        // Overwrite the old flow rates with the new.
-        map_settings.arms[arm_index].arm_flow_rates = arm_flow_rates;
-    }
-
-    // // The key of the outer `HashMap` is the lane index.
-    // // The key of the inner `HashMap` / `EntityHashMap` becomes the exit arm ID.
-    // let mut arm_flow_rates: HashMap<usize, FlowRates> =
-    //     get_arm_flow_rates(arm_blueprints, number_of_arms, number_of_lanes, arm)
-    //         .into_iter()
-    //         .map(|(lane_index, inner_map)| {
-    //             let lane_flow_rates: FlowRates = inner_map
-    //                 .into_iter()
-    //                 .map(|(exit_arm_index, flow_rate)| {
-    //                     let exit_arm_id = roundabout_topology.get_arm_id_at(exit_arm_index);
-    //                     (exit_arm_id, flow_rate)
-    //                 })
-    //                 .collect();
-    //             (lane_index, lane_flow_rates)
-    //         })
-    //         .collect();
+    MapSettings::update_arm_flow_rates(&mut map_settings.arms, number_of_lanes);
 }
 
 #[derive(Message)]
