@@ -4,6 +4,8 @@ use crate::*;
 
 pub(crate) mod segment_type;
 
+pub(crate) use segment_type::EntryLine;
+
 pub(super) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {

@@ -27,7 +27,7 @@ impl RoundaboutYieldPoints {
         conflict_points: Res<RoundaboutConflictPoints>,
         roundabout_blueprint: Res<RoundaboutBlueprint>,
         entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
-        entry_line_segments: Query<(Entity, &Segment), With<segment_type::EntryLine>>,
+        entry_line_segments: Query<(Entity, &Segment), With<EntryLine>>,
     ) {
         let number_of_lanes = roundabout_blueprint.number_of_lanes();
 

@@ -8,7 +8,7 @@ pub(crate) mod spawning;
 
 pub(crate) use components::*;
 pub(crate) use kinematics::*;
-use pathfinding::*;
+pub(crate) use pathfinding::*;
 pub(crate) use spawning::*;
 
 pub(super) struct VehiclePlugin;
@@ -20,7 +20,7 @@ impl Plugin for VehiclePlugin {
 }
 
 #[derive(Bundle)]
-struct VehicleBundle {
+pub(crate) struct VehicleBundle {
     name: Name,
     vehicle: Vehicle,
     idm_driver: IdmDriver,
@@ -58,39 +58,6 @@ impl VehicleBundle {
             transform: Transform::from_translation(start_segment.position_at(0.0)),
         })
     }
-}
-
-pub(super) fn spawn_vehicles() {}
-
-fn spawn_vehicle(
-    In((spawn_point_id, end_arm_id)): In<(Entity, Entity)>,
-    mut commands: Commands,
-    arms: Query<&Arm>,
-    segments: Query<&Segment>,
-    spawn_points: Query<&SpawnPoint>,
-    end_points: Query<(Entity, &EndPoint)>,
-) {
-    let spawn_point = spawn_points
-        .get(spawn_point_id)
-        .expect("expected to get SpawnPoint from entity");
-    let end_arm = arms
-        .get(end_arm_id)
-        .expect("expected to get end Arm from entity");
-
-    let route = calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
-        .expect("failed to pathfind from SpawnPoint to EndPoint");
-
-    commands.spawn(
-        VehicleBundle::try_new(
-            &segments,
-            Speed::ZERO,
-            Speed::try_new(Velocity::new::<mile_per_hour>(60.0)).expect("failed to create"),
-            Acceleration::new::<meter_per_second_squared>(3.5),
-            Acceleration::new::<meter_per_second_squared>(-8.0),
-            route,
-        )
-        .expect("failed to spawn VehicleBundle"),
-    );
 }
 
 #[cfg(test)]

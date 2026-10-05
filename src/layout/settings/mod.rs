@@ -12,6 +12,7 @@ impl Plugin for SettingsPlugin {
 
 /// Will reset the user specified flow rates, but will align with the new geometry.
 pub(crate) fn update_flow_rates(mut map_settings: ResMut<MapSettings>) {
+    info!("Updating flow rates");
     let number_of_lanes = map_settings.number_of_lanes();
     MapSettings::update_arm_flow_rates(&mut map_settings.arms, number_of_lanes);
 }

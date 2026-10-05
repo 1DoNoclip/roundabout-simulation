@@ -12,6 +12,10 @@ impl EntryLine {
     pub const fn new(flow_rates: FlowRates) -> Self {
         EntryLine { flow_rates }
     }
+
+    pub const fn flow_rates(&self) -> &FlowRates {
+        &self.flow_rates
+    }
 }
 
 #[derive(Component)]

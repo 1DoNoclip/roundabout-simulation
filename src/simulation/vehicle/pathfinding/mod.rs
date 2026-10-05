@@ -12,7 +12,7 @@ impl Plugin for PathfindingPlugin {
 ///
 /// Returns `Some(Vec<Entity>)`, a vector of `Segment` entities if a route is found from start to end.
 /// Returns `None` if a route is not found.
-pub(super) fn calculate_route(
+pub(crate) fn calculate_route(
     arms: &Query<&Arm>,
     end_points: &Query<(Entity, &EndPoint)>,
     segments: &Query<&Segment>,

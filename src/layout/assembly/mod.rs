@@ -89,9 +89,10 @@ pub(crate) fn assemble_roundabout(
                 ),
             ));
 
+            println!("{:?}", arm_flow_rates.get(&lane_index));
             commands.entity(ids.entry_line).insert((
                 Name::new(format!("EntryLine {unique_identifier}")),
-                segment_type::EntryLine::new(arm_flow_rates.remove(&lane_index).unwrap()),
+                EntryLine::new(arm_flow_rates.remove(&lane_index).unwrap()),
                 Segment::new(
                     entry_line_points,
                     arm_id,

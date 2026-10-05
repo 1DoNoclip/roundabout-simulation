@@ -17,11 +17,8 @@ pub(in crate::simulation) fn calculate_accelerations(
     conflict_points: Res<RoundaboutConflictPoints>,
     yield_points: Res<RoundaboutYieldPoints>,
     segments: Query<&Segment>,
-    line_segments: Query<
-        &Segment,
-        Or<(With<segment_type::EntryLine>, With<segment_type::ExitLine>)>,
-    >,
-    entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+    line_segments: Query<&Segment, Or<(With<EntryLine>, With<segment_type::ExitLine>)>>,
+    entry_line_segments: Query<&Segment, With<EntryLine>>,
     entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
     // Used to check if a segment is an entry deflection segment.
     exit_deflection_segments: Query<(), With<segment_type::ExitDeflection>>,
@@ -253,7 +250,7 @@ struct YieldContext {
 impl YieldContext {
     fn get(
         yield_points: &Res<RoundaboutYieldPoints>,
-        entry_line_segments: Query<&Segment, With<segment_type::EntryLine>>,
+        entry_line_segments: Query<&Segment, With<EntryLine>>,
         entry_deflection_segments: Query<(Entity, &Segment), With<segment_type::EntryDeflection>>,
         navigator: &Navigator,
         current_segment_id: Entity,
@@ -1061,7 +1058,7 @@ mod tests {
             //     let inter_target = spawn_segment(&mut world, 0, 0, segment_type::InterArmSector);
 
             //     // Non-sector segments on the target arms.
-            //     spawn_segment(&mut world, 1, 0, segment_type::EntryLine);
+            //     spawn_segment(&mut world, 1, 0, EntryLine);
             //     spawn_segment(&mut world, 0, 0, segment_type::EntryDeflection);
 
             //     let mut system_state = SystemState::<(

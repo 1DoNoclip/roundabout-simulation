@@ -174,11 +174,7 @@ fn update_speed_limit_overrides(
     map_settings: Res<MapSettings>,
     mut roundabout_blueprint: ResMut<RoundaboutBlueprint>,
     arms: Query<(Entity, &Arm)>,
-    mut segments: Query<(
-        &mut Segment,
-        Has<segment_type::EntryLine>,
-        Has<segment_type::ExitLine>,
-    )>,
+    mut segments: Query<(&mut Segment, Has<EntryLine>, Has<segment_type::ExitLine>)>,
 ) {
     info!("Updating speed limit overrides.");
 
