@@ -13,6 +13,7 @@ impl Plugin for AssemblyPlugin {
 // pub(crate) due to use in test code.
 pub(crate) fn assemble_roundabout(
     mut commands: Commands,
+    map_settings: Res<MapSettings>,
     roundabout_blueprint: Res<RoundaboutBlueprint>,
 ) {
     info!("Assembling roundabout from blueprints.");
@@ -40,22 +41,23 @@ pub(crate) fn assemble_roundabout(
         // Add the ArmBundle.
         commands.entity(arm_id).insert(ArmBundle::new(arm));
 
-        // The key of the outer `HashMap` is the lane index.
-        // The key of the inner `HashMap` / `EntityHashMap` becomes the exit arm ID.
-        let mut arm_flow_rates: HashMap<usize, FlowRates> =
-            get_arm_flow_rates(arm_blueprints, number_of_arms, number_of_lanes, arm)
-                .into_iter()
-                .map(|(lane_index, inner_map)| {
-                    let lane_flow_rates: FlowRates = inner_map
-                        .into_iter()
-                        .map(|(exit_arm_index, flow_rate)| {
-                            let exit_arm_id = roundabout_topology.get_arm_id_at(exit_arm_index);
-                            (exit_arm_id, flow_rate)
-                        })
-                        .collect();
-                    (lane_index, lane_flow_rates)
-                })
-                .collect();
+        // // The key of the outer `HashMap` is the lane index.
+        // // The key of the inner `HashMap` / `EntityHashMap` becomes the exit arm ID.
+        let mut arm_flow_rates: HashMap<usize, FlowRates> = HashMap::new();
+        map_settings.arms()[arm_index]
+            .arm_flow_rates
+            .iter()
+            .enumerate()
+            .for_each(|(lane_index, flow_rates)| {
+                let entity_flow_rates = flow_rates.iter().fold(
+                    FlowRates::new(),
+                    |mut map, (&exit_arm_index, &flow_rate)| {
+                        map.insert(roundabout_topology.get_arm_id_at(exit_arm_index), flow_rate);
+                        map
+                    },
+                );
+                arm_flow_rates.insert(lane_index, entity_flow_rates);
+            });
 
         let speed_limit_override = arm_blueprint.speed_limit_override();
 

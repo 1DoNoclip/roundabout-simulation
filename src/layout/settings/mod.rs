@@ -20,7 +20,10 @@ pub(crate) fn update_flow_rates(mut map_settings: ResMut<MapSettings>) {
 #[derive(Message)]
 pub(crate) enum ApplyUiSettings {
     Map,
+    /// Recalculates flow rates due to a change in geometry.
     UpdateFlowRates,
+    /// Applies changed flow rate values to simulation.
+    ApplyFlowRates,
     SimulationPlayPause,
     SimulationSpeed,
 }

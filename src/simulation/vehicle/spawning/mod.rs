@@ -9,9 +9,14 @@ pub(crate) fn spawn_vehicles(
     for (segment, entry_line) in entry_lines {
         // Todo: Write function when flow rates are changed in UI
         // to change the flow rates inside the entry line entities.
-        println!("{:?}", entry_line.flow_rates().iter().map(|(_, fr)| {
-            fr.get::<per_hour>()
-        }).collect::<Vec<_>>());
+        println!(
+            "{:?}",
+            entry_line
+                .flow_rates()
+                .iter()
+                .map(|(_, fr)| { fr.get::<per_hour>() })
+                .collect::<Vec<_>>()
+        );
     }
 }
 
