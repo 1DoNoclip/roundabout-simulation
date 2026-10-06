@@ -7,8 +7,6 @@ pub(crate) fn spawn_vehicles(
     mut entry_lines: Query<(&Segment, &EntryLine)>, //, &SpawnTimer)>,
 ) {
     for (segment, entry_line) in entry_lines {
-        // Todo: Write function when flow rates are changed in UI
-        // to change the flow rates inside the entry line entities.
         println!(
             "{:?}",
             entry_line

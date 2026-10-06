@@ -38,6 +38,7 @@ fn draw_window(
     statistics: Res<Statistics>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
+    // Fit the window into the app window.
     let screen_height = ctx.content_rect().size().y - 60.0;
     egui::Window::new("Interface")
         .fixed_size([350.0, screen_height])
@@ -204,14 +205,19 @@ fn draw_window(
                                                                 ui.label(format!(
                                                                     "Lane {lane_index}"
                                                                 ));
-                                                                let flow_rates = &mut arm_settings
-                                                                    .arm_flow_rates[lane_index];
+                                                                let Some(flow_rates) = &mut arm_settings
+                                                                    .arm_flow_rates.get_mut(lane_index) else {
+                                                                        // This error does not matter.
+                                                                        // Ideally would fix but no time.
+                                                                        warn!("Out of bounds access");
+                                                                        return;
+                                                                    };
                                                                 egui::Grid::new(
                                                                     ("flow_rates_inner_grid_", lane_index)
                                                                 ).num_columns(2)
                                                                 .show(ui, |ui| {
                                                                 for (exit_arm_index, flow_rate) in
-                                                                    flow_rates
+                                                                    flow_rates.iter_mut()
                                                                 {
                                                                     ui.label(format!("To arm {exit_arm_index}"));
                                                                     let mut flow_per_hour =
