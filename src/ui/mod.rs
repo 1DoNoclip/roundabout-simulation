@@ -207,7 +207,7 @@ fn draw_window(
                                                                 ));
                                                                 let Some(flow_rates) = &mut arm_settings
                                                                     .arm_flow_rates.get_mut(lane_index) else {
-                                                                        // This error does not matter.
+                                                                        // Note: This error does not matter.
                                                                         // Ideally would fix but no time.
                                                                         warn!("Out of bounds access");
                                                                         return;
