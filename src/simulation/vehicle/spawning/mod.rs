@@ -4,17 +4,10 @@ use rand::{SeedableRng, rng, rngs::StdRng};
 pub(crate) fn spawn_vehicles(
     mut commands: Commands,
     mut spawner_rng: Local<SpawnerRng>,
-    mut entry_lines: Query<(&Segment, &EntryLine)>, //, &SpawnTimer)>,
+    mut entry_lines: Query<(&Segment, &EntryLine, &SpawnTimer)>,
 ) {
-    for (segment, entry_line) in entry_lines {
-        println!(
-            "{:?}",
-            entry_line
-                .flow_rates()
-                .iter()
-                .map(|(_, fr)| { fr.get::<per_hour>() })
-                .collect::<Vec<_>>()
-        );
+    for (segment, entry_line, spawn_timer) in entry_lines {
+        println!("{}", entry_line.total_flow_rate().get::<per_hour>());
     }
 }
 
@@ -51,16 +44,11 @@ fn spawn_vehicle(
 
 /// The spawn timer for a singular lane.
 #[derive(Resource)]
-pub(crate) enum SpawnTimer {
-    /// The countdown timer until the next spawn.
-    InterSpawn(Timer),
-    /// The current
-    DelayedSpawn,
-}
+pub(crate) struct SpawnTimer(pub Timer);
 
 impl Default for SpawnTimer {
     fn default() -> Self {
-        SpawnTimer::InterSpawn(Timer::from_seconds(0.0, TimerMode::Once))
+        SpawnTimer(Timer::from_seconds(0.0, TimerMode::Once))
     }
 }
 
