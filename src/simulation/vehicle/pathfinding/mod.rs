@@ -6,11 +6,14 @@ impl Plugin for PathfindingPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
+/// A vehicle's route from the start `Segment` to the end `Segment`.
+pub(crate) type Route = Vec<Entity>;
+
 /// Computes the route for a vehicle to follow.
 ///
 /// Assumes that the `lane_index` is always constant throughout the route.
 ///
-/// Returns `Some(Vec<Entity>)`, a vector of `Segment` entities if a route is found from start to end.
+/// Returns `Some(Route)`, a vector of `Segment` entities if a route is found from start to end.
 /// Returns `None` if a route is not found.
 pub(crate) fn calculate_route(
     arms: &Query<&Arm>,
@@ -18,7 +21,7 @@ pub(crate) fn calculate_route(
     segments: &Query<&Segment>,
     spawn_point: &SpawnPoint,
     end_arm_index: usize,
-) -> Result<Vec<Entity>, String> {
+) -> Result<Route, String> {
     let start_segment_id = spawn_point.segment();
 
     let mut route = vec![start_segment_id];

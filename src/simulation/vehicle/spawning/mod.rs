@@ -11,24 +11,7 @@ pub(crate) fn spawn_vehicles(
     }
 }
 
-fn spawn_vehicle(
-    In((spawn_point_id, end_arm_id)): In<(Entity, Entity)>,
-    mut commands: Commands,
-    arms: Query<&Arm>,
-    segments: Query<&Segment>,
-    spawn_points: Query<&SpawnPoint>,
-    end_points: Query<(Entity, &EndPoint)>,
-) {
-    let spawn_point = spawn_points
-        .get(spawn_point_id)
-        .expect("expected to get SpawnPoint from entity");
-    let end_arm = arms
-        .get(end_arm_id)
-        .expect("expected to get end Arm from entity");
-
-    let route = calculate_route(&arms, &end_points, &segments, spawn_point, end_arm.index())
-        .expect("failed to pathfind from SpawnPoint to EndPoint");
-
+fn spawn_vehicle(mut commands: Commands, segments: Query<&Segment>, route: Vec<Entity>) {
     commands.spawn(
         VehicleBundle::try_new(
             &segments,
@@ -45,6 +28,14 @@ fn spawn_vehicle(
 /// The spawn timer for a singular lane.
 #[derive(Resource)]
 pub(crate) struct SpawnTimer(pub Timer);
+
+impl SpawnTimer {
+    /// Resets and sets the time to `duration`.
+    fn reset_and_set(&mut self, duration: Duration) {
+        self.0.reset();
+        self.0.set_duration(duration);
+    }
+}
 
 impl Default for SpawnTimer {
     fn default() -> Self {

@@ -8,14 +8,19 @@ pub(crate) struct EntryLine {
     flow_rates: FlowRates,
     /// The cached sum of the `Frequency` values in `self.flow_rates`.
     total_flow_rate: Frequency,
+    /// Stores vehicles that cannot spawn yet due to blocked road.
+    spawn_queue: VecDeque<Route>,
 }
 
 impl EntryLine {
     pub fn new(flow_rates: FlowRates) -> Self {
         let total_flow_rate = flow_rates.iter().map(|(_, &frequency)| frequency).sum();
+        // Empty spawn queue as this is a new `EntryLine`.
+        let spawn_queue = VecDeque::new();
         EntryLine {
             flow_rates,
             total_flow_rate,
+            spawn_queue,
         }
     }
 
