@@ -75,7 +75,7 @@ impl MapSettings {
             if let Some(arm_flow_rates) = all_flow_rates.remove(&index) {
                 arm_settings.arm_flow_rates = arm_flow_rates;
             } else {
-                warn!("No flow rates found for arm_settings with index {index}");
+                warn!("No flow rates found for arm_settings with index {index}.");
             }
         }
     }

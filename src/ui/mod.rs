@@ -209,7 +209,7 @@ fn draw_window(
                                                                     .arm_flow_rates.get_mut(lane_index) else {
                                                                         // Note: This error does not matter.
                                                                         // Ideally would fix but no time.
-                                                                        warn!("Out of bounds access");
+                                                                        warn!("Out of bounds access.");
                                                                         return;
                                                                     };
                                                                 egui::Grid::new(

@@ -184,7 +184,7 @@ fn update_speed_limit_overrides(
             .iter()
             .find(|&arm_settings| arm_settings.angle() == arm_blueprint.angle())
         else {
-            warn!("No matching ArmSettings with same angle as ArmBlueprint");
+            warn!("No matching ArmSettings with same angle as ArmBlueprint.");
             continue;
         };
         arm_blueprint.set_speed_limit_override(arm_settings.speed_limit_override());

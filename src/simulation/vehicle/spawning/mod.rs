@@ -1,6 +1,5 @@
 use crate::*;
 use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
-use rand_distr::{Distribution, weighted::WeightedIndex};
 
 pub(crate) fn spawn_vehicles(
     mut commands: Commands,
@@ -16,11 +15,13 @@ pub(crate) fn spawn_vehicles(
             let total_flow_rate = entry_line.total_flow_rate();
 
             set_next_spawn_time(&mut spawner_rng, &mut spawn_timer, total_flow_rate);
-            let destination_arm_id = select_destination_arm_id(
+            if let Some(destination_arm_id) = select_destination_arm_id(
                 &mut spawner_rng,
                 entry_line.flow_rates(),
                 total_flow_rate,
-            );
+            ) {} else {
+                warn!("Failed to select destination arm ID.");
+            };
         }
     }
 }
@@ -49,7 +50,7 @@ fn select_destination_arm_id(
     }
 
     // Fallback in case of floating-point rounding precision edge cases.
-    warn!("Precision error");
+    warn!("Precision error.");
     flow_rates.keys().next().copied()
 }
 
