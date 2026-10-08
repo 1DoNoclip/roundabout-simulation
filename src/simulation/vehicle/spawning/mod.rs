@@ -1,9 +1,11 @@
 use crate::*;
 use rand::{RngExt, SeedableRng, rng, rngs::StdRng};
+use rand_distr::{Distribution, weighted::WeightedIndex};
 
 pub(crate) fn spawn_vehicles(
     mut commands: Commands,
     time: Res<Time>,
+    mut statistics: ResMut<Statistics>,
     mut spawner_rng: Local<SpawnerRng>,
     mut entry_lines: Query<(&Segment, &EntryLine, &mut SpawnTimer)>,
 ) {
@@ -11,13 +13,44 @@ pub(crate) fn spawn_vehicles(
         spawn_timer.0.tick(time.delta());
 
         if spawn_timer.0.is_finished() {
-            set_next_spawn_time(
+            let total_flow_rate = entry_line.total_flow_rate();
+
+            set_next_spawn_time(&mut spawner_rng, &mut spawn_timer, total_flow_rate);
+            let destination_arm_id = select_destination_arm_id(
                 &mut spawner_rng,
-                &mut spawn_timer,
-                entry_line.total_flow_rate(),
+                entry_line.flow_rates(),
+                total_flow_rate,
             );
         }
     }
+}
+
+fn select_destination_arm_id(
+    spawner_rng: &mut SpawnerRng,
+    flow_rates: &FlowRates,
+    total_flow_rate: Frequency,
+) -> Option<Entity> {
+    // Using a `WeightedIndex` would be better but would require storing it as part of the `FlowRates`.
+
+    let total_rate = total_flow_rate.get::<per_hour>();
+    if total_rate <= 0.0 {
+        return None;
+    }
+
+    // Pick a uniform random float in 0.0..total_flow_rate.
+    let mut sample = spawner_rng.0.random_range(0.0..total_rate);
+
+    for (&destination_arm_id, flow_rate) in flow_rates {
+        let rate = flow_rate.get::<per_hour>();
+        if sample < rate {
+            return Some(destination_arm_id);
+        }
+        sample -= rate;
+    }
+
+    // Fallback in case of floating-point rounding precision edge cases.
+    warn!("Precision error");
+    flow_rates.keys().next().copied()
 }
 
 /// Calculates the next spawn time so that the `total_flow_rate` is maintained.
@@ -122,5 +155,112 @@ mod tests {
             expected_mean_seconds,
             sample_mean_seconds
         );
+    }
+
+    /// Tests for `select_destination_arm_id`.
+    mod test_select_destination_arm_id {
+        use super::*;
+
+        #[test]
+        fn zero_or_negative_flow_rate_returns_none() {
+            let mut spawner_rng = SpawnerRng::default();
+            let mut flow_rates = FlowRates::default();
+            let entity = Entity::from_raw_u32(1).unwrap();
+            flow_rates.insert(entity, Frequency::new::<per_hour>(0.0));
+
+            // Test with 0.0 flow rate.
+            let result = select_destination_arm_id(
+                &mut spawner_rng,
+                &flow_rates,
+                Frequency::new::<per_hour>(0.0),
+            );
+            assert_eq!(result, None);
+
+            // Test with negative flow rate.
+            let result_neg = select_destination_arm_id(
+                &mut spawner_rng,
+                &flow_rates,
+                Frequency::new::<per_hour>(-100.0),
+            );
+            assert_eq!(result_neg, None);
+        }
+
+        #[test]
+        fn single_destination_always_selected() {
+            let mut spawner_rng = SpawnerRng::default();
+            let mut flow_rates = FlowRates::default();
+            let target_entity = Entity::from_raw_u32(1).unwrap();
+            let rate = Frequency::new::<per_hour>(500.0);
+            flow_rates.insert(target_entity, rate);
+
+            for _ in 0..100 {
+                let result = select_destination_arm_id(&mut spawner_rng, &flow_rates, rate);
+                assert_eq!(result, Some(target_entity));
+            }
+        }
+
+        #[test]
+        fn weighted_distribution_proportions() {
+            let mut spawner_rng = SpawnerRng::default();
+            let mut flow_rates = FlowRates::default();
+
+            let arm_a = Entity::from_raw_u32(1).unwrap();
+            let arm_b = Entity::from_raw_u32(2).unwrap();
+
+            // 70% to Arm A, 30% to Arm B.
+            let rate_a = Frequency::new::<per_hour>(700.0);
+            let rate_b = Frequency::new::<per_hour>(300.0);
+            let total_rate = Frequency::new::<per_hour>(1000.0);
+
+            flow_rates.insert(arm_a, rate_a);
+            flow_rates.insert(arm_b, rate_b);
+
+            const SAMPLE_COUNT: u32 = 10_000;
+            let mut count_a = 0;
+            let mut count_b = 0;
+
+            for _ in 0..SAMPLE_COUNT {
+                let selected = select_destination_arm_id(&mut spawner_rng, &flow_rates, total_rate);
+                match selected {
+                    Some(id) if id == arm_a => count_a += 1,
+                    Some(id) if id == arm_b => count_b += 1,
+                    _ => panic!("Unexpected entity selected"),
+                }
+            }
+
+            let ratio_a = count_a as f32 / SAMPLE_COUNT as f32;
+            let ratio_b = count_b as f32 / SAMPLE_COUNT as f32;
+
+            // Verify sampling is within a ±2% margin of error for 10,000 samples.
+            assert!(
+                (ratio_a - 0.70).abs() < 0.02,
+                "Expected ~0.70, got {ratio_a}"
+            );
+            assert!(
+                (ratio_b - 0.30).abs() < 0.02,
+                "Expected ~0.30, got {ratio_b}"
+            );
+        }
+
+        #[test]
+        fn fallback_returns_valid_entity() {
+            let mut spawner_rng = SpawnerRng::default();
+            let mut flow_rates = FlowRates::default();
+
+            let entity_b = Entity::from_raw_u32(2).unwrap();
+            let entity_a = Entity::from_raw_u32(1).unwrap();
+
+            flow_rates.insert(entity_a, Frequency::new::<per_hour>(100.0));
+            flow_rates.insert(entity_b, Frequency::new::<per_hour>(200.0));
+
+            // Pass total_flow_rate slightly larger than actual sum to force fallback path iteration.
+            let inflated_total = Frequency::new::<per_hour>(300.001);
+
+            let result = select_destination_arm_id(&mut spawner_rng, &flow_rates, inflated_total);
+            assert!(
+                result == Some(entity_a) || result == Some(entity_b),
+                "Fallback should return one of the valid destination entities"
+            );
+        }
     }
 }
