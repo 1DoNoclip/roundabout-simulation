@@ -11,11 +11,16 @@ pub(crate) fn spawn_vehicles(
         spawn_timer.0.tick(time.delta());
 
         if spawn_timer.0.is_finished() {
-            set_next_spawn_time(&mut spawner_rng, &mut spawn_timer, entry_line.total_flow_rate());
+            set_next_spawn_time(
+                &mut spawner_rng,
+                &mut spawn_timer,
+                entry_line.total_flow_rate(),
+            );
         }
     }
 }
 
+/// Calculates the next spawn time so that the `total_flow_rate` is maintained.
 fn set_next_spawn_time(
     spawner_rng: &mut SpawnerRng,
     spawn_timer: &mut SpawnTimer,
@@ -23,6 +28,7 @@ fn set_next_spawn_time(
 ) {
     // The extra time that has elapsed.
     // Will be a very small time, but important to maintain the total flow rate.
+    // Ensures that flow rate is frame-rate indepdendent.
     let overshoot_time = spawn_timer
         .0
         .elapsed()
@@ -95,16 +101,15 @@ mod tests {
         const SAMPLE_SIZE: u32 = 10_000_000;
 
         let mut spawner_rng = SpawnerRng::default();
+        let mut spawn_timer = SpawnTimer::default();
 
         let total_flow_rate = Frequency::new::<per_hour>(1_200.0);
-        let total_flow_rate_per_second = total_flow_rate.get::<per_second>();
-        let expected_mean_seconds = 1. / total_flow_rate_per_second;
+        let expected_mean_seconds = 1. / total_flow_rate.get::<per_second>();
 
         let mut total_spawn_time_seconds = 0.0;
         for _ in 0..SAMPLE_SIZE {
-            let u = spawner_rng.0.random::<f32>().max(f32::EPSILON);
-            let next_spawn_time_seconds = -f32::ln(u) / total_flow_rate_per_second;
-            total_spawn_time_seconds += next_spawn_time_seconds;
+            set_next_spawn_time(&mut spawner_rng, &mut spawn_timer, total_flow_rate);
+            total_spawn_time_seconds += spawn_timer.0.duration().as_secs_f32();
         }
 
         let sample_mean_seconds = total_spawn_time_seconds / SAMPLE_SIZE as f32;
