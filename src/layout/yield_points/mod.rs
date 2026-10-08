@@ -80,7 +80,7 @@ impl RoundaboutYieldPoints {
                     .iter()
                     .find(|&(_, segment)| segment.arm_id() == entry_deflection_segment.arm_id()
                         && segment.lane_index() == entry_deflection_segment.lane_index())
-                    .expect("expected to find matching entry line segment before entry deflection segment");
+                    .expect("Expected to find matching entry line segment before entry deflection segment.");
 
                 let remaining_progress = 1.0 + deflection_yield_point_progress;
                 let remaining_distance = remaining_progress * entry_deflection_segment.length();

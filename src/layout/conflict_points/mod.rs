@@ -41,13 +41,13 @@ impl RoundaboutConflictPoints {
         for entry_deflection_segment in entry_deflection_segments {
             let (arm_id, arm) = arms
                 .get(entry_deflection_segment.arm_id())
-                .expect("expected Segment to point to a valid Arm entity");
+                .expect("Expected Segment to point to a valid Arm entity.");
             let arm_index = arm.index();
 
             // All sectors that are on the same arm as entry_deflection_segment.
             let same_arm_sectors = sectors_by_arm
                 .get(&arm_id)
-                .expect("expected to find matching sector Segments on this Arm");
+                .expect("Expected to find matching sector Segments on this Arm.");
 
             for &(id, sector_segment) in same_arm_sectors {
                 let Some((conflict_point_index, is_merge)) = ConflictPointIndex::try_new(

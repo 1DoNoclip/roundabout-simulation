@@ -145,7 +145,7 @@ impl Default for IdmDriver {
             comfortable_acceleration: Acceleration::new::<meter_per_second_squared>(2.5),
             comfortable_lateral_acceleration: Acceleration::new::<meter_per_second_squared>(3.0),
             comfortable_deceleration: Acceleration::new::<meter_per_second_squared>(-2.0),
-            minimum_gap: Distance::try_new(Length::new::<meter>(2.0)).expect("failed to create"),
+            minimum_gap: Distance::try_new(Length::new::<meter>(2.0)).expect("Failed to create."),
             time_headway: UomTime::new::<second>(1.5),
             geometry_time_headway: UomTime::new::<second>(3.0),
             critical_gap: UomTime::new::<second>(3.5),

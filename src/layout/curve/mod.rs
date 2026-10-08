@@ -83,7 +83,7 @@ mod tests {
         let epsilon = 0.001;
         assert!(
             (calculated_length - expected_length).abs().get::<meter>() < epsilon,
-            "Expected length to be roughly {expected_length:?}, got {calculated_length:?}"
+            "Expected length to be roughly {expected_length:?}, got {calculated_length:?}."
         );
     }
 
@@ -105,7 +105,7 @@ mod tests {
         let epsilon = 0.001;
         assert!(
             (calculated_length - expected_length).abs().get::<meter>() < epsilon,
-            "Expected Bézier length to be roughly {expected_length:?}, got {calculated_length:?}"
+            "Expected Bézier length to be roughly {expected_length:?}, got {calculated_length:?}."
         );
     }
 
@@ -127,7 +127,7 @@ mod tests {
         let epsilon = 0.005;
         assert!(
             (calculated_length - expected_length).abs().get::<meter>() < epsilon,
-            "Expected curved Bézier length to be roughly {expected_length:?}, got {calculated_length:?}"
+            "Expected curved Bézier length to be roughly {expected_length:?}, got {calculated_length:?}."
         );
 
         // The smoothed curve must cut the corner and be shorter than the raw path bounding box lines (20.0).

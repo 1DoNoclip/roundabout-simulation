@@ -34,7 +34,7 @@ pub(in crate::simulation) fn calculate_accelerations(
         let current_segment_id = navigator.current_segment_id();
         let current_segment = segments
             .get(current_segment_id)
-            .expect("expected matching segment to segment Entity");
+            .expect("Expected matching segment to segment Entity.");
 
         let yield_context = YieldContext::get(
             &yield_points,
@@ -232,7 +232,7 @@ fn find_lead_vehicle(
 
     let (_, kinematics, _, lead_speed) = vehicles
         .get(lead_vehicle_id)
-        .expect("expected to find vehicle components");
+        .expect("Expected to find vehicle components.");
 
     Ok(LeadVehicleInfo {
         vehicle_kind: VehicleKind::Real(kinematics.vehicle_length()),
@@ -262,7 +262,7 @@ impl YieldContext {
                     segment.arm_id() == entry_segment.arm_id()
                         && segment.lane_index() == entry_segment.lane_index()
                 })
-                .expect("entry line segment should have an associated entry deflection segment");
+                .expect("Entry line segment should have an associated entry deflection segment.");
 
             let arm_index = entry_segment.arm_index();
             let lane_index = entry_segment.lane_index();
@@ -469,7 +469,7 @@ fn get_kappa(
     let lookahead_distance: Length = idm_driver.geometry_time_headway() * *current_speed;
     let current_segment = segments
         .get(navigator.current_segment_id())
-        .expect("expected current segment ID to be valid");
+        .expect("Expected current segment ID to be valid.");
     let current_progress = navigator.progress();
     let distance_to_end: Length = (1.0 - current_progress) * current_segment.length();
     // Get the curvature of this segment.
@@ -491,7 +491,7 @@ fn get_kappa(
             };
             let current_segment = segments
                 .get(current_segment_id)
-                .expect("expected current segment ID to be valid");
+                .expect("Expected current segment ID to be valid.");
 
             let progress =
                 (remaining_distance / current_segment.length()).get::<uom::si::ratio::ratio>();
@@ -1097,7 +1097,7 @@ mod tests {
         ) -> CirculatingVehicleInfo {
             CirculatingVehicleInfo {
                 distance_to_conflict: distance,
-                speed: Speed::try_new(velocity).expect("expected velocity to be positive or zero"),
+                speed: Speed::try_new(velocity).expect("Expected velocity to be positive or zero."),
                 vehicle_length: Length::new::<meter>(4.5),
             }
         }

@@ -178,7 +178,7 @@ impl From<StraightLinePoints> for Evaluators {
         let linear_spline = LinearSpline::new(value.0);
         let curve = linear_spline
             .to_curve()
-            .expect("failed to convert LinearSpline into CubicCurve");
+            .expect("Failed to convert LinearSpline into CubicCurve.");
         let tangent_curve = curve.clone();
 
         let position_evaluator = Box::new(move |time| curve.sample_clamped(time));
@@ -219,7 +219,7 @@ impl From<DeflectionCurvePoints> for Evaluators {
         let cubic_bezier = CubicBezier::new([value.0]);
         let curve = cubic_bezier
             .to_curve()
-            .expect("failed to convert CubicBezier into CubicCurve");
+            .expect("Failed to convert CubicBezier into CubicCurve.");
         let tangent_curve = curve.clone();
         let curvature_curve = curve.clone();
 

@@ -83,12 +83,12 @@ fn spawn_vehicle(mut commands: Commands, segments: Query<&Segment>, route: Vec<E
         VehicleBundle::try_new(
             &segments,
             Speed::ZERO,
-            Speed::try_new(Velocity::new::<mile_per_hour>(60.0)).expect("failed to create"),
+            Speed::try_new(Velocity::new::<mile_per_hour>(60.0)).expect("Failed to create."),
             Acceleration::new::<meter_per_second_squared>(3.5),
             Acceleration::new::<meter_per_second_squared>(-8.0),
             route,
         )
-        .expect("failed to spawn VehicleBundle"),
+        .expect("Failed to spawn VehicleBundle."),
     );
 }
 
@@ -152,7 +152,7 @@ mod tests {
 
         assert!(
             (sample_mean_seconds - expected_mean_seconds).abs() < tolerance,
-            "Expected mean near {}, but got {}",
+            "Expected mean near {}, but got {}.",
             expected_mean_seconds,
             sample_mean_seconds
         );
@@ -225,7 +225,7 @@ mod tests {
                 match selected {
                     Some(id) if id == arm_a => count_a += 1,
                     Some(id) if id == arm_b => count_b += 1,
-                    _ => panic!("Unexpected entity selected"),
+                    _ => panic!("Unexpected entity selected."),
                 }
             }
 
@@ -235,11 +235,11 @@ mod tests {
             // Verify sampling is within a ±2% margin of error for 10,000 samples.
             assert!(
                 (ratio_a - 0.70).abs() < 0.02,
-                "Expected ~0.70, got {ratio_a}"
+                "Expected ~0.70, got {ratio_a}."
             );
             assert!(
                 (ratio_b - 0.30).abs() < 0.02,
-                "Expected ~0.30, got {ratio_b}"
+                "Expected ~0.30, got {ratio_b}."
             );
         }
 

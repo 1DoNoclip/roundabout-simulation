@@ -44,7 +44,7 @@ impl VehicleBundle {
         let navigator = Navigator::try_new(route)?;
         let start_segment = segments
             .get(navigator.current_segment_id())
-            .expect("expected to find a Segment component");
+            .expect("Expected to find a Segment component.");
         let current_acceleration = AccelerationComponent::new(Acceleration::ZERO);
         Ok(VehicleBundle {
             name: Name::new("Vehicle"),
@@ -66,7 +66,7 @@ mod tests {
 
     /// Generates a fake Bevy entity for testing.
     fn make_test_entity(id: u32) -> Entity {
-        Entity::from_raw_u32(id).expect("failed to create Entity from an ID")
+        Entity::from_raw_u32(id).expect("Failed to create Entity from an ID.")
     }
 
     #[test]

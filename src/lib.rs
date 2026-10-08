@@ -195,7 +195,7 @@ fn update_speed_limit_overrides(
             .arms()
             .iter()
             .find(|&arm_settings| arm_settings.angle() == arm.angle())
-            .expect("expected matching arm settings to an arm");
+            .expect("Expected matching arm settings to an arm.");
         segments
             .iter_mut()
             .filter(|(segment, _, _)| segment.arm_id() == arm_id)
@@ -261,11 +261,11 @@ mod tests {
         ];
         let circle_blueprint =
             CircleBlueprint::try_new(Length::new::<meter>(20.0), Length::new::<meter>(15.0))
-                .expect("failed to create");
+                .expect("Failed to create.");
 
         app.insert_resource(
             RoundaboutBlueprint::try_new(arm_blueprints, circle_blueprint, 2, Speed::default())
-                .expect("failed to create"),
+                .expect("Failed to create."),
         );
 
         app.add_systems(Update, assemble_roundabout);

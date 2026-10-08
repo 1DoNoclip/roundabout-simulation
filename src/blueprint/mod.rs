@@ -32,9 +32,9 @@ pub(crate) fn replace_roundabout_blueprint(
         });
     let circle_blueprint =
         CircleBlueprint::try_new(map_settings.radius(), map_settings.deflection_radius())
-            .expect("expected to be valid blueprint");
+            .expect("Expected to be valid blueprint.");
     let number_of_lanes = map_settings.number_of_lanes();
-    let speed_limit = Speed::try_new(map_settings.speed_limit()).expect("expected to be positive");
+    let speed_limit = Speed::try_new(map_settings.speed_limit()).expect("Expected to be positive.");
 
     commands.insert_resource(
         RoundaboutBlueprint::try_new(
@@ -43,7 +43,7 @@ pub(crate) fn replace_roundabout_blueprint(
             number_of_lanes,
             speed_limit,
         )
-        .expect("failed to create"),
+        .expect("Failed to create."),
     );
     regenerate_writer.write(RegenerateLayout);
 }
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn try_new_roundabout_circle_blueprint() {
         CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
-            .expect("failed to create");
+            .expect("Failed to create.");
     }
 
     #[test]
@@ -260,12 +260,12 @@ mod tests {
         ];
         let circle_blueprint =
             CircleBlueprint::try_new(Length::new::<meter>(30.0), Length::new::<meter>(15.0))
-                .expect("failed to create");
+                .expect("Failed to create.");
         let number_of_lanes = 2;
         let speed_limit =
-            Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("failed to create");
+            Speed::try_new(Velocity::new::<mile_per_hour>(30.0)).expect("Failed to create.");
 
         RoundaboutBlueprint::try_new(arms, circle_blueprint, number_of_lanes, speed_limit)
-            .expect("failed to create");
+            .expect("Failed to create.");
     }
 }
