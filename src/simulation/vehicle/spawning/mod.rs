@@ -11,16 +11,31 @@ pub(crate) fn spawn_vehicles(
         spawn_timer.0.tick(time.delta());
 
         if spawn_timer.0.is_finished() {
-            let overshoot_time = spawn_timer
-                .0
-                .elapsed()
-                .saturating_sub(spawn_timer.0.duration());
-
-            let u = spawner_rng.0.random::<f32>().max(f32::EPSILON);
-            let next_spawn_time = -f32::ln(u) / entry_line.total_flow_rate().get::<per_second>();
-            spawn_timer.reset_and_set(Duration::from_secs_f32(next_spawn_time), overshoot_time);
+            set_next_spawn_time(&mut spawner_rng, &mut spawn_timer, entry_line.total_flow_rate());
         }
     }
+}
+
+fn set_next_spawn_time(
+    spawner_rng: &mut SpawnerRng,
+    spawn_timer: &mut SpawnTimer,
+    total_flow_rate: Frequency,
+) {
+    // The extra time that has elapsed.
+    // Will be a very small time, but important to maintain the total flow rate.
+    let overshoot_time = spawn_timer
+        .0
+        .elapsed()
+        .saturating_sub(spawn_timer.0.duration());
+    // `f32::EPSILON` is the step from 1.0 to the next larger representable f32 number.
+    // Clamping `u` to this value prevents ln(0) which would be negative infinity.
+    // This would cause a panic if converted to a Duration.
+    let u = spawner_rng.0.random::<f32>().max(f32::EPSILON);
+    let next_spawn_time = -f32::ln(u) / total_flow_rate;
+    spawn_timer.reset_and_set(
+        Duration::from_secs_f32(next_spawn_time.get::<second>()),
+        overshoot_time,
+    );
 }
 
 fn spawn_vehicle(mut commands: Commands, segments: Query<&Segment>, route: Vec<Entity>) {
@@ -76,14 +91,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resetting_spawn_timer() {
-        let spawner_rng = SpawnerRng::default();
-        let spawn_timer = SpawnTimer::default();
+    fn spawn_rates_match_mean() {
+        const SAMPLE_SIZE: u32 = 10_000_000;
 
-        if spawn_timer.0.is_finished() {
+        let mut spawner_rng = SpawnerRng::default();
 
-        } else {
-            panic!("Expected `spawn_timer.0.just_finished()` to be true.");
+        let total_flow_rate = Frequency::new::<per_hour>(1_200.0);
+        let total_flow_rate_per_second = total_flow_rate.get::<per_second>();
+        let expected_mean_seconds = 1. / total_flow_rate_per_second;
+
+        let mut total_spawn_time_seconds = 0.0;
+        for _ in 0..SAMPLE_SIZE {
+            let u = spawner_rng.0.random::<f32>().max(f32::EPSILON);
+            let next_spawn_time_seconds = -f32::ln(u) / total_flow_rate_per_second;
+            total_spawn_time_seconds += next_spawn_time_seconds;
         }
+
+        let sample_mean_seconds = total_spawn_time_seconds / SAMPLE_SIZE as f32;
+        // Must be within 2% of the expected mean.
+        let tolerance = expected_mean_seconds * 0.02;
+
+        assert!(
+            (sample_mean_seconds - expected_mean_seconds).abs() < tolerance,
+            "Expected mean near {}, but got {}",
+            expected_mean_seconds,
+            sample_mean_seconds
+        );
     }
 }
