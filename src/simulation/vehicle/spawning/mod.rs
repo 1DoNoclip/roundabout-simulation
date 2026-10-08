@@ -53,7 +53,10 @@ impl SpawnTimer {
 
 impl Default for SpawnTimer {
     fn default() -> Self {
-        SpawnTimer(Timer::from_seconds(0.0, TimerMode::Once))
+        let mut timer = Timer::from_seconds(0.0, TimerMode::Once);
+        // Ticks to make `.is_finished()` true.
+        timer.tick(Duration::ZERO);
+        SpawnTimer(timer)
     }
 }
 
@@ -65,5 +68,22 @@ pub(crate) struct SpawnerRng(StdRng);
 impl Default for SpawnerRng {
     fn default() -> Self {
         Self(StdRng::from_rng(&mut rng()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resetting_spawn_timer() {
+        let spawner_rng = SpawnerRng::default();
+        let spawn_timer = SpawnTimer::default();
+
+        if spawn_timer.0.is_finished() {
+
+        } else {
+            panic!("Expected `spawn_timer.0.just_finished()` to be true.");
+        }
     }
 }
