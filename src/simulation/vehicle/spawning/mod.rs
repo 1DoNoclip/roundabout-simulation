@@ -6,12 +6,12 @@ pub(crate) fn spawn_vehicles(
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
     mut spawner_rng: Local<SpawnerRng>,
-    mut entry_lines: Query<(Entity, &Segment, &EntryLine, &mut SpawnTimer)>,
+    entry_lines: Query<(Entity, &EntryLine, &mut SpawnTimer), With<Segment>>,
     arms: Query<&Arm>,
     end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
 ) {
-    for (segment_id, segment, entry_line, mut spawn_timer) in entry_lines {
+    for (segment_id, entry_line, mut spawn_timer) in entry_lines {
         spawn_timer.0.tick(time.delta());
         if spawn_timer.0.is_finished() {
             let total_flow_rate = entry_line.total_flow_rate();

@@ -132,30 +132,34 @@ pub(crate) fn assemble_roundabout(
                 .id();
 
             commands.entity(ids.exit_line).insert((
-                Name::new(format!("ExitLine {unique_identifier}")),
                 segment_type::ExitLine,
-                Segment::new(
-                    exit_line_points,
-                    arm_id,
-                    arm_index,
-                    lane_index,
-                    Connection::EndPoint { end_point_id },
-                    speed_limit_override,
+                SegmentBundle::new(
+                    format!("ExitLine {unique_identifier}"),
+                    Segment::new(
+                        exit_line_points,
+                        arm_id,
+                        arm_index,
+                        lane_index,
+                        Connection::EndPoint { end_point_id },
+                        speed_limit_override,
+                    ),
                 ),
             ));
 
             commands.entity(ids.exit_deflection).insert((
-                Name::new(format!("ExitDeflection {unique_identifier}")),
                 segment_type::ExitDeflection,
-                Segment::new(
-                    exit_deflection_points,
-                    arm_id,
-                    arm_index,
-                    lane_index,
-                    Connection::Direct {
-                        next_segment_id: ids.exit_line,
-                    },
-                    None,
+                SegmentBundle::new(
+                    format!("ExitDeflection {unique_identifier}"),
+                    Segment::new(
+                        exit_deflection_points,
+                        arm_id,
+                        arm_index,
+                        lane_index,
+                        Connection::Direct {
+                            next_segment_id: ids.exit_line,
+                        },
+                        None,
+                    ),
                 ),
             ));
 
@@ -167,17 +171,19 @@ pub(crate) fn assemble_roundabout(
             );
 
             commands.entity(ids.intra_arm_sector).insert((
-                Name::new(format!("IntraArmSector {unique_identifier}")),
                 segment_type::IntraArmSector,
-                Segment::new(
-                    intra_arm_sector_geometry,
-                    arm_id,
-                    arm_index,
-                    lane_index,
-                    Connection::Direct {
-                        next_segment_id: ids.inter_arm_sector,
-                    },
-                    None,
+                SegmentBundle::new(
+                    format!("IntraArmSector {unique_identifier}"),
+                    Segment::new(
+                        intra_arm_sector_geometry,
+                        arm_id,
+                        arm_index,
+                        lane_index,
+                        Connection::Direct {
+                            next_segment_id: ids.inter_arm_sector,
+                        },
+                        None,
+                    ),
                 ),
             ));
 
@@ -190,19 +196,21 @@ pub(crate) fn assemble_roundabout(
             );
 
             commands.entity(ids.inter_arm_sector).insert((
-                Name::new(format!("InterArmSector {unique_identifier}")),
                 segment_type::InterArmSector,
-                Segment::new(
-                    inter_arm_sector_geometry,
-                    arm_id,
-                    arm_index,
-                    lane_index,
-                    Connection::Diverge {
-                        exit_arm_index: next_arm_index,
-                        exit_segment_id: ids.next_exit_deflection,
-                        circulating_segment_id: ids.next_intra_arm_sector,
-                    },
-                    None,
+                SegmentBundle::new(
+                    format!("InterArmSector {unique_identifier}"),
+                    Segment::new(
+                        inter_arm_sector_geometry,
+                        arm_id,
+                        arm_index,
+                        lane_index,
+                        Connection::Diverge {
+                            exit_arm_index: next_arm_index,
+                            exit_segment_id: ids.next_exit_deflection,
+                            circulating_segment_id: ids.next_intra_arm_sector,
+                        },
+                        None,
+                    ),
                 ),
             ));
         }
