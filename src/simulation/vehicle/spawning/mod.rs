@@ -39,9 +39,9 @@ pub(crate) fn spawn_vehicles(
             };
         }
 
-        if is_empty_road(args) && let Some(route) = entry_line.pop_from_spawn_queue() {
+        // if is_empty_road(args) && let Some(route) = entry_line.pop_from_spawn_queue() {
 
-        }
+        // }
     }
 }
 

@@ -8,7 +8,7 @@ pub(crate) struct EntryLine {
     flow_rates: FlowRates,
     /// The cached sum of the `Frequency` values in `self.flow_rates`.
     total_flow_rate: Frequency,
-    /// Stores vehicles that cannot spawn yet due to blocked road.
+    /// Stores vehicle routes which will exist in the future when the road is empty.
     spawn_queue: VecDeque<Route>,
 }
 
