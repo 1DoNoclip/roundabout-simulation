@@ -31,6 +31,14 @@ impl EntryLine {
     pub const fn total_flow_rate(&self) -> Frequency {
         self.total_flow_rate
     }
+
+    pub fn push_to_spawn_queue(&mut self, route: Route) {
+        self.spawn_queue.push_back(route);
+    }
+
+    pub fn pop_from_spawn_queue(&mut self) -> Option<Route> {
+        self.spawn_queue.pop_front()
+    }
 }
 
 #[derive(Component)]

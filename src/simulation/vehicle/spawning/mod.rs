@@ -6,12 +6,12 @@ pub(crate) fn spawn_vehicles(
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
     mut spawner_rng: Local<SpawnerRng>,
-    entry_lines: Query<(Entity, &EntryLine, &mut SpawnTimer), With<Segment>>,
+    entry_lines: Query<(Entity, &mut EntryLine, &mut SpawnTimer), With<Segment>>,
     arms: Query<&Arm>,
     end_points: Query<(Entity, &EndPoint)>,
     segments: Query<&Segment>,
 ) {
-    for (segment_id, entry_line, mut spawn_timer) in entry_lines {
+    for (segment_id, mut entry_line, mut spawn_timer) in entry_lines {
         spawn_timer.0.tick(time.delta());
         if spawn_timer.0.is_finished() {
             let total_flow_rate = entry_line.total_flow_rate();
@@ -33,10 +33,14 @@ pub(crate) fn spawn_vehicles(
                     continue;
                 };
 
-                println!("route: {route:?}");
+                entry_line.push_to_spawn_queue(route);
             } else {
                 warn!("Failed to select destination arm ID.");
             };
+        }
+
+        if is_empty_road(args) && let Some(route) = entry_line.pop_from_spawn_queue() {
+
         }
     }
 }
@@ -108,7 +112,7 @@ fn spawn_vehicle(mut commands: Commands, segments: Query<&Segment>, route: Vec<E
 }
 
 /// The spawn timer for a singular lane.
-#[derive(Debug, Resource)]
+#[derive(Component, Debug)]
 pub(crate) struct SpawnTimer(pub Timer);
 
 impl SpawnTimer {
