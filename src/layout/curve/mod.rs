@@ -63,6 +63,12 @@ impl Evaluators {
     }
 }
 
+impl std::fmt::Debug for Evaluators {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Evaluators")
+    }
+}
+
 // /// The ability to convert a curve into an evaluator function.
 // pub(crate) trait IntoEvaluator {
 //     fn into_evaluator(self) -> Box<dyn Fn(f32) -> Vec3 + Send + Sync + 'static>;

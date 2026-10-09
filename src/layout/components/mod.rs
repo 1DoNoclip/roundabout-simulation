@@ -67,8 +67,42 @@ impl Arm {
 /// The value is the flow rate of vehicles to that exit.
 pub(crate) type FlowRates = EntityHashMap<Frequency>;
 
+#[derive(Bundle)]
+pub(crate) struct SegmentBundle {
+    name: Name,
+    segment: Segment,
+}
+
+impl SegmentBundle {
+    pub fn new(name: String, segment: Segment) -> Self {
+        SegmentBundle {
+            name: Name::new(name),
+            segment,
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub(crate) struct EntryLineSegmentBundle {
+    segment_bundle: SegmentBundle,
+    entry_line: EntryLine,
+    spawn_timer: SpawnTimer,
+}
+
+impl EntryLineSegmentBundle {
+    pub fn new(name: String, segment: Segment, flow_rates: FlowRates) -> Self {
+        let segment_bundle = SegmentBundle::new(name, segment);
+
+        EntryLineSegmentBundle {
+            segment_bundle,
+            entry_line: EntryLine::new(flow_rates),
+            spawn_timer: SpawnTimer::default(),
+        }
+    }
+}
+
 /// A road segment between connections.
-#[derive(Component, Reflect)]
+#[derive(Component, Debug, Reflect)]
 #[reflect(Component, Default)]
 pub(crate) struct Segment {
     /// The position, tangent and curvature evaluator functions.

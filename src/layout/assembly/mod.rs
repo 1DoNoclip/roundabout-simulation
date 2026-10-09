@@ -77,35 +77,39 @@ pub(crate) fn assemble_roundabout(
             let (entry_line_points, entry_deflection_points) = entry_geometry.into_curves();
 
             commands.entity(ids.entry_deflection).insert((
-                Name::new(format!("EntryDeflection {unique_identifier}")),
                 segment_type::EntryDeflection,
-                Segment::new(
-                    entry_deflection_points,
-                    arm_id,
-                    arm_index,
-                    lane_index,
-                    Connection::Merge {
-                        next_segment_id: ids.inter_arm_sector,
-                    },
-                    None,
+                SegmentBundle::new(
+                    format!("EntryDeflection {unique_identifier}"),
+                    Segment::new(
+                        entry_deflection_points,
+                        arm_id,
+                        arm_index,
+                        lane_index,
+                        Connection::Merge {
+                            next_segment_id: ids.inter_arm_sector,
+                        },
+                        None,
+                    ),
                 ),
             ));
 
             println!("{:?}", arm_flow_rates.get(&lane_index));
-            commands.entity(ids.entry_line).insert((
-                Name::new(format!("EntryLine {unique_identifier}")),
-                EntryLine::new(arm_flow_rates.remove(&lane_index).unwrap()),
-                Segment::new(
-                    entry_line_points,
-                    arm_id,
-                    arm_index,
-                    lane_index,
-                    Connection::Direct {
-                        next_segment_id: ids.entry_deflection,
-                    },
-                    speed_limit_override,
-                ),
-            ));
+            commands
+                .entity(ids.entry_line)
+                .insert(EntryLineSegmentBundle::new(
+                    format!("EntryLine {unique_identifier}"),
+                    Segment::new(
+                        entry_line_points,
+                        arm_id,
+                        arm_index,
+                        lane_index,
+                        Connection::Direct {
+                            next_segment_id: ids.entry_deflection,
+                        },
+                        speed_limit_override,
+                    ),
+                    arm_flow_rates.remove(&lane_index).unwrap(),
+                ));
 
             commands.spawn((
                 Name::new(format!("SpawnPoint {unique_identifier}")),

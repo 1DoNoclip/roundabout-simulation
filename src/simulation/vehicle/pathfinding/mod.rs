@@ -16,9 +16,9 @@ pub(crate) type Route = Vec<Entity>;
 /// Returns `Some(Route)`, a vector of `Segment` entities if a route is found from start to end.
 /// Returns `None` if a route is not found.
 pub(crate) fn calculate_route(
-    arms: &Query<&Arm>,
-    end_points: &Query<(Entity, &EndPoint)>,
-    segments: &Query<&Segment>,
+    arms: Query<&Arm>,
+    end_points: Query<(Entity, &EndPoint)>,
+    segments: Query<&Segment>,
     entry_line_segment_id: Entity,
     end_arm_index: usize,
 ) -> Result<Route, String> {

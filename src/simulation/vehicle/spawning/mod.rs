@@ -13,7 +13,6 @@ pub(crate) fn spawn_vehicles(
 ) {
     for (segment_id, segment, entry_line, mut spawn_timer) in entry_lines {
         spawn_timer.0.tick(time.delta());
-
         if spawn_timer.0.is_finished() {
             let total_flow_rate = entry_line.total_flow_rate();
 
@@ -28,11 +27,13 @@ pub(crate) fn spawn_vehicles(
                     continue;
                 };
                 let Ok(route) =
-                    calculate_route(&arms, &end_points, &segments, segment_id, end_arm.index())
+                    calculate_route(arms, end_points, segments, segment_id, end_arm.index())
                 else {
                     warn!("Failed to get from start to destination.");
                     continue;
                 };
+
+                println!("route: {route:?}");
             } else {
                 warn!("Failed to select destination arm ID.");
             };
@@ -107,7 +108,7 @@ fn spawn_vehicle(mut commands: Commands, segments: Query<&Segment>, route: Vec<E
 }
 
 /// The spawn timer for a singular lane.
-#[derive(Resource)]
+#[derive(Debug, Resource)]
 pub(crate) struct SpawnTimer(pub Timer);
 
 impl SpawnTimer {

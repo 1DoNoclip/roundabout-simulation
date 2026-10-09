@@ -3,7 +3,7 @@
 
 use crate::*;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub(crate) struct EntryLine {
     flow_rates: FlowRates,
     /// The cached sum of the `Frequency` values in `self.flow_rates`.
