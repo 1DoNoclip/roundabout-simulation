@@ -6,9 +6,12 @@ pub(crate) fn spawn_vehicles(
     time: Res<Time>,
     mut statistics: ResMut<Statistics>,
     mut spawner_rng: Local<SpawnerRng>,
-    mut entry_lines: Query<(&Segment, &EntryLine, &mut SpawnTimer)>,
+    mut entry_lines: Query<(Entity, &Segment, &EntryLine, &mut SpawnTimer)>,
+    arms: Query<&Arm>,
+    end_points: Query<(Entity, &EndPoint)>,
+    segments: Query<&Segment>,
 ) {
-    for (segment, entry_line, mut spawn_timer) in entry_lines {
+    for (segment_id, segment, entry_line, mut spawn_timer) in entry_lines {
         spawn_timer.0.tick(time.delta());
 
         if spawn_timer.0.is_finished() {
@@ -19,7 +22,18 @@ pub(crate) fn spawn_vehicles(
                 &mut spawner_rng,
                 entry_line.flow_rates(),
                 total_flow_rate,
-            ) {} else {
+            ) {
+                let Ok(end_arm) = arms.get(destination_arm_id) else {
+                    warn!("Failed to get end Arm from destination arm ID.");
+                    continue;
+                };
+                let Ok(route) =
+                    calculate_route(&arms, &end_points, &segments, segment_id, end_arm.index())
+                else {
+                    warn!("Failed to get from start to destination.");
+                    continue;
+                };
+            } else {
                 warn!("Failed to select destination arm ID.");
             };
         }

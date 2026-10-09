@@ -19,12 +19,10 @@ pub(crate) fn calculate_route(
     arms: &Query<&Arm>,
     end_points: &Query<(Entity, &EndPoint)>,
     segments: &Query<&Segment>,
-    spawn_point: &SpawnPoint,
+    entry_line_segment_id: Entity,
     end_arm_index: usize,
 ) -> Result<Route, String> {
-    let start_segment_id = spawn_point.segment();
-
-    let mut route = vec![start_segment_id];
+    let mut route = vec![entry_line_segment_id];
     loop {
         let route_segment_length = route.len();
         let number_of_segments = segments.iter().len();

@@ -90,7 +90,7 @@ pub(in crate::simulation) fn calculate_accelerations(
             if line_segments.contains(current_segment_id).not()
                 && current_segment.speed_limit_override().is_some()
             {
-                warn!("current_segment has Some speed limit override".);
+                warn!("current_segment has Some speed limit override.");
             }
 
             kinematics
