@@ -39,7 +39,7 @@ impl VehicleBundle {
         target_speed: Speed,
         max_acceleration: Acceleration,
         max_deceleration: Acceleration,
-        route: Vec<Entity>,
+        route: Route,
     ) -> Result<Self, &'static str> {
         let navigator = Navigator::try_new(route)?;
         let start_segment = segments

@@ -225,7 +225,7 @@ impl Kinematics {
 #[derive(Component, Reflect)]
 pub(crate) struct Navigator {
     /// The route for the vehicle to follow.
-    route: Vec<Entity>,
+    route: Route,
     /// An index of route to identify the current segment.
     current_segment_index: usize,
     /// A segment progress between 0 and 1.
@@ -233,7 +233,7 @@ pub(crate) struct Navigator {
 }
 
 impl Navigator {
-    pub fn try_new(route: Vec<Entity>) -> Result<Self, &'static str> {
+    pub fn try_new(route: Route) -> Result<Self, &'static str> {
         if route.is_empty() {
             Err("route cannot be empty")
         } else {

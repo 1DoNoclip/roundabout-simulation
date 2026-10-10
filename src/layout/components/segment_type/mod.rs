@@ -6,10 +6,17 @@ use crate::*;
 #[derive(Component, Debug)]
 pub(crate) struct EntryLine {
     flow_rates: FlowRates,
+
     /// The cached sum of the `Frequency` values in `self.flow_rates`.
     total_flow_rate: Frequency,
+
     /// Stores vehicle routes which will exist in the future when the road is empty.
     spawn_queue: VecDeque<Route>,
+
+    /// The vehicle `Entity` with the lowest progress on this segment.
+    ///
+    /// Used in `spawn_vehicles` to see if the road is clear for the next vehicle.
+    earliest_vehicle_id: Option<Entity>,
 }
 
 impl EntryLine {
@@ -21,6 +28,7 @@ impl EntryLine {
             flow_rates,
             total_flow_rate,
             spawn_queue,
+            earliest_vehicle_id: None,
         }
     }
 
@@ -38,6 +46,10 @@ impl EntryLine {
 
     pub fn pop_from_spawn_queue(&mut self) -> Option<Route> {
         self.spawn_queue.pop_front()
+    }
+
+    pub fn earliest_vehicle_id(&self) -> Option<Entity> {
+        self.earliest_vehicle_id
     }
 }
 

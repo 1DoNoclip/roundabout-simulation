@@ -9,6 +9,7 @@ pub(crate) fn spawn_vehicles(
     entry_lines: Query<(Entity, &mut EntryLine, &mut SpawnTimer), With<Segment>>,
     arms: Query<&Arm>,
     end_points: Query<(Entity, &EndPoint)>,
+    vehicles: Query<&Navigator, With<Vehicle>>,
     segments: Query<&Segment>,
 ) {
     for (segment_id, mut entry_line, mut spawn_timer) in entry_lines {
@@ -27,7 +28,7 @@ pub(crate) fn spawn_vehicles(
                     continue;
                 };
                 let Ok(route) =
-                    calculate_route(arms, end_points, segments, segment_id, end_arm.index())
+                    calculate_route(arms, end_points, &segments, segment_id, end_arm.index())
                 else {
                     warn!("Failed to get from start to destination.");
                     continue;
@@ -39,9 +40,40 @@ pub(crate) fn spawn_vehicles(
             };
         }
 
-        // if is_empty_road(args) && let Some(route) = entry_line.pop_from_spawn_queue() {
+        if is_empty_road(vehicles, &segments, &entry_line)
+            && let Some(route) = entry_line.pop_from_spawn_queue()
+        {
+            spawn_vehicle(&mut commands, &segments, route);
+        }
+    }
+}
 
-        // }
+fn is_empty_road(
+    vehicles: Query<&Navigator, With<Vehicle>>,
+    segments: &Query<&Segment>,
+    entry_line: &EntryLine,
+) -> bool {
+    if let Some(vehicle_id) = entry_line.earliest_vehicle_id() {
+        // Check that the vehicle is more than 10m ahead of the beginning.
+        match vehicles.get(vehicle_id) {
+            Ok(navigator) => match segments.get(navigator.current_segment_id()) {
+                Ok(segment) => navigator.progress() * segment.length() > Length::new::<meter>(10.0),
+                Err(error) => {
+                    warn!(
+                        "Failed to match navigator.current_segment_id() to a valid segment.\nError: {error}."
+                    );
+                    false
+                }
+            },
+            Err(error) => {
+                warn!(
+                    "Found vehicle ID without navigator. Maybe this vehicle ID is invalid?\nError: {error}."
+                );
+                false
+            }
+        }
+    } else {
+        true
     }
 }
 
@@ -97,7 +129,7 @@ fn set_next_spawn_time(
     );
 }
 
-fn spawn_vehicle(mut commands: Commands, segments: Query<&Segment>, route: Vec<Entity>) {
+fn spawn_vehicle(commands: &mut Commands, segments: &Query<&Segment>, route: Route) {
     commands.spawn(
         VehicleBundle::try_new(
             &segments,

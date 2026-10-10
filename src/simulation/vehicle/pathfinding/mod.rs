@@ -18,7 +18,7 @@ pub(crate) type Route = Vec<Entity>;
 pub(crate) fn calculate_route(
     arms: Query<&Arm>,
     end_points: Query<(Entity, &EndPoint)>,
-    segments: Query<&Segment>,
+    segments: &Query<&Segment>,
     entry_line_segment_id: Entity,
     end_arm_index: usize,
 ) -> Result<Route, String> {
