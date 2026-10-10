@@ -64,7 +64,7 @@ impl MapSettings {
                 let other_arm = Arm::new(other_index, other_arm_settings.angle());
                 let lane_index =
                     select_lane_index(&arm, &other_arm, number_of_arms, number_of_lanes);
-                arm_flow_rates[lane_index].insert(other_index, Frequency::new::<per_hour>(800.0));
+                arm_flow_rates[lane_index].insert(other_index, Frequency::new::<per_hour>(400.0));
             }
 
             all_flow_rates.insert(index, arm_flow_rates);

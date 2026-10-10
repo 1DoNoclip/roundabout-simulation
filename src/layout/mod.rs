@@ -59,7 +59,7 @@ pub(crate) fn get_arm_flow_rates(
         arm_flow_rates
             .entry(lane_index)
             .or_insert_with(HashMap::new)
-            .insert(other_arm_index, Frequency::new::<per_hour>(800.0));
+            .insert(other_arm_index, Frequency::new::<per_hour>(400.0));
     }
     arm_flow_rates
 }
